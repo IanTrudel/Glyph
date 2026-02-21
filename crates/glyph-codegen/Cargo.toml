@@ -1,0 +1,18 @@
+[package]
+name = "glyph-codegen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glyph-db = { path = "../glyph-db" }
+glyph-parse = { path = "../glyph-parse" }
+glyph-typeck = { path = "../glyph-typeck" }
+glyph-mir = { path = "../glyph-mir" }
+thiserror = { workspace = true }
+cranelift-codegen = { workspace = true }
+cranelift-frontend = { workspace = true }
+cranelift-module = { workspace = true }
+cranelift-object = { workspace = true }
+cranelift-native = { workspace = true }
+target-lexicon = { workspace = true }
+tempfile = "3"

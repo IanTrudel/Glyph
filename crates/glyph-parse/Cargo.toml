@@ -1,0 +1,8 @@
+[package]
+name = "glyph-parse"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glyph-db = { path = "../glyph-db" }
+thiserror = { workspace = true }

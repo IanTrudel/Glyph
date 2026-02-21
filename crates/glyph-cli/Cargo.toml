@@ -1,0 +1,18 @@
+[package]
+name = "glyph-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "glyph"
+path = "src/main.rs"
+
+[dependencies]
+glyph-db = { path = "../glyph-db" }
+glyph-parse = { path = "../glyph-parse" }
+glyph-typeck = { path = "../glyph-typeck" }
+glyph-mir = { path = "../glyph-mir" }
+glyph-codegen = { path = "../glyph-codegen" }
+clap = { workspace = true }
+miette = { workspace = true }
+cranelift-codegen = { workspace = true }

@@ -1,0 +1,9 @@
+[package]
+name = "glyph-typeck"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glyph-db = { path = "../glyph-db" }
+glyph-parse = { path = "../glyph-parse" }
+thiserror = { workspace = true }

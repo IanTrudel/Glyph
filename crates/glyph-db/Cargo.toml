@@ -1,0 +1,10 @@
+[package]
+name = "glyph-db"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rusqlite = { workspace = true }
+blake3 = { workspace = true }
+tiktoken-rs = { workspace = true }
+thiserror = { workspace = true }

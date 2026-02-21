@@ -1,0 +1,12 @@
+[package]
+name = "glyph-mir"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glyph-db = { path = "../glyph-db" }
+glyph-parse = { path = "../glyph-parse" }
+glyph-typeck = { path = "../glyph-typeck" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+bincode = { workspace = true }
