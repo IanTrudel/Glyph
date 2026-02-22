@@ -12,6 +12,8 @@ glyph1
 /glyph
 examples/calculator/calc
 examples/life/life
+examples/glint/glint
+examples/gled/gled
 *.glyph-shm
 *.glyph-wal
 .ninja_log
