@@ -54,14 +54,16 @@ pub enum Rvalue {
     Call(Operand, Vec<Operand>),
     /// Construct an aggregate (record, tuple, array, enum variant).
     Aggregate(AggregateKind, Vec<Operand>),
-    /// Read a field from an aggregate.
-    Field(Operand, u32),
+    /// Read a field from an aggregate. (operand, field_index, field_name)
+    Field(Operand, u32, String),
     /// Read from an array index.
     Index(Operand, Operand),
     /// Cast one type to another.
     Cast(Operand, MirType),
     /// String interpolation.
     StrInterp(Vec<Operand>),
+    /// Create a closure: (lifted_fn_name, captured_values) -> {fn_ptr, env_ptr}
+    MakeClosure(String, Vec<Operand>),
     /// Get a reference to a local.
     Ref(LocalId),
     /// Dereference a pointer/ref.

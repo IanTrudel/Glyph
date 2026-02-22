@@ -20,10 +20,91 @@ impl InferEngine {
     pub fn new() -> Self {
         let mut env = TypeEnv::new();
         builtins::register_builtins(&mut env);
-        Self {
+        let mut s = Self {
             subst: Substitution::new(),
             env,
             errors: Vec::new(),
+        };
+        s.register_runtime_functions();
+        s
+    }
+
+    /// Register runtime functions with known monomorphic types.
+    /// Note: polymorphic functions like glyph_array_push are NOT registered here
+    /// because a single shared type variable would unify across all call sites.
+    fn register_runtime_functions(&mut self) {
+        // glyph_str_len : S -> I
+        self.env.insert("glyph_str_len".into(),
+            Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+
+        // glyph_str_char_at : S -> I -> I
+        self.env.insert("glyph_str_char_at".into(),
+            Type::Fn(Box::new(Type::Str),
+                Box::new(Type::Fn(Box::new(Type::Int), Box::new(Type::Int)))));
+
+        // glyph_str_slice : S -> I -> I -> S
+        self.env.insert("glyph_str_slice".into(),
+            Type::Fn(Box::new(Type::Str),
+                Box::new(Type::Fn(Box::new(Type::Int),
+                    Box::new(Type::Fn(Box::new(Type::Int), Box::new(Type::Str)))))));
+
+        // glyph_str_eq : S -> S -> B
+        self.env.insert("glyph_str_eq".into(),
+            Type::Fn(Box::new(Type::Str),
+                Box::new(Type::Fn(Box::new(Type::Str), Box::new(Type::Bool)))));
+
+        // glyph_str_concat : S -> S -> S
+        self.env.insert("glyph_str_concat".into(),
+            Type::Fn(Box::new(Type::Str),
+                Box::new(Type::Fn(Box::new(Type::Str), Box::new(Type::Str)))));
+
+        // glyph_int_to_str : I -> S
+        self.env.insert("glyph_int_to_str".into(),
+            Type::Fn(Box::new(Type::Int), Box::new(Type::Str)));
+
+        // glyph_str_to_int : S -> I
+        self.env.insert("glyph_str_to_int".into(),
+            Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+
+        // glyph_println : S -> I
+        self.env.insert("glyph_println".into(),
+            Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+
+        // glyph_exit : I -> V
+        self.env.insert("glyph_exit".into(),
+            Type::Fn(Box::new(Type::Int), Box::new(Type::Void)));
+    }
+
+    /// Register an enum type and its variant constructors.
+    /// Each variant constructor becomes a function in the type environment.
+    pub fn register_enum(&mut self, type_name: &str, variants: &[ast::Variant]) {
+        let enum_ty = Type::Named(type_name.to_string(), Vec::new());
+        for v in variants {
+            let ctor_ty = match &v.fields {
+                ast::VariantFields::None => {
+                    // Nullary constructor: just the enum type
+                    enum_ty.clone()
+                }
+                ast::VariantFields::Positional(types) => {
+                    // Build a curried function type: T1 -> T2 -> ... -> EnumTy
+                    let mut ty = enum_ty.clone();
+                    for param_ty_expr in types.iter().rev() {
+                        let param_ty = self.type_expr_to_type(param_ty_expr);
+                        ty = Type::Fn(Box::new(param_ty), Box::new(ty));
+                    }
+                    ty
+                }
+                ast::VariantFields::Named(fields) => {
+                    // Named fields: build a function from each field type
+                    let mut ty = enum_ty.clone();
+                    for field in fields.iter().rev() {
+                        let param_ty = self.type_expr_to_type(&field.ty);
+                        ty = Type::Fn(Box::new(param_ty), Box::new(ty));
+                    }
+                    ty
+                }
+            };
+            self.env.insert(v.name.clone(), ctor_ty);
         }
     }
 
@@ -39,7 +120,14 @@ impl InferEngine {
 
             ast::ExprKind::Ident(name) => self.lookup_var(name, expr.span),
 
-            ast::ExprKind::TypeIdent(name) => self.resolve_type_name(name),
+            ast::ExprKind::TypeIdent(name) => {
+                // Check if it's a known variant constructor
+                if let Some(ty) = self.env.lookup(name).cloned() {
+                    ty
+                } else {
+                    self.resolve_type_name(name)
+                }
+            }
 
             ast::ExprKind::Binary(op, left, right) => {
                 let lt = self.infer_expr(left);
@@ -79,6 +167,10 @@ impl InferEngine {
                     Type::Str => Type::Str, // string indexing returns string
                     _ => {
                         let elem = self.subst.fresh();
+                        let array_ty = Type::Array(Box::new(elem.clone()));
+                        if let Err(e) = self.subst.unify(&ct, &array_ty) {
+                            self.errors.push(e);
+                        }
                         elem
                     }
                 }
@@ -170,23 +262,6 @@ impl InferEngine {
                 Type::func(param_types, body_ty)
             }
 
-            ast::ExprKind::If(cond, then_e, else_e) => {
-                let ct = self.infer_expr(cond);
-                if let Err(e) = self.subst.unify(&ct, &Type::Bool) {
-                    self.errors.push(e);
-                }
-                let tt = self.infer_expr(then_e);
-                if let Some(else_e) = else_e {
-                    let et = self.infer_expr(else_e);
-                    if let Err(e) = self.subst.unify(&tt, &et) {
-                        self.errors.push(e);
-                    }
-                    tt
-                } else {
-                    tt
-                }
-            }
-
             ast::ExprKind::Match(scrutinee, arms) => {
                 let st = self.infer_expr(scrutinee);
                 let result_ty = self.subst.fresh();
@@ -204,30 +279,6 @@ impl InferEngine {
                     self.env.pop_scope();
                 }
                 result_ty
-            }
-
-            ast::ExprKind::For(pat, iter, filter, body) => {
-                let iter_ty = self.infer_expr(iter);
-                let elem_ty = self.subst.fresh();
-                let array_ty = Type::Array(Box::new(elem_ty.clone()));
-                if let Err(e) = self.subst.unify(&iter_ty, &array_ty) {
-                    self.errors.push(e);
-                }
-                self.env.push_scope();
-                let pat_ty = self.infer_pattern(pat);
-                if let Err(e) = self.subst.unify(&elem_ty, &pat_ty) {
-                    self.errors.push(e);
-                }
-                self.bind_pattern_vars(pat);
-                if let Some(f) = filter {
-                    let ft = self.infer_expr(f);
-                    if let Err(e) = self.subst.unify(&ft, &Type::Bool) {
-                        self.errors.push(e);
-                    }
-                }
-                let body_ty = self.infer_expr(body);
-                self.env.pop_scope();
-                Type::Array(Box::new(body_ty))
             }
 
             ast::ExprKind::Block(stmts) => {
@@ -340,6 +391,28 @@ impl InferEngine {
         self.env.pop_scope();
 
         let fn_ty = Type::func(param_types, body_ty);
+        fn_ty
+    }
+
+    /// Pre-register a function definition with a preliminary type.
+    /// This allows other functions to reference this one before its body is inferred.
+    pub fn pre_register_fn(&mut self, name: &str, fndef: &ast::FnDef) -> Type {
+        let mut param_types = Vec::new();
+        for p in &fndef.params {
+            let pt = if let Some(ty_expr) = &p.ty {
+                self.type_expr_to_type(ty_expr)
+            } else {
+                self.subst.fresh()
+            };
+            param_types.push(pt);
+        }
+        let ret_ty = if let Some(ret_expr) = &fndef.ret_ty {
+            self.type_expr_to_type(ret_expr)
+        } else {
+            self.subst.fresh()
+        };
+        let fn_ty = Type::func(param_types, ret_ty);
+        self.env.insert(name.to_string(), fn_ty.clone());
         fn_ty
     }
 
@@ -567,11 +640,24 @@ impl InferEngine {
             ast::PatternKind::Wildcard => self.subst.fresh(),
             ast::PatternKind::Ident(_) => self.subst.fresh(),
             ast::PatternKind::IntLit(_) => Type::Int,
+            ast::PatternKind::BoolLit(_) => Type::Bool,
             ast::PatternKind::StrLit(_) => Type::Str,
             ast::PatternKind::Constructor(name, pats) => {
-                // For now, return named type
-                let args: Vec<_> = pats.iter().map(|p| self.infer_pattern(p)).collect();
-                Type::Named(name.clone(), args)
+                // Look up constructor type from environment
+                if let Some(ctor_ty) = self.env.lookup(name).cloned() {
+                    // Peel off function layers to get the return type (the enum type)
+                    let mut current = ctor_ty;
+                    for p in pats {
+                        let _pat_ty = self.infer_pattern(p);
+                        if let Type::Fn(_, ret) = current {
+                            current = *ret;
+                        }
+                    }
+                    current
+                } else {
+                    let args: Vec<_> = pats.iter().map(|p| self.infer_pattern(p)).collect();
+                    Type::Named(name.clone(), args)
+                }
             }
             ast::PatternKind::Record(fields) => {
                 let mut field_types = BTreeMap::new();
@@ -664,8 +750,8 @@ mod tests {
     }
 
     #[test]
-    fn test_infer_if() {
-        assert_eq!(infer("if true: 1 else: 2"), Type::Int);
+    fn test_infer_match() {
+        assert_eq!(infer("match true\n  true -> 1\n  false -> 2"), Type::Int);
     }
 
     #[test]

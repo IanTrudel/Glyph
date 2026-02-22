@@ -88,9 +88,7 @@ pub enum ExprKind {
     Unwrap(Box<Expr>),
 
     Lambda(Vec<Param>, Box<Expr>),
-    If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
     Match(Box<Expr>, Vec<MatchArm>),
-    For(Pattern, Box<Expr>, Option<Box<Expr>>, Box<Expr>),
     Block(Vec<Stmt>),
 
     Array(Vec<Expr>),
@@ -148,6 +146,7 @@ pub enum PatternKind {
     Wildcard,
     Ident(String),
     IntLit(i64),
+    BoolLit(bool),
     StrLit(String),
     Constructor(String, Vec<Pattern>),
     Record(Vec<(String, Option<Pattern>)>),

@@ -141,14 +141,6 @@ impl<'a> Resolver<'a> {
                 self.pop_scope();
                 Ok(())
             }
-            ast::ExprKind::If(cond, then_e, else_e) => {
-                self.resolve_expr(cond)?;
-                self.resolve_expr(then_e)?;
-                if let Some(e) = else_e {
-                    self.resolve_expr(e)?;
-                }
-                Ok(())
-            }
             ast::ExprKind::Match(scrutinee, arms) => {
                 self.resolve_expr(scrutinee)?;
                 for arm in arms {
@@ -157,17 +149,6 @@ impl<'a> Resolver<'a> {
                     self.resolve_expr(&arm.body)?;
                     self.pop_scope();
                 }
-                Ok(())
-            }
-            ast::ExprKind::For(pat, iter, filter, body) => {
-                self.resolve_expr(iter)?;
-                self.push_scope();
-                self.bind_pattern(pat);
-                if let Some(f) = filter {
-                    self.resolve_expr(f)?;
-                }
-                self.resolve_expr(body)?;
-                self.pop_scope();
                 Ok(())
             }
             ast::ExprKind::Block(stmts) => {

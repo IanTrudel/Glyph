@@ -21,11 +21,7 @@ pub enum TokenKind {
     TypeIdent(String),
 
     // Keywords
-    If,
-    Else,
     Match,
-    For,
-    In,
     Trait,
     Impl,
     Const,

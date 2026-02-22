@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use cranelift_codegen::ir::condcodes::IntCC;
 use cranelift_codegen::ir::types;
-use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, Value};
+use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, StackSlotData, StackSlotKind, Value};
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::Context;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
@@ -20,6 +20,13 @@ pub struct CodegenContext {
     func_ids: HashMap<String, FuncId>,
     /// Map from string constant to data id.
     string_constants: HashMap<String, cranelift_module::DataId>,
+    /// Global record type registry: maps each field name to the set of complete
+    /// record types (sorted field lists) that contain it. Used to resolve field
+    /// offsets when row polymorphism leaves partial record types in MIR.
+    complete_record_types: Vec<BTreeMap<String, MirType>>,
+    /// Per-function: all field names accessed on each local variable (pre-scanned).
+    /// Used to disambiguate record types when MIR type info is partial.
+    local_field_accesses: HashMap<u32, BTreeSet<String>>,
 }
 
 impl CodegenContext {
@@ -44,7 +51,81 @@ impl CodegenContext {
             module,
             func_ids: HashMap::new(),
             string_constants: HashMap::new(),
+            complete_record_types: Vec::new(),
+            local_field_accesses: HashMap::new(),
         }
+    }
+
+    /// Scan all MIR functions to collect complete record types for field offset resolution.
+    pub fn register_record_types(&mut self, mir_fns: &[&MirFunction]) {
+        let mut seen: BTreeSet<Vec<String>> = BTreeSet::new();
+        for mir_fn in mir_fns {
+            for local in &mir_fn.locals {
+                self.collect_record_types(&local.ty, &mut seen);
+            }
+        }
+    }
+
+    fn collect_record_types(&mut self, ty: &MirType, seen: &mut BTreeSet<Vec<String>>) {
+        match ty {
+            MirType::Record(fields) if fields.len() > 1 => {
+                let key: Vec<String> = fields.keys().cloned().collect();
+                if seen.insert(key) {
+                    self.complete_record_types.push(fields.clone());
+                }
+                for field_ty in fields.values() {
+                    self.collect_record_types(field_ty, seen);
+                }
+            }
+            MirType::Array(inner) => self.collect_record_types(inner, seen),
+            MirType::Tuple(ts) => {
+                for t in ts { self.collect_record_types(t, seen); }
+            }
+            MirType::Ref(inner) | MirType::Ptr(inner) => self.collect_record_types(inner, seen),
+            _ => {}
+        }
+    }
+
+    /// Find the field offset for a named field, resolving partial record types
+    /// against the global registry of complete record types.
+    fn resolve_field_offset(&self, partial_fields: &BTreeMap<String, MirType>, field_name: &str, all_accessed: Option<&BTreeSet<String>>) -> i32 {
+        // Build the set of known field names: union of partial type fields and
+        // all fields accessed on this same local variable (from pre-scan).
+        let mut known_keys: BTreeSet<&str> = partial_fields.keys().map(|k| k.as_str()).collect();
+        if let Some(accessed) = all_accessed {
+            for k in accessed {
+                known_keys.insert(k.as_str());
+            }
+        }
+        for complete in &self.complete_record_types {
+            let complete_keys: BTreeSet<&str> = complete.keys().map(|k| k.as_str()).collect();
+            if known_keys.is_subset(&complete_keys) && complete.contains_key(field_name) {
+                if let Some(full_pos) = complete.keys().position(|k| k == field_name) {
+                    return (full_pos as i32) * 8;
+                }
+            }
+        }
+        if let Some(pos) = partial_fields.keys().position(|k| k == field_name) {
+            (pos as i32) * 8
+        } else {
+            0
+        }
+    }
+
+    /// Pre-scan a MIR function to collect all field names accessed per local variable.
+    /// Used to disambiguate record types when MIR type info is partial.
+    fn collect_field_accesses(mir_fn: &MirFunction) -> HashMap<u32, BTreeSet<String>> {
+        let mut result: HashMap<u32, BTreeSet<String>> = HashMap::new();
+        for block in &mir_fn.blocks {
+            for stmt in &block.stmts {
+                if let Rvalue::Field(Operand::Local(id), _idx, field_name) = &stmt.rvalue {
+                    if !field_name.starts_with("__") {
+                        result.entry(*id).or_default().insert(field_name.clone());
+                    }
+                }
+            }
+        }
+        result
     }
 
     /// Declare a function in the module (must be done before compilation).
@@ -58,6 +139,13 @@ impl CodegenContext {
             sig.returns.push(AbiParam::new(mir_to_clif(&mir_fn.return_ty)));
         }
 
+        // Rename "main" to "glyph_main" so we can add a C main wrapper
+        // that sets up argc/argv before calling the user's main.
+        let symbol_name = if mir_fn.name == "main" {
+            "glyph_main".to_string()
+        } else {
+            mir_fn.name.clone()
+        };
         let linkage = if mir_fn.name == "main" {
             Linkage::Export
         } else {
@@ -66,7 +154,7 @@ impl CodegenContext {
 
         let func_id = self
             .module
-            .declare_function(&mir_fn.name, linkage, &sig)
+            .declare_function(&symbol_name, linkage, &sig)
             .unwrap();
         self.func_ids.insert(mir_fn.name.clone(), func_id);
         func_id
@@ -84,6 +172,9 @@ impl CodegenContext {
 
     /// Compile a MIR function into the module.
     pub fn compile_function(&mut self, mir_fn: &MirFunction) {
+        // Pre-scan field accesses to disambiguate partial record types
+        self.local_field_accesses = Self::collect_field_accesses(mir_fn);
+
         let func_id = self.func_ids[&mir_fn.name];
         let mut sig = self.module.make_signature();
         for p in &mir_fn.params {
@@ -124,7 +215,6 @@ impl CodegenContext {
         // Entry block: receive params
         builder.append_block_params_for_function_params(blocks[mir_fn.entry as usize]);
         builder.switch_to_block(blocks[mir_fn.entry as usize]);
-        builder.seal_block(blocks[mir_fn.entry as usize]);
 
         // Initialize params
         for (i, param_id) in mir_fn.params.iter().enumerate() {
@@ -141,8 +231,12 @@ impl CodegenContext {
                 continue;
             }
             builder.switch_to_block(blocks[i]);
-            builder.seal_block(blocks[i]);
             self.compile_block(mir_block, &variables, &blocks, &mut builder, mir_fn);
+        }
+
+        // Seal all blocks after all predecessors are known
+        for &block in &blocks {
+            builder.seal_block(block);
         }
 
         builder.finalize();
@@ -162,7 +256,19 @@ impl CodegenContext {
         // Compile statements
         for stmt in &mir_block.stmts {
             let val = self.compile_rvalue(&stmt.rvalue, variables, blocks, builder, mir_fn);
-            builder.def_var(variables[stmt.dest as usize], val);
+            // Coerce value to match destination variable's declared type
+            let dest_ty = mir_to_clif(&mir_fn.locals[stmt.dest as usize].ty);
+            let val_ty = builder.func.dfg.value_type(val);
+            let coerced = if val_ty == dest_ty {
+                val
+            } else if val_ty.bits() < dest_ty.bits() {
+                builder.ins().uextend(dest_ty, val)
+            } else if val_ty.bits() > dest_ty.bits() {
+                builder.ins().ireduce(dest_ty, val)
+            } else {
+                val
+            };
+            builder.def_var(variables[stmt.dest as usize], coerced);
         }
 
         // Compile terminator
@@ -193,11 +299,23 @@ impl CodegenContext {
                     builder.ins().return_(&[]);
                 } else {
                     let val = self.operand_to_value(op, variables, builder);
-                    builder.ins().return_(&[val]);
+                    // Coerce return value to match function's declared return type
+                    let ret_ty = mir_to_clif(&mir_fn.return_ty);
+                    let val_ty = builder.func.dfg.value_type(val);
+                    let coerced = if val_ty == ret_ty {
+                        val
+                    } else if val_ty.bits() < ret_ty.bits() {
+                        builder.ins().uextend(ret_ty, val)
+                    } else if val_ty.bits() > ret_ty.bits() {
+                        builder.ins().ireduce(ret_ty, val)
+                    } else {
+                        val
+                    };
+                    builder.ins().return_(&[coerced]);
                 }
             }
             Terminator::Unreachable => {
-                builder.ins().trap(cranelift_codegen::ir::TrapCode::user(0).unwrap());
+                builder.ins().trap(cranelift_codegen::ir::TrapCode::user(1).unwrap());
             }
         }
     }
@@ -214,8 +332,19 @@ impl CodegenContext {
             Rvalue::Use(op) => self.operand_to_value(op, variables, builder),
 
             Rvalue::BinOp(op, left, right) => {
-                let l = self.operand_to_value(left, variables, builder);
-                let r = self.operand_to_value(right, variables, builder);
+                let l_raw = self.operand_to_value(left, variables, builder);
+                let r_raw = self.operand_to_value(right, variables, builder);
+                // Widen i8 (Bool) to i64 when comparing mixed types
+                let l_ty = builder.func.dfg.value_type(l_raw);
+                let r_ty = builder.func.dfg.value_type(r_raw);
+                let (l, r) = if l_ty != r_ty {
+                    let target = if l_ty.bits() > r_ty.bits() { l_ty } else { r_ty };
+                    let l = if l_ty.bits() < target.bits() { builder.ins().uextend(target, l_raw) } else { l_raw };
+                    let r = if r_ty.bits() < target.bits() { builder.ins().uextend(target, r_raw) } else { r_raw };
+                    (l, r)
+                } else {
+                    (l_raw, r_raw)
+                };
                 match op {
                     BinOp::Add => builder.ins().iadd(l, r),
                     BinOp::Sub => builder.ins().isub(l, r),
@@ -264,32 +393,184 @@ impl CodegenContext {
                         }
                     }
                     _ => {
-                        // Indirect call (function pointer)
-                        let _callee_val = self.operand_to_value(callee, variables, builder);
-                        // For indirect calls, we'd need a sig ref. Return 0 for now.
-                        builder.ins().iconst(types::I64, 0)
+                        // Indirect call through closure pointer.
+                        // Closure layout: {fn_ptr: i64, captures...}
+                        // Calling convention: fn(closure_ptr, user_args...) -> ret
+                        let closure_ptr = self.operand_to_value(callee, variables, builder);
+
+                        // Load fn_ptr from closure_ptr + 0
+                        let fn_ptr = builder.ins().load(
+                            types::I64,
+                            cranelift_codegen::ir::MemFlags::new(),
+                            closure_ptr,
+                            0,
+                        );
+
+                        // Build signature: (i64 env_ptr, i64 args...) -> i64
+                        let mut sig = self.module.make_signature();
+                        sig.params.push(AbiParam::new(types::I64)); // env/closure ptr
+                        for _ in &arg_vals {
+                            sig.params.push(AbiParam::new(types::I64));
+                        }
+                        sig.returns.push(AbiParam::new(types::I64));
+                        let sig_ref = builder.import_signature(sig);
+
+                        // Call: fn_ptr(closure_ptr, args...)
+                        let mut all_args = vec![closure_ptr];
+                        all_args.extend_from_slice(&arg_vals);
+                        let call = builder.ins().call_indirect(sig_ref, fn_ptr, &all_args);
+                        let results = builder.inst_results(call);
+                        if results.is_empty() {
+                            builder.ins().iconst(types::I64, 0)
+                        } else {
+                            results[0]
+                        }
                     }
                 }
             }
 
-            Rvalue::Aggregate(_kind, ops) => {
-                // Simplified: for tuples/records, just return the first element
-                // Full aggregate construction would allocate on the stack
-                if ops.is_empty() {
-                    builder.ins().iconst(types::I64, 0)
-                } else {
-                    self.operand_to_value(&ops[0], variables, builder)
+            Rvalue::Aggregate(kind, ops) => {
+                let vals: Vec<Value> = ops
+                    .iter()
+                    .map(|o| self.operand_to_value(o, variables, builder))
+                    .collect();
+                match kind {
+                    AggregateKind::Record(_) | AggregateKind::Tuple => {
+                        // All fields stored at 8-byte stride (uniform layout).
+                        // Fields are in sorted (BTreeMap) order for records.
+                        // Heap-allocated so records survive function returns.
+                        let total_size = ((vals.len() * 8) as i64).max(8);
+                        let alloc_size = builder.ins().iconst(types::I64, total_size);
+                        let alloc_func = self.func_ids.get("glyph_alloc").copied();
+                        let base_ptr = if let Some(func_id) = alloc_func {
+                            let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                            let call = builder.ins().call(func_ref, &[alloc_size]);
+                            builder.inst_results(call)[0]
+                        } else {
+                            builder.ins().iconst(types::I64, 0)
+                        };
+                        for (i, val) in vals.iter().enumerate() {
+                            let offset = builder.ins().iconst(types::I64, (i * 8) as i64);
+                            let ptr = builder.ins().iadd(base_ptr, offset);
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), *val, ptr, 0);
+                        }
+                        base_ptr
+                    }
+                    AggregateKind::Variant(_type_name, _variant_name, discriminant) => {
+                        // Tagged union: [4-byte tag | payload...]
+                        // Payload fields stored at 8-byte stride after the tag
+                        let payload_size = (vals.len() * 8) as u32;
+                        let total_size = (8 + payload_size).max(16); // tag (padded to 8) + payload
+                        let slot = builder.create_sized_stack_slot(StackSlotData::new(
+                            StackSlotKind::ExplicitSlot, total_size, 3,
+                        ));
+                        // Store discriminant tag at offset 0
+                        let tag = builder.ins().iconst(types::I64, *discriminant as i64);
+                        builder.ins().stack_store(tag, slot, 0);
+                        // Store payload fields at offset 8+
+                        for (i, val) in vals.iter().enumerate() {
+                            builder.ins().stack_store(*val, slot, (8 + i * 8) as i32);
+                        }
+                        builder.ins().stack_addr(types::I64, slot, 0)
+                    }
+                    AggregateKind::Array => {
+                        // Array header: {ptr: *T, len: u64, cap: u64} = 24 bytes
+                        // HEAP-allocated so arrays survive function returns.
+                        let len = vals.len() as i64;
+                        let data_size = (vals.len() * 8) as i64;
+
+                        let header_size = builder.ins().iconst(types::I64, 24);
+                        let alloc_func = self.func_ids.get("glyph_alloc").copied();
+                        let header_ptr = if let Some(func_id) = alloc_func {
+                            let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                            let call = builder.ins().call(func_ref, &[header_size]);
+                            builder.inst_results(call)[0]
+                        } else {
+                            builder.ins().iconst(types::I64, 0)
+                        };
+
+                        if vals.is_empty() {
+                            // Empty array: null ptr, len=0, cap=0
+                            let zero = builder.ins().iconst(types::I64, 0);
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), zero, header_ptr, 0);  // ptr
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), zero, header_ptr, 8);  // len
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), zero, header_ptr, 16); // cap
+                        } else {
+                            // Heap-allocate data
+                            let alloc_size = builder.ins().iconst(types::I64, data_size);
+                            let data_ptr = if let Some(func_id) = alloc_func {
+                                let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                                let call = builder.ins().call(func_ref, &[alloc_size]);
+                                builder.inst_results(call)[0]
+                            } else {
+                                builder.ins().iconst(types::I64, 0)
+                            };
+
+                            // Store elements into heap data
+                            for (i, val) in vals.iter().enumerate() {
+                                let offset = builder.ins().iconst(types::I64, (i * 8) as i64);
+                                let elem_ptr = builder.ins().iadd(data_ptr, offset);
+                                builder.ins().store(cranelift_codegen::ir::MemFlags::new(), *val, elem_ptr, 0);
+                            }
+
+                            // Fill header
+                            let len_val = builder.ins().iconst(types::I64, len);
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), data_ptr, header_ptr, 0);   // ptr
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), len_val, header_ptr, 8);    // len
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), len_val, header_ptr, 16);   // cap
+                        }
+
+                        header_ptr
+                    }
                 }
             }
 
-            Rvalue::Field(op, _idx) => {
-                // Simplified: just return the value (no actual field extraction yet)
-                self.operand_to_value(op, variables, builder)
+            Rvalue::Field(op, idx, field_name) => {
+                let base_ptr = self.operand_to_value(op, variables, builder);
+                let offset = if !field_name.starts_with("__") {
+                    // Named record field — resolve offset using global type registry
+                    // to handle partial record types from row polymorphism.
+                    let mir_ty = match op {
+                        Operand::Local(id) => &_mir_fn.locals[*id as usize].ty,
+                        _ => &MirType::Int,
+                    };
+                    // Get all field names accessed on this local (for disambiguation)
+                    let accessed = match op {
+                        Operand::Local(id) => self.local_field_accesses.get(id),
+                        _ => None,
+                    };
+                    match mir_ty {
+                        MirType::Record(fields) => self.resolve_field_offset(fields, field_name, accessed),
+                        _ => {
+                            let empty = BTreeMap::new();
+                            self.resolve_field_offset(&empty, field_name, accessed)
+                        }
+                    }
+                } else {
+                    // Internal fields (__tag, __payload, __capN) — use numeric index
+                    (*idx as i32) * 8
+                };
+                builder.ins().load(types::I64, cranelift_codegen::ir::MemFlags::new(), base_ptr, offset)
             }
 
-            Rvalue::Index(arr, _idx) => {
-                // Simplified
-                self.operand_to_value(arr, variables, builder)
+            Rvalue::Index(arr, idx) => {
+                let arr_ptr = self.operand_to_value(arr, variables, builder);
+                let idx_val = self.operand_to_value(idx, variables, builder);
+
+                // Load data ptr and len from array header
+                let data_ptr = builder.ins().load(types::I64, cranelift_codegen::ir::MemFlags::new(), arr_ptr, 0);
+                let len = builder.ins().load(types::I64, cranelift_codegen::ir::MemFlags::new(), arr_ptr, 8);
+
+                // Bounds check
+                if let Some(&func_id) = self.func_ids.get("glyph_array_bounds_check") {
+                    let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                    builder.ins().call(func_ref, &[idx_val, len]);
+                }
+
+                // Load element at data_ptr + idx * 8
+                let offset = builder.ins().imul_imm(idx_val, 8);
+                let elem_ptr = builder.ins().iadd(data_ptr, offset);
+                builder.ins().load(types::I64, cranelift_codegen::ir::MemFlags::new(), elem_ptr, 0)
             }
 
             Rvalue::Cast(op, _target_ty) => {
@@ -297,11 +578,57 @@ impl CodegenContext {
             }
 
             Rvalue::StrInterp(parts) => {
-                // Simplified: return 0 (proper impl would concat strings)
                 if parts.is_empty() {
-                    builder.ins().iconst(types::I64, 0)
+                    // Empty string — heap-allocated {ptr, len}
+                    let data_id = self.intern_string("");
+                    let gv = self.module.declare_data_in_func(data_id, builder.func);
+                    let data_ptr = builder.ins().global_value(types::I64, gv);
+                    let len_val = builder.ins().iconst(types::I64, 0);
+                    let sixteen = builder.ins().iconst(types::I64, 16);
+                    let alloc_func = self.func_ids.get("glyph_alloc").copied();
+                    let str_ptr = if let Some(func_id) = alloc_func {
+                        let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                        let call = builder.ins().call(func_ref, &[sixteen]);
+                        builder.inst_results(call)[0]
+                    } else {
+                        builder.ins().iconst(types::I64, 0)
+                    };
+                    builder.ins().store(cranelift_codegen::ir::MemFlags::new(), data_ptr, str_ptr, 0);
+                    builder.ins().store(cranelift_codegen::ir::MemFlags::new(), len_val, str_ptr, 8);
+                    str_ptr
                 } else {
-                    self.operand_to_value(&parts[0], variables, builder)
+                    // Convert each non-string part to string, then concatenate all parts
+                    let mut result = self.operand_to_value(&parts[0], variables, builder);
+                    // Convert first part to string if it's an int
+                    if matches!(&parts[0], Operand::ConstInt(_) | Operand::Local(_))
+                        && !matches!(&parts[0], Operand::ConstStr(_))
+                    {
+                        if let Some(&int_to_str_id) = self.func_ids.get("glyph_int_to_str") {
+                            let func_ref = self.module.declare_func_in_func(int_to_str_id, builder.func);
+                            let call = builder.ins().call(func_ref, &[result]);
+                            result = builder.inst_results(call)[0];
+                        }
+                    }
+                    for part in &parts[1..] {
+                        let mut part_val = self.operand_to_value(part, variables, builder);
+                        // Convert non-string parts to string
+                        if matches!(part, Operand::ConstInt(_) | Operand::Local(_))
+                            && !matches!(part, Operand::ConstStr(_))
+                        {
+                            if let Some(&int_to_str_id) = self.func_ids.get("glyph_int_to_str") {
+                                let func_ref = self.module.declare_func_in_func(int_to_str_id, builder.func);
+                                let call = builder.ins().call(func_ref, &[part_val]);
+                                part_val = builder.inst_results(call)[0];
+                            }
+                        }
+                        // Concatenate
+                        if let Some(&concat_id) = self.func_ids.get("glyph_str_concat") {
+                            let func_ref = self.module.declare_func_in_func(concat_id, builder.func);
+                            let call = builder.ins().call(func_ref, &[result, part_val]);
+                            result = builder.inst_results(call)[0];
+                        }
+                    }
+                    result
                 }
             }
 
@@ -313,6 +640,47 @@ impl CodegenContext {
             Rvalue::Deref(op) => {
                 let ptr = self.operand_to_value(op, variables, builder);
                 builder.ins().load(types::I64, cranelift_codegen::ir::MemFlags::new(), ptr, 0)
+            }
+
+            Rvalue::MakeClosure(fn_name, captures) => {
+                // Heap-allocate closure: {fn_ptr: i64, capture1: i64, capture2: i64, ...}
+                let total_size = (1 + captures.len()) * 8;
+                let size_val = builder.ins().iconst(types::I64, total_size as i64);
+
+                // Call glyph_alloc to allocate the closure struct
+                let closure_ptr = if let Some(&alloc_id) = self.func_ids.get("glyph_alloc") {
+                    let alloc_ref = self.module.declare_func_in_func(alloc_id, builder.func);
+                    let call = builder.ins().call(alloc_ref, &[size_val]);
+                    builder.inst_results(call)[0]
+                } else {
+                    builder.ins().iconst(types::I64, 0)
+                };
+
+                // Store fn_ptr at offset 0
+                if let Some(&func_id) = self.func_ids.get(fn_name.as_str()) {
+                    let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                    let fn_addr = builder.ins().func_addr(types::I64, func_ref);
+                    builder.ins().store(
+                        cranelift_codegen::ir::MemFlags::new(),
+                        fn_addr,
+                        closure_ptr,
+                        0,
+                    );
+                }
+
+                // Store captures at offsets 8, 16, ...
+                for (i, cap) in captures.iter().enumerate() {
+                    let cap_val = self.operand_to_value(cap, variables, builder);
+                    let offset = ((i + 1) * 8) as i32;
+                    builder.ins().store(
+                        cranelift_codegen::ir::MemFlags::new(),
+                        cap_val,
+                        closure_ptr,
+                        offset,
+                    );
+                }
+
+                closure_ptr
             }
         }
     }
@@ -329,10 +697,25 @@ impl CodegenContext {
             Operand::ConstFloat(f) => builder.ins().f64const(*f),
             Operand::ConstBool(b) => builder.ins().iconst(types::I8, *b as i64),
             Operand::ConstStr(s) => {
-                // Store string as data and return pointer
+                // Create a string struct {ptr, len} on the HEAP
+                // so strings survive function returns.
                 let data_id = self.intern_string(s);
                 let gv = self.module.declare_data_in_func(data_id, builder.func);
-                builder.ins().global_value(types::I64, gv)
+                let data_ptr = builder.ins().global_value(types::I64, gv);
+                let len_val = builder.ins().iconst(types::I64, s.len() as i64);
+
+                let sixteen = builder.ins().iconst(types::I64, 16);
+                let alloc_func = self.func_ids.get("glyph_alloc").copied();
+                let str_ptr = if let Some(func_id) = alloc_func {
+                    let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                    let call = builder.ins().call(func_ref, &[sixteen]);
+                    builder.inst_results(call)[0]
+                } else {
+                    builder.ins().iconst(types::I64, 0)
+                };
+                builder.ins().store(cranelift_codegen::ir::MemFlags::new(), data_ptr, str_ptr, 0);
+                builder.ins().store(cranelift_codegen::ir::MemFlags::new(), len_val, str_ptr, 8);
+                str_ptr
             }
             Operand::ConstUnit => builder.ins().iconst(types::I64, 0),
             Operand::FuncRef(name) => {

@@ -6,7 +6,8 @@ pub fn register_builtins(env: &mut TypeEnv) {
     // Boolean constants
     env.insert("true".into(), Type::Bool);
     env.insert("false".into(), Type::Bool);
-    // null / none could be added here
+    // Builtin functions
+    env.insert("print".into(), Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
 }
 
 /// Get the result type of a binary operator given operand types.
@@ -15,8 +16,18 @@ pub fn binop_type(op: &glyph_parse::ast::BinOp, left: &Type, right: &Type) -> Op
     use glyph_parse::ast::BinOp;
 
     match op {
-        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
-            // Numeric ops: same type in, same type out
+        BinOp::Add => {
+            match (left, right) {
+                (Type::Int, Type::Int) => Some(Type::Int),
+                (Type::Int32, Type::Int32) => Some(Type::Int32),
+                (Type::UInt, Type::UInt) => Some(Type::UInt),
+                (Type::Float, Type::Float) => Some(Type::Float),
+                (Type::Float32, Type::Float32) => Some(Type::Float32),
+                (Type::Str, Type::Str) => Some(Type::Str),
+                _ => None,
+            }
+        }
+        BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Mod => {
             match (left, right) {
                 (Type::Int, Type::Int) => Some(Type::Int),
                 (Type::Int32, Type::Int32) => Some(Type::Int32),

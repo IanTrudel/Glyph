@@ -126,6 +126,7 @@ impl Parser {
     }
 
     fn parse_body(&mut self) -> Result<Body> {
+        self.skip_newlines();
         if self.check(&TokenKind::Indent) {
             self.advance();
             let mut stmts = Vec::new();
@@ -599,9 +600,7 @@ impl Parser {
                     span: start.merge(self.prev_span()),
                 })
             }
-            TokenKind::If => self.parse_if_expr(),
             TokenKind::Match => self.parse_match_expr(),
-            TokenKind::For => self.parse_for_expr(),
             _ => Err(ParseError::UnexpectedToken {
                 found: format!("{:?}", self.current_kind()),
                 expected: "expression".to_string(),
@@ -656,36 +655,37 @@ impl Parser {
         Ok(params)
     }
 
-    fn parse_if_expr(&mut self) -> Result<Expr> {
-        let start = self.span();
-        self.expect(&TokenKind::If)?;
-        let cond = self.parse_expr()?;
-        self.expect(&TokenKind::Colon)?;
-        let then_expr = self.parse_expr()?;
-        let else_expr = if self.check(&TokenKind::Else) {
-            self.advance();
-            self.expect(&TokenKind::Colon)?;
-            Some(Box::new(self.parse_expr()?))
-        } else {
-            None
-        };
-        Ok(Expr {
-            kind: ExprKind::If(Box::new(cond), Box::new(then_expr), else_expr),
-            span: start.merge(self.prev_span()),
-        })
-    }
-
     fn parse_match_expr(&mut self) -> Result<Expr> {
         let start = self.span();
         self.expect(&TokenKind::Match)?;
         let scrutinee = self.parse_expr()?;
+        self.skip_newlines();
         self.expect(&TokenKind::Indent)?;
         let mut arms = Vec::new();
         while !self.check(&TokenKind::Dedent) && !self.check(&TokenKind::Eof) {
             let arm_start = self.span();
             let pattern = self.parse_pattern()?;
             self.expect(&TokenKind::Arrow)?;
-            let body = self.parse_expr()?;
+            // Match arm body can be inline or an indented block
+            self.skip_newlines();
+            let body = if self.check(&TokenKind::Indent) {
+                let block_start = self.span();
+                self.advance();
+                let mut stmts = Vec::new();
+                while !self.check(&TokenKind::Dedent) && !self.check(&TokenKind::Eof) {
+                    stmts.push(self.parse_stmt()?);
+                    self.skip_newlines();
+                }
+                if self.check(&TokenKind::Dedent) {
+                    self.advance();
+                }
+                Expr {
+                    kind: ExprKind::Block(stmts),
+                    span: block_start.merge(self.prev_span()),
+                }
+            } else {
+                self.parse_expr()?
+            };
             arms.push(MatchArm {
                 pattern,
                 body,
@@ -702,26 +702,6 @@ impl Parser {
         })
     }
 
-    fn parse_for_expr(&mut self) -> Result<Expr> {
-        let start = self.span();
-        self.expect(&TokenKind::For)?;
-        let pat = self.parse_pattern()?;
-        self.expect(&TokenKind::In)?;
-        let iter = self.parse_expr()?;
-        let filter = if self.check(&TokenKind::If) {
-            self.advance();
-            Some(Box::new(self.parse_expr()?))
-        } else {
-            None
-        };
-        self.expect(&TokenKind::Colon)?;
-        let body = self.parse_expr()?;
-        Ok(Expr {
-            kind: ExprKind::For(pat, Box::new(iter), filter, Box::new(body)),
-            span: start.merge(self.prev_span()),
-        })
-    }
-
     fn parse_pattern(&mut self) -> Result<Pattern> {
         let start = self.span();
         match self.current_kind() {
@@ -729,6 +709,20 @@ impl Parser {
                 self.advance();
                 Ok(Pattern {
                     kind: PatternKind::Wildcard,
+                    span: start,
+                })
+            }
+            TokenKind::Ident(ref s) if s == "true" => {
+                self.advance();
+                Ok(Pattern {
+                    kind: PatternKind::BoolLit(true),
+                    span: start,
+                })
+            }
+            TokenKind::Ident(ref s) if s == "false" => {
+                self.advance();
+                Ok(Pattern {
+                    kind: PatternKind::BoolLit(false),
                     span: start,
                 })
             }
@@ -1600,9 +1594,13 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_if() {
-        let expr = parse_expr("if x > 0: x else: 0");
-        assert!(matches!(expr.kind, ExprKind::If(_, _, Some(_))));
+    fn test_parse_match() {
+        let expr = parse_expr("match x\n  true -> 1\n  false -> 0");
+        if let ExprKind::Match(_, arms) = &expr.kind {
+            assert_eq!(arms.len(), 2);
+        } else {
+            panic!("expected Match");
+        }
     }
 
     #[test]

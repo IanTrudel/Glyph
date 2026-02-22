@@ -299,11 +299,7 @@ impl Lexer {
         }
         let text: String = self.source[start..self.pos].iter().collect();
         let kind = match text.as_str() {
-            "if" => TokenKind::If,
-            "else" => TokenKind::Else,
             "match" => TokenKind::Match,
-            "for" => TokenKind::For,
-            "in" => TokenKind::In,
             "trait" => TokenKind::Trait,
             "impl" => TokenKind::Impl,
             "const" => TokenKind::Const,
@@ -616,17 +612,15 @@ mod tests {
 
     #[test]
     fn test_keywords() {
-        let tokens = lex("if else match for in trait impl");
+        let tokens = lex("match trait impl const extern");
         assert_eq!(
             tokens,
             vec![
-                TokenKind::If,
-                TokenKind::Else,
                 TokenKind::Match,
-                TokenKind::For,
-                TokenKind::In,
                 TokenKind::Trait,
                 TokenKind::Impl,
+                TokenKind::Const,
+                TokenKind::Extern,
                 TokenKind::Eof,
             ]
         );

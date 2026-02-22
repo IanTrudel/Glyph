@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use glyph_codegen::cranelift::CodegenContext;
 use glyph_codegen::linker;
 use glyph_codegen::runtime;
 use glyph_db::{Database, DefKind, DefRow};
-use glyph_mir::lower::MirLower;
+use glyph_mir::lower::{type_to_mir, MirLower};
 use glyph_parse::lexer::Lexer;
 use glyph_parse::parser::Parser;
 use glyph_typeck::infer::InferEngine;
@@ -29,28 +30,69 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
 
     // Phase 1: Parse all definitions
     let mut parsed_fns = Vec::new();
+    let mut parsed_types = Vec::new();
     for def in &defs {
-        if def.kind != DefKind::Fn {
-            continue;
+        match def.kind {
+            DefKind::Fn => {
+                match parse_def(def) {
+                    Ok(parsed) => parsed_fns.push((def.clone(), parsed)),
+                    Err(e) => eprintln!("  parse error in '{}': {e}", def.name),
+                }
+            }
+            DefKind::Type => {
+                match parse_def(def) {
+                    Ok(parsed) => parsed_types.push((def.clone(), parsed)),
+                    Err(e) => eprintln!("  parse error in '{}': {e}", def.name),
+                }
+            }
+            _ => {}
         }
-        match parse_def(def) {
-            Ok(parsed) => parsed_fns.push((def.clone(), parsed)),
-            Err(e) => {
-                eprintln!("  parse error in '{}': {e}", def.name);
+    }
+
+    // Extract enum variant info from type definitions
+    let enum_variants = extract_enum_variants(&parsed_types);
+
+    // Phase 2: Type-check (two-pass for cross-function references)
+    let mut infer = InferEngine::new();
+
+    // Register enum variant constructors from type definitions
+    for (_def_row, parsed) in &parsed_types {
+        if let glyph_parse::ast::DefKind::Type(typedef) = &parsed.kind {
+            if let glyph_parse::ast::TypeBody::Enum(variants) = &typedef.body {
+                infer.register_enum(&_def_row.name, variants);
             }
         }
     }
 
-    // Phase 2: Type-check
-    let mut infer = InferEngine::new();
-    let mut typed_fns = Vec::new();
+    // Pass 1: Pre-register all function signatures so cross-references work
     for (def_row, parsed) in &parsed_fns {
         if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
-            let fn_ty = infer.infer_fn_def(fndef);
-            let resolved = infer.subst.resolve(&fn_ty);
-            eprintln!("  {} : {resolved}", def_row.name);
-            typed_fns.push((def_row, fndef, resolved));
+            infer.pre_register_fn(&def_row.name, fndef);
         }
+    }
+
+    // Pass 2: Infer function bodies with all signatures available
+    let mut inferred_fns = Vec::new();
+    for (def_row, parsed) in &parsed_fns {
+        if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
+            let pre_ty = infer.env.lookup(&def_row.name).cloned();
+            let fn_ty = infer.infer_fn_def(fndef);
+            // Unify with pre-registered type to connect cross-function constraints
+            if let Some(pre) = pre_ty {
+                if let Err(e) = infer.subst.unify(&fn_ty, &pre) {
+                    infer.errors.push(e);
+                }
+            }
+            inferred_fns.push((def_row, fndef, fn_ty));
+        }
+    }
+
+    // Resolve all types after all inference is complete (so cross-function constraints propagate)
+    let mut typed_fns = Vec::new();
+    for (def_row, fndef, fn_ty) in inferred_fns {
+        let resolved = infer.subst.resolve(&fn_ty);
+        eprintln!("  {} : {resolved}", def_row.name);
+        typed_fns.push((def_row, fndef, resolved));
     }
 
     if !infer.errors.is_empty() {
@@ -60,23 +102,46 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
         // Continue anyway for now
     }
 
+    // Build known function types map for MIR lowering
+    let mut known_functions: HashMap<String, _> = typed_fns
+        .iter()
+        .map(|(def_row, _, resolved)| (def_row.name.clone(), type_to_mir(resolved)))
+        .collect();
+    add_runtime_known_functions(&mut known_functions);
+
     // Phase 3: Lower to MIR
     let mut mir_fns = Vec::new();
+    let mut lifted_fns = Vec::new();
     for (def_row, fndef, fn_ty) in &typed_fns {
         let mut lower = MirLower::new();
+        lower.set_known_functions(known_functions.clone());
+        // Register enum variants for constructor pattern matching
+        for (type_name, variants) in &enum_variants {
+            lower.register_enum(type_name, variants);
+        }
         let mir = lower.lower_fn(&def_row.name, fndef, fn_ty);
         if emit_mir {
             eprintln!("{}", mir.display());
         }
+        // Collect any lifted lambda functions
+        for lfn in &lower.lifted_fns {
+            if emit_mir {
+                eprintln!("{}", lfn.display());
+            }
+        }
+        lifted_fns.extend(lower.lifted_fns);
         mir_fns.push((def_row, mir));
     }
 
     // Phase 4: Codegen
     let mut codegen = CodegenContext::new();
 
-    // Declare all functions first
+    // Declare all functions first (user + lifted)
     for (_def_row, mir) in &mir_fns {
         codegen.declare_function(mir);
+    }
+    for lfn in &lifted_fns {
+        codegen.declare_function(lfn);
     }
 
     // Declare extern functions
@@ -89,9 +154,18 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
     // Declare runtime functions
     declare_runtime(&mut codegen);
 
-    // Compile all functions
+    // Register all record types for field offset resolution (row polymorphism)
+    {
+        let all_fns: Vec<&glyph_mir::ir::MirFunction> = mir_fns.iter().map(|(_, m)| m).chain(lifted_fns.iter()).collect();
+        codegen.register_record_types(&all_fns);
+    }
+
+    // Compile all functions (user + lifted)
     for (_def_row, mir) in &mir_fns {
         codegen.compile_function(mir);
+    }
+    for lfn in &lifted_fns {
+        codegen.compile_function(lfn);
     }
 
     // Emit object file
@@ -99,12 +173,20 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
 
     // Link
     let exe_path = path.with_extension("");
-    let extern_libs: Vec<String> = externs
+    let mut extern_libs: Vec<String> = externs
         .iter()
         .filter_map(|e| e.lib.clone())
         .collect();
+    extern_libs.sort();
+    extern_libs.dedup();
 
-    linker::link(&object_bytes, &exe_path, &extern_libs, Some(runtime::RUNTIME_C))
+    // Include SQLite runtime if sqlite3 is linked
+    let mut extra_c_sources: Vec<(&str, &str)> = Vec::new();
+    if extern_libs.iter().any(|l| l == "sqlite3") {
+        extra_c_sources.push(("runtime_sqlite.c", runtime::RUNTIME_SQLITE_C));
+    }
+
+    linker::link_with_extras(&object_bytes, &exe_path, &extern_libs, Some(runtime::RUNTIME_C), &extra_c_sources)
         .map_err(|e| miette::miette!("link failed: {e}"))?;
 
     // Mark definitions as compiled
@@ -128,25 +210,64 @@ pub fn cmd_check(path: &Path) -> miette::Result<()> {
         return Ok(());
     }
 
-    let mut infer = InferEngine::new();
+    // Parse all definitions
+    let mut parsed_fns = Vec::new();
+    let mut parsed_types = Vec::new();
     let mut error_count = 0;
-
     for def in &defs {
-        if def.kind != DefKind::Fn {
-            continue;
-        }
-        match parse_def(def) {
-            Ok(parsed) => {
-                if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
-                    let fn_ty = infer.infer_fn_def(fndef);
-                    let resolved = infer.subst.resolve(&fn_ty);
-                    eprintln!("  {} : {resolved}", def.name);
+        match def.kind {
+            DefKind::Fn => {
+                match parse_def(def) {
+                    Ok(parsed) => parsed_fns.push((def.clone(), parsed)),
+                    Err(e) => {
+                        eprintln!("  parse error in '{}': {e}", def.name);
+                        error_count += 1;
+                    }
                 }
             }
-            Err(e) => {
-                eprintln!("  parse error in '{}': {e}", def.name);
-                error_count += 1;
+            DefKind::Type => {
+                match parse_def(def) {
+                    Ok(parsed) => parsed_types.push((def.clone(), parsed)),
+                    Err(e) => {
+                        eprintln!("  parse error in '{}': {e}", def.name);
+                        error_count += 1;
+                    }
+                }
             }
+            _ => {}
+        }
+    }
+
+    let mut infer = InferEngine::new();
+
+    // Register enum variant constructors from type definitions
+    for (_def_row, parsed) in &parsed_types {
+        if let glyph_parse::ast::DefKind::Type(typedef) = &parsed.kind {
+            if let glyph_parse::ast::TypeBody::Enum(variants) = &typedef.body {
+                infer.register_enum(&_def_row.name, variants);
+            }
+        }
+    }
+
+    // Pass 1: Pre-register all function signatures
+    for (def_row, parsed) in &parsed_fns {
+        if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
+            infer.pre_register_fn(&def_row.name, fndef);
+        }
+    }
+
+    // Pass 2: Infer function bodies
+    for (def_row, parsed) in &parsed_fns {
+        if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
+            let pre_ty = infer.env.lookup(&def_row.name).cloned();
+            let fn_ty = infer.infer_fn_def(fndef);
+            if let Some(pre) = pre_ty {
+                if let Err(e) = infer.subst.unify(&fn_ty, &pre) {
+                    infer.errors.push(e);
+                }
+            }
+            let resolved = infer.subst.resolve(&fn_ty);
+            eprintln!("  {} : {resolved}", def_row.name);
         }
     }
 
@@ -167,6 +288,35 @@ pub fn cmd_check(path: &Path) -> miette::Result<()> {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+/// Extract enum variant info from parsed type definitions.
+/// Returns a map from type_name -> Vec<(variant_name, field_types)>.
+fn extract_enum_variants(
+    parsed_types: &[(DefRow, glyph_parse::ast::Def)],
+) -> Vec<(String, Vec<(String, Vec<glyph_mir::ir::MirType>)>)> {
+    let mut result = Vec::new();
+    for (def_row, parsed) in parsed_types {
+        if let glyph_parse::ast::DefKind::Type(typedef) = &parsed.kind {
+            if let glyph_parse::ast::TypeBody::Enum(variants) = &typedef.body {
+                let mut variant_list = Vec::new();
+                for v in variants {
+                    let field_types = match &v.fields {
+                        glyph_parse::ast::VariantFields::None => vec![],
+                        glyph_parse::ast::VariantFields::Positional(types) => {
+                            types.iter().map(|_| glyph_mir::ir::MirType::Int).collect()
+                        }
+                        glyph_parse::ast::VariantFields::Named(fields) => {
+                            fields.iter().map(|_| glyph_mir::ir::MirType::Int).collect()
+                        }
+                    };
+                    variant_list.push((v.name.clone(), field_types));
+                }
+                result.push((def_row.name.clone(), variant_list));
+            }
+        }
+    }
+    result
+}
+
 fn parse_def(def: &DefRow) -> Result<glyph_parse::ast::Def, String> {
     let tokens = Lexer::new(&def.body).tokenize();
     let mut parser = Parser::new(tokens);
@@ -177,16 +327,48 @@ fn parse_def(def: &DefRow) -> Result<glyph_parse::ast::Def, String> {
 
 fn build_extern_sig(
     _codegen: &CodegenContext,
-    _sig_str: &str,
+    sig_str: &str,
 ) -> cranelift_codegen::ir::Signature {
-    // Simplified: create a C calling convention signature
-    // In a full implementation, we'd parse the Glyph type signature
+    // Parse Glyph type signature like "I -> I -> I" or "S -> I -> V"
     use cranelift_codegen::ir::{AbiParam, types};
     use cranelift_codegen::isa::CallConv;
     let mut sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
-    // Default to () -> i64 — proper parsing will be added
-    sig.returns.push(AbiParam::new(types::I64));
+
+    if sig_str.is_empty() {
+        sig.returns.push(AbiParam::new(types::I64));
+        return sig;
+    }
+
+    // Split by " -> " to get components
+    let parts: Vec<&str> = sig_str.split(" -> ").collect();
+    if parts.len() < 2 {
+        // No arrow — treat as return type only
+        sig.returns.push(AbiParam::new(glyph_type_char_to_clif(parts[0].trim())));
+        return sig;
+    }
+
+    // All parts except the last are params, last is return type
+    for p in &parts[..parts.len() - 1] {
+        sig.params.push(AbiParam::new(glyph_type_char_to_clif(p.trim())));
+    }
+    let ret = parts.last().unwrap().trim();
+    if ret != "V" {
+        sig.returns.push(AbiParam::new(glyph_type_char_to_clif(ret)));
+    }
     sig
+}
+
+fn glyph_type_char_to_clif(s: &str) -> cranelift_codegen::ir::Type {
+    use cranelift_codegen::ir::types;
+    match s {
+        "I" | "Int" | "I64" => types::I64,
+        "U" | "UInt" | "U64" => types::I64,
+        "F" | "Float" | "F64" => types::F64,
+        "B" | "Bool" => types::I8,
+        "S" | "Str" => types::I64,  // pointer to str struct
+        "V" | "Void" => types::I64, // shouldn't be used for params
+        _ => types::I64, // default to i64 for pointers, arrays, etc.
+    }
 }
 
 fn declare_runtime(codegen: &mut CodegenContext) {
@@ -197,6 +379,11 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     let mut panic_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
     panic_sig.params.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_PANIC, runtime::RT_PANIC, &panic_sig);
+
+    // glyph_panic_str(str_struct: *void) -> void
+    let mut panic_str_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    panic_str_sig.params.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_PANIC_STR, runtime::RT_PANIC_STR, &panic_str_sig);
 
     // glyph_alloc(size: u64) -> *void
     let mut alloc_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
@@ -209,9 +396,168 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     dealloc_sig.params.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_DEALLOC, runtime::RT_DEALLOC, &dealloc_sig);
 
-    // glyph_print(msg: *const u8, len: i64) -> void
+    // glyph_print(str_struct: *void) -> i64 (returns length)
     let mut print_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
     print_sig.params.push(AbiParam::new(types::I64));
-    print_sig.params.push(AbiParam::new(types::I64));
-    codegen.declare_extern(runtime::RT_PRINT, runtime::RT_PRINT, &print_sig);
+    print_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("print", runtime::RT_PRINT, &print_sig);
+
+    // glyph_str_concat(a: *void, b: *void) -> *void
+    let mut concat_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    concat_sig.params.push(AbiParam::new(types::I64));
+    concat_sig.params.push(AbiParam::new(types::I64));
+    concat_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_CONCAT, runtime::RT_STR_CONCAT, &concat_sig);
+
+    // glyph_int_to_str(n: i64) -> *void (returns str struct pointer)
+    let mut int_to_str_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    int_to_str_sig.params.push(AbiParam::new(types::I64));
+    int_to_str_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_INT_TO_STR, runtime::RT_INT_TO_STR, &int_to_str_sig);
+
+    // glyph_array_bounds_check(index: i64, len: i64) -> void
+    let mut bounds_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    bounds_sig.params.push(AbiParam::new(types::I64));
+    bounds_sig.params.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_BOUNDS_CHECK, runtime::RT_ARRAY_BOUNDS_CHECK, &bounds_sig);
+
+    // glyph_array_new(cap: i64) -> *void
+    let mut array_new_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    array_new_sig.params.push(AbiParam::new(types::I64));
+    array_new_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_NEW, runtime::RT_ARRAY_NEW, &array_new_sig);
+
+    // glyph_array_push(header_ptr: *void, value: i64) -> *void
+    let mut array_push_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    array_push_sig.params.push(AbiParam::new(types::I64));
+    array_push_sig.params.push(AbiParam::new(types::I64));
+    array_push_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_PUSH, runtime::RT_ARRAY_PUSH, &array_push_sig);
+
+    // glyph_realloc(ptr: *void, size: i64) -> *void
+    let mut realloc_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    realloc_sig.params.push(AbiParam::new(types::I64));
+    realloc_sig.params.push(AbiParam::new(types::I64));
+    realloc_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_REALLOC, runtime::RT_REALLOC, &realloc_sig);
+
+    // glyph_str_eq(a: *void, b: *void) -> i64
+    let mut str_eq_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    str_eq_sig.params.push(AbiParam::new(types::I64));
+    str_eq_sig.params.push(AbiParam::new(types::I64));
+    str_eq_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_EQ, runtime::RT_STR_EQ, &str_eq_sig);
+
+    // glyph_str_len(str: *void) -> i64
+    let mut str_len_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    str_len_sig.params.push(AbiParam::new(types::I64));
+    str_len_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_LEN, runtime::RT_STR_LEN, &str_len_sig);
+
+    // glyph_str_slice(str: *void, start: i64, end: i64) -> *void
+    let mut str_slice_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    str_slice_sig.params.push(AbiParam::new(types::I64));
+    str_slice_sig.params.push(AbiParam::new(types::I64));
+    str_slice_sig.params.push(AbiParam::new(types::I64));
+    str_slice_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_SLICE, runtime::RT_STR_SLICE, &str_slice_sig);
+
+    // glyph_str_char_at(str: *void, index: i64) -> i64
+    let mut char_at_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    char_at_sig.params.push(AbiParam::new(types::I64));
+    char_at_sig.params.push(AbiParam::new(types::I64));
+    char_at_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_CHAR_AT, runtime::RT_STR_CHAR_AT, &char_at_sig);
+
+    // glyph_read_file(path: *void) -> *void
+    let mut read_file_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    read_file_sig.params.push(AbiParam::new(types::I64));
+    read_file_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_READ_FILE, runtime::RT_READ_FILE, &read_file_sig);
+
+    // glyph_write_file(path: *void, content: *void) -> i64
+    let mut write_file_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    write_file_sig.params.push(AbiParam::new(types::I64));
+    write_file_sig.params.push(AbiParam::new(types::I64));
+    write_file_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_WRITE_FILE, runtime::RT_WRITE_FILE, &write_file_sig);
+
+    // glyph_exit(code: i64) -> void
+    let mut exit_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    exit_sig.params.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_EXIT, runtime::RT_EXIT, &exit_sig);
+
+    // glyph_args() -> *void (array header)
+    let mut args_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    args_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARGS, runtime::RT_ARGS, &args_sig);
+
+    // glyph_println(str: *void) -> i64
+    let mut println_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    println_sig.params.push(AbiParam::new(types::I64));
+    println_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("println", runtime::RT_PRINTLN, &println_sig);
+
+    // glyph_eprintln(str: *void) -> i64
+    let mut eprintln_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    eprintln_sig.params.push(AbiParam::new(types::I64));
+    eprintln_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("eprintln", runtime::RT_EPRINTLN, &eprintln_sig);
+
+    // glyph_str_to_cstr(str: *void) -> *char
+    let mut str_to_cstr_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    str_to_cstr_sig.params.push(AbiParam::new(types::I64));
+    str_to_cstr_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_TO_CSTR, runtime::RT_STR_TO_CSTR, &str_to_cstr_sig);
+
+    // glyph_cstr_to_str(cstr: *char) -> *void
+    let mut cstr_to_str_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    cstr_to_str_sig.params.push(AbiParam::new(types::I64));
+    cstr_to_str_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_CSTR_TO_STR, runtime::RT_CSTR_TO_STR, &cstr_to_str_sig);
+
+    // glyph_array_set(header: *void, index: i64, value: i64) -> void
+    let mut array_set_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    array_set_sig.params.push(AbiParam::new(types::I64));
+    array_set_sig.params.push(AbiParam::new(types::I64));
+    array_set_sig.params.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_SET, runtime::RT_ARRAY_SET, &array_set_sig);
+
+    // glyph_array_pop(header: *void) -> i64
+    let mut array_pop_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    array_pop_sig.params.push(AbiParam::new(types::I64));
+    array_pop_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_POP, runtime::RT_ARRAY_POP, &array_pop_sig);
+
+    // glyph_array_len(header: *void) -> i64
+    let mut array_len_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    array_len_sig.params.push(AbiParam::new(types::I64));
+    array_len_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARRAY_LEN, runtime::RT_ARRAY_LEN, &array_len_sig);
+
+    // glyph_str_to_int(str: *void) -> i64
+    let mut str_to_int_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    str_to_int_sig.params.push(AbiParam::new(types::I64));
+    str_to_int_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_STR_TO_INT, runtime::RT_STR_TO_INT, &str_to_int_sig);
+
+    // glyph_system(cmd: *void) -> i64
+    let mut system_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    system_sig.params.push(AbiParam::new(types::I64));
+    system_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_SYSTEM, runtime::RT_SYSTEM, &system_sig);
+
+    // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
+    // They come from extern_ table rows in the .glyph database.
+}
+
+/// Add runtime function types to the known_functions map for MIR lowering.
+fn add_runtime_known_functions(known_functions: &mut HashMap<String, glyph_mir::ir::MirType>) {
+    use glyph_mir::ir::MirType;
+    known_functions.insert("print".to_string(),
+        MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Int)));
+    known_functions.insert(runtime::RT_STR_CONCAT.to_string(),
+        MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Str)))));
+    known_functions.insert(runtime::RT_INT_TO_STR.to_string(),
+        MirType::Fn(Box::new(MirType::Int), Box::new(MirType::Str)));
 }
