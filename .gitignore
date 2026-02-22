@@ -4,8 +4,13 @@
 *.dylib
 *.glyph
 !stdlib.glyph
-Archives
+!glyph.glyph
+!examples/**/*.glyph
+/Archives
 glyph0
 glyph1
-glyph
+/glyph
+examples/calculator/calc
+*.glyph-shm
+*.glyph-wal
 .ninja_log
