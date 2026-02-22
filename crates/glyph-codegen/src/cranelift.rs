@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use cranelift_codegen::ir::condcodes::IntCC;
 use cranelift_codegen::ir::types;
-use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, StackSlotData, StackSlotKind, Value};
+use cranelift_codegen::ir::{AbiParam, Function, InstBuilder, Value};
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_codegen::Context;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
@@ -457,21 +457,29 @@ impl CodegenContext {
                         base_ptr
                     }
                     AggregateKind::Variant(_type_name, _variant_name, discriminant) => {
-                        // Tagged union: [4-byte tag | payload...]
-                        // Payload fields stored at 8-byte stride after the tag
-                        let payload_size = (vals.len() * 8) as u32;
-                        let total_size = (8 + payload_size).max(16); // tag (padded to 8) + payload
-                        let slot = builder.create_sized_stack_slot(StackSlotData::new(
-                            StackSlotKind::ExplicitSlot, total_size, 3,
-                        ));
+                        // Tagged union: [8-byte tag | payload...]
+                        // Heap-allocated so enum values survive function returns.
+                        let payload_size = (vals.len() * 8) as i64;
+                        let total_size = (8 + payload_size).max(16);
+                        let alloc_size = builder.ins().iconst(types::I64, total_size);
+                        let alloc_func = self.func_ids.get("glyph_alloc").copied();
+                        let base_ptr = if let Some(func_id) = alloc_func {
+                            let func_ref = self.module.declare_func_in_func(func_id, builder.func);
+                            let call = builder.ins().call(func_ref, &[alloc_size]);
+                            builder.inst_results(call)[0]
+                        } else {
+                            builder.ins().iconst(types::I64, 0)
+                        };
                         // Store discriminant tag at offset 0
                         let tag = builder.ins().iconst(types::I64, *discriminant as i64);
-                        builder.ins().stack_store(tag, slot, 0);
+                        builder.ins().store(cranelift_codegen::ir::MemFlags::new(), tag, base_ptr, 0);
                         // Store payload fields at offset 8+
                         for (i, val) in vals.iter().enumerate() {
-                            builder.ins().stack_store(*val, slot, (8 + i * 8) as i32);
+                            let offset = builder.ins().iconst(types::I64, (8 + i * 8) as i64);
+                            let ptr = builder.ins().iadd(base_ptr, offset);
+                            builder.ins().store(cranelift_codegen::ir::MemFlags::new(), *val, ptr, 0);
                         }
-                        builder.ins().stack_addr(types::I64, slot, 0)
+                        base_ptr
                     }
                     AggregateKind::Array => {
                         // Array header: {ptr: *T, len: u64, cap: u64} = 24 bytes

@@ -33,6 +33,9 @@ pub const RT_ARRAY_POP: &str = "glyph_array_pop";
 pub const RT_STR_TO_INT: &str = "glyph_str_to_int";
 pub const RT_ARRAY_LEN: &str = "glyph_array_len";
 pub const RT_SYSTEM: &str = "glyph_system";
+pub const RT_SB_NEW: &str = "glyph_sb_new";
+pub const RT_SB_APPEND: &str = "glyph_sb_append";
+pub const RT_SB_BUILD: &str = "glyph_sb_build";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -410,6 +413,54 @@ long long glyph_system(void* cmd_struct) {
     free(cmd);
     if (rc == -1) return -1;
     return (long long)((rc >> 8) & 0xFF);
+}
+
+/* StringBuilder: {buf, len, cap} — mutable string buffer for O(n) building. */
+void* glyph_sb_new(void) {
+    long long cap = 64;
+    long long* sb = (long long*)malloc(24);
+    if (!sb) glyph_panic("out of memory");
+    char* buf = (char*)malloc(cap);
+    if (!buf) glyph_panic("out of memory");
+    sb[0] = (long long)buf;
+    sb[1] = 0;     /* len */
+    sb[2] = cap;
+    return (void*)sb;
+}
+
+void* glyph_sb_append(void* sb_ptr, void* str_struct) {
+    long long* sb = (long long*)sb_ptr;
+    const char* ptr = *(const char**)str_struct;
+    long long slen = *(long long*)((char*)str_struct + 8);
+    long long len = sb[1];
+    long long cap = sb[2];
+    long long need = len + slen;
+    if (need > cap) {
+        while (cap < need) cap *= 2;
+        char* newbuf = (char*)malloc(cap);
+        if (!newbuf) glyph_panic("out of memory");
+        memcpy(newbuf, (char*)sb[0], (size_t)len);
+        free((char*)sb[0]);
+        sb[0] = (long long)newbuf;
+        sb[2] = cap;
+    }
+    memcpy((char*)sb[0] + len, ptr, (size_t)slen);
+    sb[1] = need;
+    return sb_ptr;
+}
+
+void* glyph_sb_build(void* sb_ptr) {
+    long long* sb = (long long*)sb_ptr;
+    long long len = sb[1];
+    char* result = (char*)malloc(16 + len);
+    if (!result) glyph_panic("out of memory");
+    char* data = result + 16;
+    memcpy(data, (char*)sb[0], (size_t)len);
+    *(const char**)result = data;
+    *(long long*)(result + 8) = len;
+    free((char*)sb[0]);
+    free(sb);
+    return result;
 }
 
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */

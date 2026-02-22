@@ -13,7 +13,7 @@ pub enum TypeError {
     UnresolvedName { name: String, span: Span },
 
     #[error("occurs check failed: {0} occurs in {1}")]
-    OccursCheck(String, String),
+    OccursCheck(String, String, Option<Span>),
 
     #[error("cannot unify row types: missing field {field}")]
     MissingField { field: String, span: Span },
@@ -33,7 +33,7 @@ impl TypeError {
             | Self::MissingField { span, .. }
             | Self::CannotInfer { span, .. }
             | Self::Custom { span, .. } => Some(*span),
-            Self::OccursCheck(_, _) => None,
+            Self::OccursCheck(_, _, span) => *span,
         }
     }
 }

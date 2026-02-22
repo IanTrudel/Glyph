@@ -184,6 +184,7 @@ impl Substitution {
             return Err(TypeError::OccursCheck(
                 format!("t{root}"),
                 format!("{resolved}"),
+                None,
             ));
         }
 

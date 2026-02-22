@@ -14,8 +14,8 @@ pub struct MirLower {
     next_block: BlockId,
     /// Known function types for cross-definition call resolution.
     known_functions: HashMap<String, MirType>,
-    /// Enum variant info: variant_name -> (type_name, discriminant, field_count)
-    enum_variants: HashMap<String, (String, u32, usize)>,
+    /// Enum variant info: variant_name -> (type_name, discriminant, field_types)
+    enum_variants: HashMap<String, (String, u32, Vec<MirType>)>,
     /// Functions generated from lambda lifting.
     pub lifted_fns: Vec<MirFunction>,
     /// Counter for generating unique lambda names.
@@ -56,7 +56,7 @@ impl MirLower {
         for (disc, (vname, fields)) in variants.iter().enumerate() {
             self.enum_variants.insert(
                 vname.clone(),
-                (type_name.to_string(), disc as u32, fields.len()),
+                (type_name.to_string(), disc as u32, fields.clone()),
             );
         }
     }
@@ -454,7 +454,8 @@ impl MirLower {
             }
 
             ast::ExprKind::StrInterp(parts) => {
-                // Desugar to a chain of conversions + concatenations
+                // Desugar to string builder: sb_new → N x sb_append → sb_build
+                // This is O(n) vs O(n²) for chained concat.
                 let mut str_ops: Vec<Operand> = Vec::new();
                 for p in parts {
                     match p {
@@ -482,28 +483,53 @@ impl MirLower {
                     }
                 }
 
-                // Concatenate all parts
                 if str_ops.is_empty() {
                     return Operand::ConstStr(String::new());
                 }
-                let mut result = str_ops[0].clone();
-                for part in &str_ops[1..] {
-                    let concat_dest = self.alloc_local(None, MirType::Str);
+
+                // For single-part interpolation, no builder needed
+                if str_ops.len() == 1 {
+                    let dest = self.alloc_local(None, MirType::Str);
                     self.emit(Statement {
-                        dest: concat_dest,
-                        rvalue: Rvalue::Call(
-                            Operand::ExternRef("glyph_str_concat".to_string()),
-                            vec![result, part.clone()],
-                        ),
+                        dest,
+                        rvalue: Rvalue::Use(str_ops[0].clone()),
                     });
-                    result = Operand::Local(concat_dest);
+                    return Operand::Local(dest);
                 }
 
-                // Ensure result is in a local for uniform handling
+                // Use string builder for 2+ parts
+                let sb = self.alloc_local(None, MirType::Ptr(Box::new(MirType::Void)));
+                self.emit(Statement {
+                    dest: sb,
+                    rvalue: Rvalue::Call(
+                        Operand::ExternRef("glyph_sb_new".to_string()),
+                        vec![],
+                    ),
+                });
+
+                for part in &str_ops {
+                    let appended = self.alloc_local(None, MirType::Ptr(Box::new(MirType::Void)));
+                    self.emit(Statement {
+                        dest: appended,
+                        rvalue: Rvalue::Call(
+                            Operand::ExternRef("glyph_sb_append".to_string()),
+                            vec![Operand::Local(sb), part.clone()],
+                        ),
+                    });
+                    // sb_append returns the same sb pointer, update sb local
+                    self.emit(Statement {
+                        dest: sb,
+                        rvalue: Rvalue::Use(Operand::Local(appended)),
+                    });
+                }
+
                 let dest = self.alloc_local(None, MirType::Str);
                 self.emit(Statement {
                     dest,
-                    rvalue: Rvalue::Use(result),
+                    rvalue: Rvalue::Call(
+                        Operand::ExternRef("glyph_sb_build".to_string()),
+                        vec![Operand::Local(sb)],
+                    ),
                 });
                 Operand::Local(dest)
             }
@@ -621,7 +647,11 @@ impl MirLower {
 
             ast::ExprKind::TypeIdent(name) => {
                 // Check if this is a nullary enum variant constructor
-                if let Some((type_name, disc, 0)) = self.enum_variants.get(name).cloned() {
+                let is_nullary = self.enum_variants.get(name)
+                    .map(|(_, _, ftypes)| ftypes.is_empty())
+                    .unwrap_or(false);
+                if is_nullary {
+                    let (type_name, disc, _) = self.enum_variants.get(name).cloned().unwrap();
                     let dest = self.alloc_local(None, MirType::Named(type_name.clone()));
                     self.emit(Statement {
                         dest,
@@ -924,11 +954,11 @@ impl MirLower {
                     rvalue: Rvalue::Field(scrutinee.clone(), 0, "__tag".into()),
                 });
 
-                // Look up expected discriminant
-                let expected_disc = self.enum_variants
+                // Look up expected discriminant and field types
+                let (expected_disc, variant_field_types) = self.enum_variants
                     .get(variant_name)
-                    .map(|(_, d, _)| *d as i64)
-                    .unwrap_or(0);
+                    .map(|(_, d, ftypes)| (*d as i64, ftypes.clone()))
+                    .unwrap_or((0, vec![]));
 
                 // Compare
                 let cmp_local = self.alloc_local(None, MirType::Bool);
@@ -947,7 +977,8 @@ impl MirLower {
                 for (i, sub_pat) in sub_pats.iter().enumerate() {
                     if let ast::PatternKind::Ident(name) = &sub_pat.kind {
                         // Extract payload field at offset (1 + i) in 8-byte stride
-                        let field_local = self.alloc_local(Some(name.clone()), MirType::Int);
+                        let field_ty = variant_field_types.get(i).cloned().unwrap_or(MirType::Int);
+                        let field_local = self.alloc_local(Some(name.clone()), field_ty);
                         self.emit(Statement {
                             dest: field_local,
                             rvalue: Rvalue::Field(scrutinee.clone(), (1 + i) as u32, format!("__payload{}", i)),

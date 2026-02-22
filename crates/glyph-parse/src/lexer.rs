@@ -279,6 +279,7 @@ impl Lexer {
                 self.push(TokenKind::Question, start);
             }
             '"' => self.scan_string(start),
+            'r' if self.peek_at(1) == Some('"') => self.scan_raw_string(start),
             'b' if self.peek_at(1) == Some('"') => self.scan_byte_string(start),
             '0'..='9' => self.scan_number(start),
             c if c.is_ascii_uppercase() => self.scan_type_ident(start),
@@ -485,6 +486,20 @@ impl Lexer {
             self.advance(); // closing '"'
         }
         self.push(TokenKind::ByteStr(bytes), start);
+    }
+
+    fn scan_raw_string(&mut self, start: usize) {
+        self.advance(); // 'r'
+        self.advance(); // '"'
+        let mut buf = String::new();
+        while !self.at_end() && self.peek() != '"' {
+            buf.push(self.peek());
+            self.advance();
+        }
+        if !self.at_end() {
+            self.advance(); // closing '"'
+        }
+        self.push(TokenKind::Str(buf), start);
     }
 
     fn take_while(&mut self, pred: impl Fn(char) -> bool, max: usize) -> String {
@@ -698,6 +713,30 @@ mod tests {
         assert!(matches!(tokens[1], TokenKind::Str(ref s) if s == "hello "));
         assert!(matches!(tokens[2], TokenKind::Ident(ref s) if s == "name"));
         assert!(matches!(tokens[3], TokenKind::StrInterpEnd));
+    }
+
+    #[test]
+    fn test_raw_string_no_escapes() {
+        let tokens = lex(r#"r"hello\nworld""#);
+        assert_eq!(
+            tokens,
+            vec![TokenKind::Str(r"hello\nworld".into()), TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn test_raw_string_no_interpolation() {
+        let tokens = lex(r#"r"hello {name}""#);
+        assert_eq!(
+            tokens,
+            vec![TokenKind::Str("hello {name}".into()), TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn test_bare_r_is_ident() {
+        let tokens = lex("r");
+        assert_eq!(tokens, vec![TokenKind::Ident("r".into()), TokenKind::Eof]);
     }
 
     #[test]

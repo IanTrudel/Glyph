@@ -8,6 +8,7 @@ use glyph_db::{Database, DefKind, DefRow};
 use glyph_mir::lower::{type_to_mir, MirLower};
 use glyph_parse::lexer::Lexer;
 use glyph_parse::parser::Parser;
+use glyph_parse::span::format_diagnostic;
 use glyph_typeck::infer::InferEngine;
 
 /// Build (compile) the .glyph database.
@@ -36,13 +37,13 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
             DefKind::Fn => {
                 match parse_def(def) {
                     Ok(parsed) => parsed_fns.push((def.clone(), parsed)),
-                    Err(e) => eprintln!("  parse error in '{}': {e}", def.name),
+                    Err(e) => report_parse_error(def, &e),
                 }
             }
             DefKind::Type => {
                 match parse_def(def) {
                     Ok(parsed) => parsed_types.push((def.clone(), parsed)),
-                    Err(e) => eprintln!("  parse error in '{}': {e}", def.name),
+                    Err(e) => report_parse_error(def, &e),
                 }
             }
             _ => {}
@@ -97,7 +98,26 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
 
     if !infer.errors.is_empty() {
         for err in &infer.errors {
-            eprintln!("  type error: {err}");
+            // Try to find the relevant def for this error
+            let reported = if let Some(span) = err.span() {
+                // Find the def whose body contains this span
+                let def_entry = parsed_fns.iter()
+                    .find(|(d, _)| {
+                        let body_len = d.body.len() as u32;
+                        span.start < body_len
+                    });
+                if let Some((d, _)) = def_entry {
+                    report_type_error(&d.name, &d.body, err);
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            if !reported {
+                eprintln!("  type error: {err}");
+            }
         }
         // Continue anyway for now
     }
@@ -220,7 +240,7 @@ pub fn cmd_check(path: &Path) -> miette::Result<()> {
                 match parse_def(def) {
                     Ok(parsed) => parsed_fns.push((def.clone(), parsed)),
                     Err(e) => {
-                        eprintln!("  parse error in '{}': {e}", def.name);
+                        report_parse_error(def, &e);
                         error_count += 1;
                     }
                 }
@@ -229,7 +249,7 @@ pub fn cmd_check(path: &Path) -> miette::Result<()> {
                 match parse_def(def) {
                     Ok(parsed) => parsed_types.push((def.clone(), parsed)),
                     Err(e) => {
-                        eprintln!("  parse error in '{}': {e}", def.name);
+                        report_parse_error(def, &e);
                         error_count += 1;
                     }
                 }
@@ -273,7 +293,24 @@ pub fn cmd_check(path: &Path) -> miette::Result<()> {
 
     if !infer.errors.is_empty() {
         for err in &infer.errors {
-            eprintln!("  type error: {err}");
+            let reported = if let Some(span) = err.span() {
+                let def_entry = parsed_fns.iter()
+                    .find(|(d, _)| {
+                        let body_len = d.body.len() as u32;
+                        span.start < body_len
+                    });
+                if let Some((d, _)) = def_entry {
+                    report_type_error(&d.name, &d.body, err);
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            if !reported {
+                eprintln!("  type error: {err}");
+            }
         }
         error_count += infer.errors.len();
     }
@@ -302,10 +339,10 @@ fn extract_enum_variants(
                     let field_types = match &v.fields {
                         glyph_parse::ast::VariantFields::None => vec![],
                         glyph_parse::ast::VariantFields::Positional(types) => {
-                            types.iter().map(|_| glyph_mir::ir::MirType::Int).collect()
+                            types.iter().map(|t| ast_type_to_mir(t)).collect()
                         }
                         glyph_parse::ast::VariantFields::Named(fields) => {
-                            fields.iter().map(|_| glyph_mir::ir::MirType::Int).collect()
+                            fields.iter().map(|f| ast_type_to_mir(&f.ty)).collect()
                         }
                     };
                     variant_list.push((v.name.clone(), field_types));
@@ -317,12 +354,66 @@ fn extract_enum_variants(
     result
 }
 
-fn parse_def(def: &DefRow) -> Result<glyph_parse::ast::Def, String> {
+/// Convert an AST TypeExpr to a MirType.
+fn ast_type_to_mir(texpr: &glyph_parse::ast::TypeExpr) -> glyph_mir::ir::MirType {
+    use glyph_mir::ir::MirType;
+    use glyph_parse::ast::TypeExprKind;
+    match &texpr.kind {
+        TypeExprKind::Named(name) => match name.as_str() {
+            "I" | "Int" | "I64" => MirType::Int,
+            "U" | "UInt" | "U64" => MirType::UInt,
+            "F" | "Float" | "F64" => MirType::Float,
+            "S" | "Str" => MirType::Str,
+            "B" | "Bool" => MirType::Bool,
+            "V" | "Void" => MirType::Void,
+            "N" | "Never" => MirType::Never,
+            other => MirType::Named(other.to_string()),
+        },
+        TypeExprKind::Arr(inner) => MirType::Array(Box::new(ast_type_to_mir(inner))),
+        TypeExprKind::Opt(inner) => {
+            // Optional<T> = enum with None/Some(T) variants
+            let inner_ty = ast_type_to_mir(inner);
+            MirType::Enum("Option".to_string(), vec![
+                ("None".to_string(), vec![]),
+                ("Some".to_string(), vec![inner_ty]),
+            ])
+        }
+        TypeExprKind::Ref(inner) => MirType::Ref(Box::new(ast_type_to_mir(inner))),
+        TypeExprKind::Ptr(inner) => MirType::Ptr(Box::new(ast_type_to_mir(inner))),
+        TypeExprKind::Fn(param, ret) => {
+            MirType::Fn(Box::new(ast_type_to_mir(param)), Box::new(ast_type_to_mir(ret)))
+        }
+        TypeExprKind::Tuple(elems) => {
+            MirType::Tuple(elems.iter().map(|e| ast_type_to_mir(e)).collect())
+        }
+        TypeExprKind::Record(fields, _) => {
+            let map = fields.iter()
+                .map(|(name, ty)| (name.clone(), ast_type_to_mir(ty)))
+                .collect();
+            MirType::Record(map)
+        }
+        _ => MirType::Int, // fallback
+    }
+}
+
+fn parse_def(def: &DefRow) -> Result<glyph_parse::ast::Def, glyph_parse::error::ParseError> {
     let tokens = Lexer::new(&def.body).tokenize();
     let mut parser = Parser::new(tokens);
-    parser
-        .parse_def(&def.name, def.kind.as_str())
-        .map_err(|e| format!("{e}"))
+    parser.parse_def(&def.name, def.kind.as_str())
+}
+
+fn report_parse_error(def: &DefRow, e: &glyph_parse::error::ParseError) {
+    let msg = format_diagnostic(&def.name, &def.body, e.span(), "error", &e.to_string());
+    eprintln!("  {msg}");
+}
+
+fn report_type_error(def_name: &str, body: &str, e: &glyph_typeck::error::TypeError) {
+    if let Some(span) = e.span() {
+        let msg = format_diagnostic(def_name, body, span, "type error", &e.to_string());
+        eprintln!("  {msg}");
+    } else {
+        eprintln!("  type error: {e}");
+    }
 }
 
 fn build_extern_sig(
@@ -547,6 +638,24 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     system_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_SYSTEM, runtime::RT_SYSTEM, &system_sig);
 
+    // glyph_sb_new() -> *void
+    let mut sb_new_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    sb_new_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_SB_NEW, runtime::RT_SB_NEW, &sb_new_sig);
+
+    // glyph_sb_append(sb: *void, str: *void) -> *void
+    let mut sb_append_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    sb_append_sig.params.push(AbiParam::new(types::I64));
+    sb_append_sig.params.push(AbiParam::new(types::I64));
+    sb_append_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_SB_APPEND, runtime::RT_SB_APPEND, &sb_append_sig);
+
+    // glyph_sb_build(sb: *void) -> *void
+    let mut sb_build_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    sb_build_sig.params.push(AbiParam::new(types::I64));
+    sb_build_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_SB_BUILD, runtime::RT_SB_BUILD, &sb_build_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }
@@ -560,4 +669,11 @@ fn add_runtime_known_functions(known_functions: &mut HashMap<String, glyph_mir::
         MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Str)))));
     known_functions.insert(runtime::RT_INT_TO_STR.to_string(),
         MirType::Fn(Box::new(MirType::Int), Box::new(MirType::Str)));
+    known_functions.insert(runtime::RT_SB_NEW.to_string(),
+        MirType::Fn(Box::new(MirType::Void), Box::new(MirType::Ptr(Box::new(MirType::Void)))));
+    known_functions.insert(runtime::RT_SB_APPEND.to_string(),
+        MirType::Fn(Box::new(MirType::Ptr(Box::new(MirType::Void))),
+            Box::new(MirType::Fn(Box::new(MirType::Str), Box::new(MirType::Ptr(Box::new(MirType::Void)))))));
+    known_functions.insert(runtime::RT_SB_BUILD.to_string(),
+        MirType::Fn(Box::new(MirType::Ptr(Box::new(MirType::Void))), Box::new(MirType::Str)));
 }

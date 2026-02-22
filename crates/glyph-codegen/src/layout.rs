@@ -71,7 +71,7 @@ pub fn size_of(ty: &MirType) -> u32 {
             let max_payload: u32 = variants.iter()
                 .map(|(_, fields)| fields.iter().map(size_of).sum::<u32>())
                 .max().unwrap_or(0);
-            4 + max_payload // 4-byte tag + max payload
+            8 + max_payload // 8-byte tag + max payload
         }
         _ => 8,
     }
