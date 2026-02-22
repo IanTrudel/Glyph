@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Insert CLI command definitions into compiler.glyph.
+"""Insert CLI command definitions into glyph.glyph.
 
 Uses Python's sqlite3 parameterized queries to avoid escaping issues.
 All new definitions use INSERT OR REPLACE with zeroblob(32) hash and 0 tokens.
@@ -10,13 +10,13 @@ import sys
 import os
 
 DB_PATH = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    os.path.dirname(__file__), "..", "home/ian/Workspace/Experimental/Glyph/compiler.glyph"
+    os.path.dirname(__file__), "..", "home/ian/Workspace/Experimental/Glyph/glyph.glyph"
 )
 DB_PATH = os.environ.get("GLYPH_DB", DB_PATH)
 if len(sys.argv) > 1:
     DB_PATH = sys.argv[1]
 else:
-    DB_PATH = "/home/ian/Workspace/Experimental/Glyph/compiler.glyph"
+    DB_PATH = "/home/ian/Workspace/Experimental/Glyph/glyph.glyph"
 
 conn = sqlite3.connect(DB_PATH)
 

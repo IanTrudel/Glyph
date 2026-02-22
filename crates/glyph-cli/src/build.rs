@@ -607,12 +607,21 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     cstr_to_str_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_CSTR_TO_STR, runtime::RT_CSTR_TO_STR, &cstr_to_str_sig);
 
-    // glyph_array_set(header: *void, index: i64, value: i64) -> void
+    // glyph_array_set(header: *void, index: i64, value: i64) -> i64
     let mut array_set_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
     array_set_sig.params.push(AbiParam::new(types::I64));
     array_set_sig.params.push(AbiParam::new(types::I64));
     array_set_sig.params.push(AbiParam::new(types::I64));
+    array_set_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_ARRAY_SET, runtime::RT_ARRAY_SET, &array_set_sig);
+
+    // glyph_raw_set(ptr: i64, idx: i64, val: i64) -> i64
+    let mut raw_set_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    raw_set_sig.params.push(AbiParam::new(types::I64));
+    raw_set_sig.params.push(AbiParam::new(types::I64));
+    raw_set_sig.params.push(AbiParam::new(types::I64));
+    raw_set_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_RAW_SET, runtime::RT_RAW_SET, &raw_set_sig);
 
     // glyph_array_pop(header: *void) -> i64
     let mut array_pop_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);

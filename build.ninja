@@ -1,0 +1,66 @@
+# Glyph build system
+#
+# Bootstrap chain:
+#   glyph0       (Rust/Cranelift)  compiles definitions, produces Cranelift binary
+#   glyph1       (Cranelift)       intermediate binary used by self-build
+#   glyph        (self-hosted/C)   final binary, can rebuild itself
+#
+# Targets:
+#   ninja              build self-hosted compiler (default)
+#   ninja bootstrap    full chain: cargo → glyph0 → glyph1 → glyph
+#   ninja test         run all tests (Rust + self-hosted)
+#   ninja dump         regenerate glyph.sql from glyph.glyph
+
+# Stage 0: Build the Rust bootstrap compiler
+rule cargo_build
+  command = cargo build --release 2>&1 && cp target/release/glyph glyph0
+  description = Building glyph0 (Rust bootstrap compiler)
+
+build glyph0: cargo_build | Cargo.toml Cargo.lock
+
+# Stage 1: glyph0 compiles all definitions via Cranelift.
+# Produces a Cranelift-linked binary at 'glyph' (derived from glyph.glyph),
+# which we rename to glyph1 to avoid clobbering the final self-hosted binary.
+rule db_refresh
+  command = ./glyph0 build glyph.glyph --full 2>&1 && mv glyph glyph1
+  description = glyph0 compiling glyph.glyph → glyph1
+
+build glyph1: db_refresh | glyph0 glyph.glyph
+
+# Stage 2: glyph1 rebuilds itself via C codegen → final 'glyph' binary
+rule self_build
+  command = ./glyph1 build glyph.glyph glyph 2>&1
+  description = glyph1 self-building → glyph (C codegen)
+
+build glyph: self_build | glyph1
+
+# Default target
+default glyph
+
+# Bootstrap: full chain (same as default, just an alias)
+build bootstrap: phony glyph
+
+# Run Rust test suite
+rule cargo_test
+  command = cargo test 2>&1
+  description = Running Rust tests
+
+build rust_tests: cargo_test | glyph0
+
+# Run self-hosted test suite
+rule self_test
+  command = ./glyph run test_comprehensive.glyph 2>&1
+  description = Running self-hosted tests
+
+build self_tests: self_test | glyph
+
+# Run all tests
+build test: phony rust_tests self_tests
+
+# Dump the database to SQL
+rule dump_sql
+  command = sqlite3 glyph.glyph .dump > glyph.sql
+  description = Dumping glyph.glyph → glyph.sql
+
+build glyph.sql: dump_sql | glyph
+build dump: phony glyph.sql

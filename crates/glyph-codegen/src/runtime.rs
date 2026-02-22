@@ -36,6 +36,7 @@ pub const RT_SYSTEM: &str = "glyph_system";
 pub const RT_SB_NEW: &str = "glyph_sb_new";
 pub const RT_SB_APPEND: &str = "glyph_sb_append";
 pub const RT_SB_BUILD: &str = "glyph_sb_build";
+pub const RT_RAW_SET: &str = "glyph_raw_set";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -341,8 +342,8 @@ char* glyph_str_to_cstr(void* str_struct) {
     return cstr;
 }
 
-/* Set element in array. Header is {ptr, len, cap}. */
-void glyph_array_set(void* header_ptr, long long index, long long value) {
+/* Set element in array. Header is {ptr, len, cap}. Returns 0. */
+long long glyph_array_set(void* header_ptr, long long index, long long value) {
     long long* header = (long long*)header_ptr;
     long long* data = (long long*)header[0];
     long long len = header[1];
@@ -351,6 +352,13 @@ void glyph_array_set(void* header_ptr, long long index, long long value) {
         exit(1);
     }
     data[index] = value;
+    return 0;
+}
+
+/* Raw memory set: directly sets ((long long*)ptr)[idx] = val. */
+long long glyph_raw_set(long long ptr, long long idx, long long val) {
+    ((long long*)ptr)[idx] = val;
+    return 0;
 }
 
 /* Pop last element from array. Returns the removed element. */

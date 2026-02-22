@@ -95,8 +95,8 @@ The most effective debugging technique was returning intermediate values as the 
 
 Every test required:
 1. Write SQL INSERT statement
-2. `cargo run -- build compiler.glyph --full` (recompile all 430 defs, ~2 seconds)
-3. `./compiler` to run
+2. `cargo run -- build glyph.glyph --full` (recompile all 430 defs, ~2 seconds)
+3. `./glyph` to run
 4. Check exit code
 
 The `--full` flag is necessary because manual SQL inserts use fake hashes, making everything look dirty. A REPL or incremental mode would dramatically speed up development.
@@ -123,7 +123,7 @@ Compilers are fundamentally about tree transformations: AST to IR, IR to code. T
 
 ### The Bootstrap Succeeded
 
-The most satisfying moment was running `./compiler` and seeing it generate valid C code, compile it with `cc`, and produce a working executable that computed fibonacci(10) = 55. A language compiling itself — even through a C intermediate — is a genuine milestone.
+The most satisfying moment was running `./glyph` and seeing it generate valid C code, compile it with `cc`, and produce a working executable that computed fibonacci(10) = 55. A language compiling itself — even through a C intermediate — is a genuine milestone.
 
 ## Metrics
 
