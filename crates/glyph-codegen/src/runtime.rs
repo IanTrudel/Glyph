@@ -51,6 +51,15 @@ pub const RUNTIME_C: &str = r#"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+
+const char* _glyph_current_fn = "(unknown)";
+
+static void _glyph_sigsegv(int sig) {
+    fprintf(stderr, "segfault in function: %s\n", _glyph_current_fn);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
 
 void glyph_panic(const char* msg) {
     fprintf(stderr, "panic: %s\n", msg);
@@ -77,7 +86,7 @@ long long glyph_print(void* str_struct) {
     long long len = *(long long*)((char*)str_struct + 8);
     fwrite(ptr, 1, (size_t)len, stdout);
     fflush(stdout);
-    return len;
+    return 0;
 }
 
 /* Concatenate two strings. Returns pointer to heap-allocated string struct. */
@@ -318,7 +327,7 @@ long long glyph_println(void* str_struct) {
     fwrite(ptr, 1, (size_t)len, stdout);
     fputc('\n', stdout);
     fflush(stdout);
-    return len;
+    return 0;
 }
 
 /* Print string with newline to stderr. */
@@ -328,7 +337,7 @@ long long glyph_eprintln(void* str_struct) {
     fwrite(ptr, 1, (size_t)len, stderr);
     fputc('\n', stderr);
     fflush(stderr);
-    return len;
+    return 0;
 }
 
 /* Convert Glyph string to null-terminated C string (heap-allocated). */
@@ -474,6 +483,7 @@ void* glyph_sb_build(void* sb_ptr) {
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */
 extern long long glyph_main(void);
 int main(int argc, char** argv) {
+    signal(SIGSEGV, _glyph_sigsegv);
     glyph_set_args(argc, argv);
     return (int)glyph_main();
 }

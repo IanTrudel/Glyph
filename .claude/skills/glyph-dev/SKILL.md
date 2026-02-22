@@ -95,12 +95,14 @@ Name = S
 
 ### Test (`kind='test'`)
 ```
-test_name = assert_eq(expr, expected)
-test_name = INDENT assertions... DEDENT
+test_name u = assert_eq(expr, expected)
+test_name u = INDENT assertions... DEDENT
 ```
 
+Note: test definitions need a dummy parameter (like all zero-arg side-effect functions).
+
 ```bash
-./glyph put app.glyph test -b 'test_math = assert_eq(1 + 1, 2)'
+./glyph put app.glyph test -b 'test_math u = assert_eq(1 + 1, 2)'
 ```
 
 ## Pitfalls
