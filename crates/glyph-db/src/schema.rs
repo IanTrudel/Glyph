@@ -121,12 +121,15 @@ CREATE VIEW IF NOT EXISTS v_callgraph AS
   JOIN def f ON d.from_id = f.id
   JOIN def t ON d.to_id   = t.id;
 
----------------------------------------------------------------------
--- TRIGGERS
----------------------------------------------------------------------
+"#;
 
--- Auto-dirty on content change
-CREATE TRIGGER IF NOT EXISTS trg_def_dirty AFTER UPDATE OF body, sig, kind ON def
+/// Triggers that use custom SQL functions (glyph_hash, glyph_tokens).
+/// Created as TEMP triggers so they exist only during the Rust compiler's
+/// connection and are never persisted to disk. This allows databases created
+/// by the Rust compiler to be used freely with the self-hosted `./glyph` CLI
+/// and plain `sqlite3` without trigger errors.
+pub const TRIGGER_SQL: &str = r#"
+CREATE TEMP TRIGGER trg_def_dirty AFTER UPDATE OF body, sig, kind ON def
 BEGIN
   UPDATE def SET
     compiled = 0,
@@ -136,8 +139,7 @@ BEGIN
   WHERE id = NEW.id;
 END;
 
--- Cascade dirty to dependents
-CREATE TRIGGER IF NOT EXISTS trg_dep_dirty AFTER UPDATE OF compiled ON def
+CREATE TEMP TRIGGER trg_dep_dirty AFTER UPDATE OF compiled ON def
   WHEN NEW.compiled = 0
 BEGIN
   UPDATE def SET compiled = 0

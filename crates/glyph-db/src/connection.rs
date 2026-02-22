@@ -16,6 +16,7 @@ impl Database {
         let conn = Connection::open(path)?;
         functions::register_all(&conn)?;
         conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+        conn.execute_batch(schema::TRIGGER_SQL)?;
         Ok(Self { conn })
     }
 
@@ -24,6 +25,7 @@ impl Database {
         let conn = Connection::open(path)?;
         functions::register_all(&conn)?;
         conn.execute_batch(schema::SCHEMA_SQL)?;
+        conn.execute_batch(schema::TRIGGER_SQL)?;
         Ok(Self { conn })
     }
 
@@ -32,6 +34,7 @@ impl Database {
         let conn = Connection::open_in_memory()?;
         functions::register_all(&conn)?;
         conn.execute_batch(schema::SCHEMA_SQL)?;
+        conn.execute_batch(schema::TRIGGER_SQL)?;
         Ok(Self { conn })
     }
 

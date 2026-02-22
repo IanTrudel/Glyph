@@ -5,3 +5,7 @@
 *.glyph
 !stdlib.glyph
 Archives
+glyph0
+glyph1
+glyph
+.ninja_log
