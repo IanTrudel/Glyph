@@ -27,21 +27,33 @@ enum Command {
         /// Emit MIR for debugging
         #[arg(long)]
         emit_mir: bool,
+        /// Target generation (default: 1)
+        #[arg(long = "gen", default_value = "1")]
+        target_gen: i64,
     },
     /// Build and execute main
     Run {
         /// Path to the .glyph file
         path: PathBuf,
+        /// Target generation (default: 1)
+        #[arg(long = "gen", default_value = "1")]
+        target_gen: i64,
     },
     /// Type-check only
     Check {
         /// Path to the .glyph file
         path: PathBuf,
+        /// Target generation (default: 1)
+        #[arg(long = "gen", default_value = "1")]
+        target_gen: i64,
     },
     /// Run all test definitions
     Test {
         /// Path to the .glyph file
         path: PathBuf,
+        /// Target generation (default: 1)
+        #[arg(long = "gen", default_value = "1")]
+        target_gen: i64,
     },
 }
 
@@ -50,10 +62,10 @@ fn main() -> miette::Result<()> {
 
     match cli.command {
         Command::Init { path } => cmd_init(&path),
-        Command::Build { path, full, emit_mir } => build::cmd_build(&path, full, emit_mir),
-        Command::Run { path } => cmd_run(&path),
-        Command::Check { path } => build::cmd_check(&path),
-        Command::Test { path } => cmd_test(&path),
+        Command::Build { path, full, emit_mir, target_gen } => build::cmd_build(&path, full, emit_mir, target_gen),
+        Command::Run { path, target_gen } => cmd_run(&path, target_gen),
+        Command::Check { path, target_gen } => build::cmd_check(&path, target_gen),
+        Command::Test { path, target_gen } => cmd_test(&path, target_gen),
     }
 }
 
@@ -69,9 +81,9 @@ fn cmd_init(path: &PathBuf) -> miette::Result<()> {
     Ok(())
 }
 
-fn cmd_run(path: &PathBuf) -> miette::Result<()> {
+fn cmd_run(path: &PathBuf, target_gen: i64) -> miette::Result<()> {
     // Build first
-    build::cmd_build(path, false, false)?;
+    build::cmd_build(path, false, false, target_gen)?;
 
     // Determine output path
     let exe_path = path.with_extension("");
@@ -84,12 +96,12 @@ fn cmd_run(path: &PathBuf) -> miette::Result<()> {
     std::process::exit(status.code().unwrap_or(1));
 }
 
-fn cmd_test(path: &PathBuf) -> miette::Result<()> {
+fn cmd_test(path: &PathBuf, target_gen: i64) -> miette::Result<()> {
     let db = glyph_db::Database::open(path)
         .map_err(|e| miette::miette!("failed to open database: {e}"))?;
 
     let tests = db
-        .defs_by_kind(glyph_db::DefKind::Test)
+        .defs_by_kind_gen(glyph_db::DefKind::Test, target_gen)
         .map_err(|e| miette::miette!("{e}"))?;
 
     if tests.is_empty() {

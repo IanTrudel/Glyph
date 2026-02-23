@@ -17,12 +17,14 @@ CREATE TABLE IF NOT EXISTS def (
   hash      BLOB    NOT NULL,
   tokens    INTEGER NOT NULL,
   compiled  INTEGER NOT NULL DEFAULT 0,
+  gen       INTEGER NOT NULL DEFAULT 1,
   created   TEXT    NOT NULL DEFAULT (datetime('now')),
   modified  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_def_name_kind ON def(name, kind);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_def_name_kind_gen ON def(name, kind, gen);
 CREATE INDEX IF NOT EXISTS idx_def_kind ON def(kind);
+CREATE INDEX IF NOT EXISTS idx_def_gen ON def(gen);
 CREATE INDEX IF NOT EXISTS idx_def_compiled ON def(compiled) WHERE compiled = 0;
 
 ---------------------------------------------------------------------

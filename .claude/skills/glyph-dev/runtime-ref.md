@@ -93,7 +93,8 @@ Only in test builds (`./glyph test`). All return 0, set `_test_failed` flag on f
 |------|--------|------|
 | String | `{ptr: *char, len: i64}` | 16B |
 | Array | `{ptr: *i64, len: i64, cap: i64}` | 24B |
-| Record | Fields at fixed offsets, alphabetical | 8B/field |
+| Record (named) | `typedef struct { long long f1; ... } Glyph_Name;` | 8B/field |
+| Record (anonymous) | Fields at fixed offsets, alphabetical | 8B/field |
 | Enum | `{tag: i64, payload...}` heap-allocated | 8B + 8B/field |
 | Closure | `{fn_ptr, captures...}` heap-allocated | 8B + 8B/capture |
 

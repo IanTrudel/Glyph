@@ -1,6 +1,6 @@
 # Glyph Examples
 
-Complete programs with CLI workflow and expected output.
+Complete programs with CLI workflow and expected output. Examples 1-7 use anonymous records. Example 8 shows named record types.
 
 ## 1. Hello World
 
@@ -170,3 +170,36 @@ PASS test_add
 PASS test_mul
 2/2 passed
 ```
+
+## 8. Records with Named Types
+
+Named record types generate `typedef struct` in C (gen=2 struct codegen). Field access uses `->field` instead of offset-based indexing.
+
+```bash
+./glyph init shapes.glyph
+
+# Define named record types
+./glyph put shapes.glyph type -b 'Point = {x: I, y: I}'
+./glyph put shapes.glyph type -b 'Rect = {x: I, y: I, w: I, h: I}'
+
+# Functions that create and use records
+./glyph put shapes.glyph fn -b 'make_point x y = {x: x, y: y}'
+./glyph put shapes.glyph fn -b 'rect_area r = r.w * r.h'
+
+./glyph put shapes.glyph fn -b 'main =
+  p = make_point(10, 20)
+  r = {x: 0, y: 0, w: 30, h: 40}
+  println("point: " + int_to_str(p.x) + "," + int_to_str(p.y))
+  println("area: " + int_to_str(rect_area(r)))'
+
+./glyph run shapes.glyph
+```
+Output:
+```
+point: 10,20
+area: 1200
+```
+
+The compiler matches record aggregates `{x: ..., y: ...}` against type definitions by sorted field set. `Point` matches `{x, y}`, `Rect` matches `{h, w, x, y}`. In generated C:
+- `Glyph_Point` struct with `->x`, `->y` access
+- `Glyph_Rect` struct with `->h`, `->w`, `->x`, `->y` access

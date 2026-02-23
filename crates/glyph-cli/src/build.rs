@@ -12,14 +12,14 @@ use glyph_parse::span::format_diagnostic;
 use glyph_typeck::infer::InferEngine;
 
 /// Build (compile) the .glyph database.
-pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> {
+pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> miette::Result<()> {
     let db = Database::open(path).map_err(|e| miette::miette!("failed to open database: {e}"))?;
 
     // Get definitions to compile
     let defs = if full {
-        db.all_defs().map_err(|e| miette::miette!("{e}"))?
+        db.effective_defs(target_gen).map_err(|e| miette::miette!("{e}"))?
     } else {
-        db.dirty_defs().map_err(|e| miette::miette!("{e}"))?
+        db.dirty_defs_gen(target_gen).map_err(|e| miette::miette!("{e}"))?
     };
 
     if defs.is_empty() {
@@ -220,10 +220,10 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool) -> miette::Result<()> 
 }
 
 /// Type-check only.
-pub fn cmd_check(path: &Path) -> miette::Result<()> {
+pub fn cmd_check(path: &Path, target_gen: i64) -> miette::Result<()> {
     let db = Database::open(path).map_err(|e| miette::miette!("failed to open database: {e}"))?;
 
-    let defs = db.all_defs().map_err(|e| miette::miette!("{e}"))?;
+    let defs = db.effective_defs(target_gen).map_err(|e| miette::miette!("{e}"))?;
 
     if defs.is_empty() {
         eprintln!("No definitions found.");

@@ -119,12 +119,14 @@ Note: test definitions need a dummy parameter (like all zero-arg side-effect fun
 | Type checker warns on `!` | Unwrap not fully typed | Ignore warning; runtime is correct |
 | Field offset ambiguity | Shared field names across record types | Access a type-unique field on the same variable |
 | tokens=0 from self-hosted | Self-hosted doesn't compute tokens | Run `cargo run -- build app.glyph --full` to fix |
+| Gen=2 only in self-hosted | Rust compiler ignores `gen` column | Build gen=2 defs with `./glyph0 build --gen=2` |
+| Self-hosted can't self-build | Sees both gen=1 and gen=2 overrides | Use `./glyph0 build glyph.glyph --gen=N` to build compiler |
 
 ## Schema Quick Reference
 
 ```sql
 -- Core tables
-def(id, name, kind, sig, body, hash, tokens, compiled, created, modified)
+def(id, name, kind, sig, body, hash, tokens, compiled, gen, created, modified)
 dep(from_id, to_id, edge)         -- edge: calls|uses_type|implements|field_of|variant_of
 extern_(id, name, symbol, lib, sig, conv)
 tag(def_id, key, val)
@@ -140,11 +142,56 @@ v_callgraph -- caller/callee/edge triples
 -- kind values: fn, type, trait, impl, const, fsm, srv, macro, test
 ```
 
+## Generational Versioning
+
+The `def` table has a `gen` column (default 1) for generational overrides:
+
+- `--gen=N` flag selects the highest `gen <= N` per (name, kind) pair
+- Gen=2 definitions override gen=1 when building with `--gen=2`
+- A gen=2 definition with the same name/kind as a gen=1 definition replaces it
+- Definitions without overrides at a given gen are inherited from lower generations
+
+```bash
+./glyph0 build glyph.glyph --full --gen=1   # Build with gen=1 defs only
+./glyph0 build glyph.glyph --full --gen=2   # Build with gen=2 overrides
+```
+
+This is used internally for compiler evolution. Application programs typically don't need generational versioning — all definitions are gen=1 by default.
+
+## Struct Codegen (Gen=2)
+
+Gen=2 adds named record types to C codegen. When a program defines record types via `kind='type'`:
+
+```
+Stats = {count: I, max_val: I, min_val: I, sum: I}
+```
+
+The compiler generates a C typedef:
+```c
+typedef struct { long long count; long long max_val; long long min_val; long long sum; } Glyph_Stats;
+```
+
+**How it works**:
+- Record fields are sorted alphabetically (BTreeMap ordering)
+- MIR record aggregates are matched against type definitions by sorted field set equality
+- Matched records use `((Glyph_Stats*)p)->field` access
+- Anonymous records (no matching type def) fall back to offset-based `((long long*)p)[N]` access
+- Type definitions are inserted as `kind='type'` in the `def` table
+
+**Using named types in programs**:
+```bash
+./glyph put app.glyph type -b 'Point = {x: I, y: I}'
+./glyph put app.glyph fn -b 'make_point x y = {x: x, y: y}'
+./glyph put app.glyph fn -b 'get_x p = p.x'
+```
+
+Named types improve generated C readability and enable struct-based field access, but are functionally equivalent to anonymous records at the language level.
+
 ## Supporting Files
 
 - [syntax-ref.md](syntax-ref.md) — Type aliases, operators, BNF, indentation rules
 - [runtime-ref.md](runtime-ref.md) — All runtime functions with signatures
-- [examples.md](examples.md) — 6 complete programs with CLI workflow
+- [examples.md](examples.md) — 8 complete programs with CLI workflow
 
 ## Build System (Compiler Development)
 

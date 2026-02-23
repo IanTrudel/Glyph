@@ -17,7 +17,9 @@ impl Database {
         functions::register_all(&conn)?;
         conn.execute_batch("PRAGMA foreign_keys = ON;")?;
         conn.execute_batch(schema::TRIGGER_SQL)?;
-        Ok(Self { conn })
+        let db = Self { conn };
+        db.migrate_gen()?;
+        Ok(db)
     }
 
     /// Create a new .glyph database with the full schema.
@@ -41,6 +43,28 @@ impl Database {
     /// Get the underlying connection (for advanced use).
     pub fn conn(&self) -> &Connection {
         &self.conn
+    }
+
+    /// Migrate an existing database to add the `gen` column if missing.
+    pub fn migrate_gen(&self) -> Result<()> {
+        let has_gen: bool = self.conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('def') WHERE name = 'gen'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|n| n > 0)
+            .unwrap_or(false);
+
+        if !has_gen {
+            self.conn.execute_batch(
+                "ALTER TABLE def ADD COLUMN gen INTEGER NOT NULL DEFAULT 1;
+                 DROP INDEX IF EXISTS idx_def_name_kind;
+                 CREATE UNIQUE INDEX IF NOT EXISTS idx_def_name_kind_gen ON def(name, kind, gen);
+                 CREATE INDEX IF NOT EXISTS idx_def_gen ON def(gen);"
+            )?;
+        }
+        Ok(())
     }
 
     /// Check if this database has the Glyph schema.
@@ -77,6 +101,7 @@ mod tests {
                 kind: DefKind::Fn,
                 sig: None,
                 body: "hello = say \"world\"".into(),
+                generation: 1,
             })
             .unwrap();
 
@@ -97,6 +122,7 @@ mod tests {
                 kind: DefKind::Fn,
                 sig: None,
                 body: "f x = x".into(),
+                generation: 1,
             })
             .unwrap();
 
@@ -116,6 +142,7 @@ mod tests {
                 kind: DefKind::Fn,
                 sig: None,
                 body: "f x = x + 1".into(),
+                generation: 1,
             })
             .unwrap();
         let g_id = db
@@ -124,6 +151,7 @@ mod tests {
                 kind: DefKind::Fn,
                 sig: None,
                 body: "g x = f(x)".into(),
+                generation: 1,
             })
             .unwrap();
 
@@ -158,6 +186,7 @@ mod tests {
             kind: DefKind::Type,
             sig: None,
             body: "MyType = {x:I y:I}".into(),
+            generation: 1,
         })
         .unwrap();
 
@@ -187,6 +216,7 @@ mod tests {
                 kind: DefKind::Fn,
                 sig: None,
                 body: "alloc n = malloc(n)".into(),
+                generation: 1,
             })
             .unwrap();
 

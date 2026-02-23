@@ -12,8 +12,8 @@ impl Database {
         let hash = compute_hash(def.kind.as_str(), def.sig.as_deref(), &def.body);
         let tokens = compute_tokens(&def.body);
         self.conn.execute(
-            "INSERT INTO def (name, kind, sig, body, hash, tokens) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![def.name, def.kind.as_str(), def.sig, def.body, hash, tokens],
+            "INSERT INTO def (name, kind, sig, body, hash, tokens, gen) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![def.name, def.kind.as_str(), def.sig, def.body, hash, tokens, def.generation],
         )?;
         Ok(self.conn.last_insert_rowid())
     }
@@ -73,6 +73,60 @@ impl Database {
     pub fn all_defs(&self) -> Result<Vec<DefRow>> {
         let mut stmt = self.conn.prepare("SELECT * FROM def")?;
         let rows = stmt.query_map([], row_to_def)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(DbError::Sqlite)
+    }
+
+    /// Get effective definitions for a target generation.
+    /// For each (name, kind) pair, selects the highest-gen version at or below target_gen.
+    pub fn effective_defs(&self, target_gen: i64) -> Result<Vec<DefRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT d.* FROM def d
+             INNER JOIN (
+                 SELECT name, kind, MAX(gen) as max_gen
+                 FROM def WHERE gen <= ?1
+                 GROUP BY name, kind
+             ) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen"
+        )?;
+        let rows = stmt.query_map(params![target_gen], row_to_def)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(DbError::Sqlite)
+    }
+
+    /// Get dirty definitions for a target generation (effective defs filtered to dirty + transitive dependents).
+    pub fn dirty_defs_gen(&self, target_gen: i64) -> Result<Vec<DefRow>> {
+        let mut stmt = self.conn.prepare(
+            "WITH effective AS (
+                 SELECT d.* FROM def d
+                 INNER JOIN (
+                     SELECT name, kind, MAX(gen) as max_gen
+                     FROM def WHERE gen <= ?1
+                     GROUP BY name, kind
+                 ) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen
+             ),
+             RECURSIVE dirty(id) AS (
+                 SELECT id FROM effective WHERE compiled = 0
+                 UNION
+                 SELECT d.from_id FROM dep d JOIN dirty ON d.to_id = dirty.id
+             )
+             SELECT DISTINCT e.* FROM effective e JOIN dirty ON e.id = dirty.id"
+        )?;
+        let rows = stmt.query_map(params![target_gen], row_to_def)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(DbError::Sqlite)
+    }
+
+    /// Get effective definitions of a given kind for a target generation.
+    pub fn defs_by_kind_gen(&self, kind: DefKind, target_gen: i64) -> Result<Vec<DefRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT d.* FROM def d
+             INNER JOIN (
+                 SELECT name, kind, MAX(gen) as max_gen
+                 FROM def WHERE gen <= ?1 AND kind = ?2
+                 GROUP BY name, kind
+             ) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen"
+        )?;
+        let rows = stmt.query_map(params![target_gen, kind.as_str()], row_to_def)?;
         rows.collect::<std::result::Result<Vec<_>, _>>()
             .map_err(DbError::Sqlite)
     }
@@ -256,14 +310,15 @@ impl Database {
 
 fn row_to_def(row: &rusqlite::Row) -> rusqlite::Result<DefRow> {
     Ok(DefRow {
-        id: row.get(0)?,
-        name: row.get(1)?,
-        kind: DefKind::from_str(&row.get::<_, String>(2)?).unwrap(),
-        sig: row.get(3)?,
-        body: row.get(4)?,
-        hash: row.get(5)?,
-        tokens: row.get(6)?,
-        compiled: row.get::<_, i64>(7)? != 0,
+        id: row.get("id")?,
+        name: row.get("name")?,
+        kind: DefKind::from_str(&row.get::<_, String>("kind")?).unwrap(),
+        sig: row.get("sig")?,
+        body: row.get("body")?,
+        hash: row.get("hash")?,
+        tokens: row.get("tokens")?,
+        compiled: row.get::<_, i64>("compiled")? != 0,
+        generation: row.get("gen")?,
     })
 }
 

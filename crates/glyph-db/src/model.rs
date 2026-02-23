@@ -9,6 +9,7 @@ pub struct DefRow {
     pub hash: Vec<u8>,
     pub tokens: i64,
     pub compiled: bool,
+    pub generation: i64,
 }
 
 /// The kind of a definition, matching the CHECK constraint.
@@ -165,4 +166,5 @@ pub struct NewDef {
     pub kind: DefKind,
     pub sig: Option<String>,
     pub body: String,
+    pub generation: i64,
 }
