@@ -2,7 +2,7 @@
 
 ## BUG-001: glint `count_nl` segfaults on stack overflow
 
-**Status:** Open
+**Status:** Fixed (TCO pass implemented 2026-02-23)
 **Severity:** Medium
 **Component:** examples/glint/glint.glyph
 **First observed:** 2026-02-22
@@ -76,3 +76,51 @@ Any `.glyph` database built with `./glyph build` that hadn't been opened by `gly
 Removed `AND gen=1` from the 4 self-hosted read queries. The self-hosted compiler is itself a gen=1 artifact and doesn't support `--gen`, so it compiles everything in the database. Generation filtering is only needed in the Rust compiler.
 
 The `do_put` command retains `gen=1` in its INSERT since it explicitly sets the column value (and the target database has `gen` in its schema because `init_schema` includes it).
+
+---
+
+## BUG-003: `glyph put` cannot update gen=2 definitions
+
+**Status:** Open (limitation)
+**Severity:** Medium
+**Component:** glyph.glyph (self-hosted compiler, `do_put`/`cmd_put`)
+**First observed:** 2026-02-23
+
+### Description
+
+`glyph put` always creates gen=1 rows. There is no `--gen=2` flag. Gen=2 rows are correctly preserved (the DELETE filters by `gen=1` and deletes by `id`), but there is no way to insert or update gen=2 definitions via the CLI.
+
+### Consequence
+
+When both gen=1 and gen=2 overrides of a function need updating (e.g., adding a new pass to `build_program`), `put` can only update the gen=1 version. The gen=2 version must be updated via raw SQL:
+
+```bash
+sqlite3 glyph.glyph "UPDATE def SET body='...' WHERE name='build_program' AND kind='fn' AND gen=2;"
+```
+
+### Fix
+
+Add a `--gen=N` flag to `glyph put` that sets the generation on INSERT and filters the DELETE accordingly.
+
+---
+
+## BUG-004: `glyph dump` defaults to 500-token budget, not full dump
+
+**Status:** Open
+**Severity:** Low (usability)
+**Component:** glyph.glyph (self-hosted compiler, `cmd_dump`)
+**First observed:** 2026-02-23
+
+### Description
+
+`glyph dump <db>` defaults to `--budget 500` tokens and roots from `main`, outputting only a small subset of definitions. A plain `glyph dump` without flags gives misleading partial output — users expect a full dump.
+
+### Expected behavior
+
+`glyph dump <db>` with no flags should either:
+1. Default to `--all` (full dump), or
+2. Print a warning that output is truncated and suggest `--all`
+
+### Workaround
+
+Use `glyph dump <db> --all` for full output, or `sqlite3 <db> .dump` for raw SQL.

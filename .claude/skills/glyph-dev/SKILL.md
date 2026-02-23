@@ -122,6 +122,7 @@ Note: test definitions need a dummy parameter (like all zero-arg side-effect fun
 | tokens=0 from self-hosted | Self-hosted doesn't compute tokens | Run `cargo run -- build app.glyph --full` to fix |
 | Gen=2 only in self-hosted | Rust compiler ignores `gen` column | Build gen=2 defs with `./glyph0 build --gen=2` |
 | Self-hosted can't self-build | Sees both gen=1 and gen=2 overrides | Use `./glyph0 build glyph.glyph --gen=N` to build compiler |
+| `put` only creates gen=1 rows | No `--gen` flag on `put` | Update gen=2 via `sqlite3 ... "UPDATE def SET body='...' WHERE name='X' AND kind='fn' AND gen=2;"` |
 
 ## Schema Quick Reference
 
@@ -158,6 +159,18 @@ The `def` table has a `gen` column (default 1) for generational overrides:
 ```
 
 This is used internally for compiler evolution. Application programs typically don't need generational versioning — all definitions are gen=1 by default.
+
+**Important**: `glyph put` always creates gen=1 rows. Gen=2 rows are preserved (not deleted), but cannot be created or updated via `put`. To modify gen=2 definitions:
+
+```bash
+# Update gen=2 body via raw SQL
+sqlite3 glyph.glyph "UPDATE def SET body='new_body_here' WHERE name='func_name' AND kind='fn' AND gen=2;"
+
+# Or insert a new gen=2 row
+sqlite3 glyph.glyph "INSERT INTO def (name, kind, body, hash, tokens, gen) VALUES ('func_name', 'fn', 'body', zeroblob(32), 0, 2);"
+```
+
+**Rollback**: Since `.glyph` files are SQLite databases tracked by git, use `git checkout -- file.glyph` to restore to last committed state. For finer-grained rollback, maintain SQL dumps (`ninja dump` or `sqlite3 db .dump > db.sql`) before making changes.
 
 ## Struct Codegen (Gen=2)
 
@@ -199,11 +212,11 @@ Named types improve generated C readability and enable struct-based field access
 The compiler itself uses a 3-stage bootstrap managed by `ninja`:
 
 ```bash
-ninja          # Full 3-stage bootstrap: glyph0 → glyph → glyph_new (must match)
-ninja test     # Run test_comprehensive.glyph through self-hosted compiler
-ninja dump     # Regenerate glyph.sql from glyph.glyph database
+ninja              # Build self-hosted compiler (default): glyph0 → glyph
+ninja bootstrap    # Same as default (alias)
+ninja test         # Run all tests (Rust + self-hosted)
+ninja dump         # Regenerate glyph.sql from glyph.glyph database
 ```
 
 Stage 0 (`glyph0`): Rust compiler via `cargo build --release`
-Stage 1 (`glyph`): Cranelift-compiled from glyph.glyph
-Stage 2 (`glyph_new`): Self-hosted C-codegen from glyph.glyph (must match stage 1 output)
+Stage 1 (`glyph`): gen=2 binary compiled by glyph0 via Cranelift
