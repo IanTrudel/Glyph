@@ -65,6 +65,33 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `args` | `-> [S]` | Command-line arguments |
 | `system` | `S -> I` | Execute shell command, return exit code |
 
+## Result
+
+Result values are `{tag: i64, payload: i64}` enums. Tag 0 = Ok, 1 = Err.
+Construct with `Ok(val)` / `Err(msg)`. Destructure with `match`, `?` (propagate), or `!` (unwrap).
+
+| Function | Sig | Description |
+|----------|-----|-------------|
+| `ok` | `I -> !I` | Wrap value in Ok (heap-allocated) |
+| `err` | `S -> !I` | Wrap error message in Err |
+| `try_read_file` | `S -> !S` | Read file, Err on failure |
+| `try_write_file` | `S -> S -> !I` | Write file, Err on failure |
+
+### Operators
+
+| Op | Syntax | Behavior |
+|----|--------|----------|
+| `?` | `expr?` | If Err, return it (propagate). If Ok, extract payload. |
+| `!` | `expr!` | If Err, panic. If Ok, extract payload. |
+
+### Pattern Matching
+
+```
+match result
+  Ok(val) -> use(val)
+  Err(msg) -> eprintln(msg)
+```
+
 ## SQLite
 
 Available when program uses `glyph_db_*`. Links `-lsqlite3`.

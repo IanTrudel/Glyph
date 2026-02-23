@@ -117,6 +117,7 @@ Note: test definitions need a dummy parameter (like all zero-arg side-effect fun
 | No GC | All heap allocs persist | Short-lived programs only; no long-running servers |
 | `deps`/`rdeps` empty | Dep table populated at build time | Run `./glyph build` first |
 | Type checker warns on `!` | Unwrap not fully typed | Ignore warning; runtime is correct |
+| `r[0]` on Result segfaults | Array indexing treats Result as array header | Use `match r` with `Ok(v)`/`Err(e)` patterns, or `?`/`!` operators |
 | Field offset ambiguity | Shared field names across record types | Access a type-unique field on the same variable |
 | tokens=0 from self-hosted | Self-hosted doesn't compute tokens | Run `cargo run -- build app.glyph --full` to fix |
 | Gen=2 only in self-hosted | Rust compiler ignores `gen` column | Build gen=2 defs with `./glyph0 build --gen=2` |
@@ -191,7 +192,7 @@ Named types improve generated C readability and enable struct-based field access
 
 - [syntax-ref.md](syntax-ref.md) — Type aliases, operators, BNF, indentation rules
 - [runtime-ref.md](runtime-ref.md) — All runtime functions with signatures
-- [examples.md](examples.md) — 8 complete programs with CLI workflow
+- [examples.md](examples.md) — 9 complete programs with CLI workflow
 
 ## Build System (Compiler Development)
 

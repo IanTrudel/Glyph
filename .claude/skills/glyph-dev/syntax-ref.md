@@ -17,7 +17,7 @@
 | Syntax | Meaning |
 |--------|---------|
 | `?T` | Optional |
-| `!T` | Result |
+| `!T` | Result (`Ok(T)` / `Err(S)`) |
 | `[T]` | Array (24B header: `{ptr, len, cap}`) |
 | `&T` | Reference |
 | `*T` | Pointer |
@@ -52,7 +52,7 @@ cmp      = add (("==" | "!=" | "<" | ">" | "<=" | ">=") add)?
 add      = mul (("+" | "-") mul)*
 mul      = unary (("*" | "/" | "%") unary)*
 unary    = ("-" | "!" | "&" | "*") unary | postfix
-postfix  = atom ("." IDENT | "(" args ")" | "[" expr "]" | "?" | "!")*
+postfix  = atom ("." IDENT | "(" args ")" | "[" expr "]" | "?" | "!")*  -- ? = error propagate, ! = unwrap
 atom     = INT | FLOAT | STRING | RAW_STRING | "true" | "false"
          | IDENT | UPPER_IDENT
          | "\" params "->" expr              -- lambda
@@ -114,7 +114,7 @@ match expr
   _ -> default
 ```
 
-Patterns: `_`, `x` (bind), `42` (int), `"s"` (string), `true`/`false`, `None` (nullary), `Some(x)` (constructor).
+Patterns: `_`, `x` (bind), `42` (int), `"s"` (string), `true`/`false`, `None` (nullary), `Some(x)`/`Ok(x)`/`Err(e)` (constructor).
 
 ## Indentation Rules
 

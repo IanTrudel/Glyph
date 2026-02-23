@@ -1,6 +1,6 @@
 # Glyph Examples
 
-Complete programs with CLI workflow and expected output. Examples 1-7 use anonymous records. Example 8 shows named record types.
+Complete programs with CLI workflow and expected output. Examples 1-7 use anonymous records. Example 8 shows named record types. Example 9 shows Result types with error propagation.
 
 ## 1. Hello World
 
@@ -203,3 +203,41 @@ area: 1200
 The compiler matches record aggregates `{x: ..., y: ...}` against type definitions by sorted field set. `Point` matches `{x, y}`, `Rect` matches `{h, w, x, y}`. In generated C:
 - `Glyph_Point` struct with `->x`, `->y` access
 - `Glyph_Rect` struct with `->h`, `->w`, `->x`, `->y` access
+
+## 9. Result Types and Error Propagation
+
+```bash
+./glyph init calc.glyph
+
+./glyph put calc.glyph fn -b 'safe_div a b =
+  match b == 0
+    true -> Err("division by zero")
+    _ -> Ok(a / b)'
+
+# ? propagates Err, extracts Ok payload
+./glyph put calc.glyph fn -b 'compute x =
+  r = safe_div(100, x)?
+  Ok(r + 1)'
+
+# ! unwraps Ok or panics on Err
+./glyph put calc.glyph fn -b 'force_div a b = safe_div(a, b)!'
+
+./glyph put calc.glyph fn -b 'main =
+  match compute(5)
+    Ok(v) -> println("ok: " + int_to_str(v))
+    Err(e) -> eprintln("err: " + e)
+  match compute(0)
+    Ok(v) -> println("ok: " + int_to_str(v))
+    Err(e) -> eprintln("err: " + e)
+  println("forced: " + int_to_str(force_div(10, 2)))'
+
+./glyph run calc.glyph
+```
+Output:
+```
+ok: 21
+err: division by zero
+forced: 5
+```
+
+`Ok(val)` and `Err(msg)` are built-in enum constructors. `?` checks the tag — if Err, returns the whole Result to the caller; if Ok, extracts the payload. `!` extracts Ok or panics with "unwrap failed".
