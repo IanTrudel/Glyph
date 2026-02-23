@@ -240,56 +240,51 @@ ninja test               # Runs all tests
 
 3. **Update the parser.** Add a case in `parse_atom` (or appropriate precedence function) for the new token kind. Beware: `parse_atom` uses deeply nested `match k == tk_X` chains — new cases must be inserted at the right nesting level.
 
-4. **Insert definitions via Python script** (most reliable for multi-line code):
-   ```python
-   import sqlite3
-   conn = sqlite3.connect("glyph.glyph")
-   cur = conn.cursor()
-   defs = [("tk_new_thing", "fn", "tk_new_thing = N")]
-   for name, kind, body in defs:
-       cur.execute("DELETE FROM def WHERE name=? AND kind=?", (name, kind))
-       cur.execute("INSERT INTO def (name,kind,body,hash,tokens,compiled) VALUES (?,?,?,zeroblob(32),0,0)", (name, kind, body))
-   conn.commit()
+4. **Insert definitions:**
+   ```bash
+   # Single-line constant
+   ./glyph put glyph.glyph fn -b 'tk_new_thing = N'
+
+   # Multi-line function — write to temp file, insert from file
+   # (avoids shell escaping issues with {, !, ", \)
+   ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
+
+   # Gen=2 override — insert gen=1 then update gen
+   ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
+   sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='my_fn' AND kind='fn' AND gen=1"
    ```
 
 5. **Rebuild + test:** `./glyph0 build glyph.glyph --full --gen=2`
 
 **Pitfall:** The `parse_atom` function uses a chain of `match k == tk_X` with `true ->` / `_ ->` branches. Each subsequent case is indented one more level. If you insert a new case, all subsequent cases must be re-indented. Getting this wrong causes silent misparsing or segfaults.
 
-## Recipe 11: Batch Insert Definitions via Python
+## Recipe 11: Inserting Multi-Line Definitions
 
-For inserting multiple definitions (especially multi-line ones), Python scripts using `sqlite3` are the most reliable approach. Avoids shell escaping issues with `!`, `{`, quotes, etc.
+For multi-line functions, use the Write tool to create a temp file, then `./glyph put -f`:
 
-```python
-#!/usr/bin/env python3
-import sqlite3
+```bash
+# 1. Write the definition body to a temp file (use Write tool, not echo/cat)
+#    File contents — no quoting needed:
+#    fn_name arg1 arg2 =
+#      result = arg1 + arg2
+#      match result > 0
+#        true -> result
+#        _ -> 0
 
-DB = "glyph.glyph"
-conn = sqlite3.connect(DB)
-cur = conn.cursor()
+# 2. Insert from file
+./glyph put glyph.glyph fn -f /tmp/fn_name.gl
 
-defs = [
-    ("fn_name", "fn", 1, """fn_name arg1 arg2 =
-  result = arg1 + arg2
-  match result > 0
-    true -> result
-    _ -> 0"""),
-]
-
-for name, kind, gen, body in defs:
-    cur.execute("DELETE FROM def WHERE name=? AND kind=? AND gen=?", (name, kind, gen))
-    cur.execute("""INSERT INTO def (name, kind, body, hash, tokens, compiled, gen)
-                   VALUES (?, ?, ?, zeroblob(32), 0, 0, ?)""", (name, kind, body, gen))
-
-conn.commit()
-conn.close()
+# 3. For gen=2 overrides, update gen after insert
+sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='fn_name' AND kind='fn' AND gen=1"
 ```
 
-**Why Python over `./glyph put`:**
-- No shell escaping issues with `{`, `!`, `"`, `\`, etc.
-- Parameterized queries handle all special characters
-- Can insert gen=2 definitions directly (CLI always inserts gen=1)
-- Can batch multiple definitions in one script
+**Shell escaping notes:**
+- Use the Write tool (not echo/heredoc) to create temp files — avoids all escaping issues
+- `./glyph put -f` reads the file directly with no shell interpretation
+- For inline `-b`, single quotes protect most characters; use `'\''` for literal single quotes
+- `\{` in Glyph source is a literal brace (not interpolation) — safe in files, tricky in shell strings
+
+**Batch inserts:** Write each definition to its own temp file and run `./glyph put -f` for each. Or use `sqlite3` with `.read` on a SQL file for bulk operations.
 
 ## Recipe 12: Debugging the Self-Hosted Compiler
 
