@@ -76,6 +76,7 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
     let mut inferred_fns = Vec::new();
     for (def_row, parsed) in &parsed_fns {
         if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
+            let errors_before = infer.errors.len();
             let pre_ty = infer.env.lookup(&def_row.name).cloned();
             let fn_ty = infer.infer_fn_def(fndef);
             // Unify with pre-registered type to connect cross-function constraints
@@ -83,6 +84,10 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
                 if let Err(e) = infer.subst.unify(&fn_ty, &pre) {
                     infer.errors.push(e);
                 }
+            }
+            // Report errors from this function immediately with correct attribution
+            for err in &infer.errors[errors_before..] {
+                report_type_error(&def_row.name, &def_row.body, err);
             }
             inferred_fns.push((def_row, fndef, fn_ty));
         }
@@ -94,32 +99,6 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
         let resolved = infer.subst.resolve(&fn_ty);
         eprintln!("  {} : {resolved}", def_row.name);
         typed_fns.push((def_row, fndef, resolved));
-    }
-
-    if !infer.errors.is_empty() {
-        for err in &infer.errors {
-            // Try to find the relevant def for this error
-            let reported = if let Some(span) = err.span() {
-                // Find the def whose body contains this span
-                let def_entry = parsed_fns.iter()
-                    .find(|(d, _)| {
-                        let body_len = d.body.len() as u32;
-                        span.start < body_len
-                    });
-                if let Some((d, _)) = def_entry {
-                    report_type_error(&d.name, &d.body, err);
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-            if !reported {
-                eprintln!("  type error: {err}");
-            }
-        }
-        // Continue anyway for now
     }
 
     // Build known function types map for MIR lowering
@@ -279,6 +258,7 @@ pub fn cmd_check(path: &Path, target_gen: i64) -> miette::Result<()> {
     // Pass 2: Infer function bodies
     for (def_row, parsed) in &parsed_fns {
         if let glyph_parse::ast::DefKind::Fn(fndef) = &parsed.kind {
+            let errors_before = infer.errors.len();
             let pre_ty = infer.env.lookup(&def_row.name).cloned();
             let fn_ty = infer.infer_fn_def(fndef);
             if let Some(pre) = pre_ty {
@@ -286,34 +266,16 @@ pub fn cmd_check(path: &Path, target_gen: i64) -> miette::Result<()> {
                     infer.errors.push(e);
                 }
             }
+            // Report errors from this function immediately with correct attribution
+            for err in &infer.errors[errors_before..] {
+                report_type_error(&def_row.name, &def_row.body, err);
+            }
             let resolved = infer.subst.resolve(&fn_ty);
             eprintln!("  {} : {resolved}", def_row.name);
         }
     }
 
-    if !infer.errors.is_empty() {
-        for err in &infer.errors {
-            let reported = if let Some(span) = err.span() {
-                let def_entry = parsed_fns.iter()
-                    .find(|(d, _)| {
-                        let body_len = d.body.len() as u32;
-                        span.start < body_len
-                    });
-                if let Some((d, _)) = def_entry {
-                    report_type_error(&d.name, &d.body, err);
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-            if !reported {
-                eprintln!("  type error: {err}");
-            }
-        }
-        error_count += infer.errors.len();
-    }
+    error_count += infer.errors.len();
 
     if error_count > 0 {
         Err(miette::miette!("{error_count} error(s) found"))
