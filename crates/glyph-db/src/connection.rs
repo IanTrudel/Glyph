@@ -19,6 +19,7 @@ impl Database {
         conn.execute_batch(schema::TRIGGER_SQL)?;
         let db = Self { conn };
         db.migrate_gen()?;
+        db.migrate_history()?;
         Ok(db)
     }
 
@@ -62,6 +63,47 @@ impl Database {
                  DROP INDEX IF EXISTS idx_def_name_kind;
                  CREATE UNIQUE INDEX IF NOT EXISTS idx_def_name_kind_gen ON def(name, kind, gen);
                  CREATE INDEX IF NOT EXISTS idx_def_gen ON def(gen);"
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Migrate an existing database to add the `def_history` table and triggers if missing.
+    pub fn migrate_history(&self) -> Result<()> {
+        let has_history: bool = self.conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='def_history'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|n| n > 0)
+            .unwrap_or(false);
+
+        if !has_history {
+            self.conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS def_history (
+                   id         INTEGER PRIMARY KEY,
+                   def_id     INTEGER NOT NULL,
+                   name       TEXT NOT NULL,
+                   kind       TEXT NOT NULL,
+                   sig        TEXT,
+                   body       TEXT NOT NULL,
+                   hash       BLOB NOT NULL,
+                   tokens     INTEGER NOT NULL,
+                   gen        INTEGER NOT NULL DEFAULT 1,
+                   changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+                 );
+                 CREATE INDEX IF NOT EXISTS idx_history_name ON def_history(name, kind);
+                 CREATE TRIGGER IF NOT EXISTS trg_def_history_delete BEFORE DELETE ON def
+                 BEGIN
+                   INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+                   VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+                 END;
+                 CREATE TRIGGER IF NOT EXISTS trg_def_history_update BEFORE UPDATE OF body ON def
+                 BEGIN
+                   INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+                   VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+                 END;"
             )?;
         }
         Ok(())

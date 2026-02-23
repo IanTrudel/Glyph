@@ -123,6 +123,35 @@ CREATE VIEW IF NOT EXISTS v_callgraph AS
   JOIN def f ON d.from_id = f.id
   JOIN def t ON d.to_id   = t.id;
 
+---------------------------------------------------------------------
+-- DEFINITION HISTORY: automatic change tracking
+---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS def_history (
+  id         INTEGER PRIMARY KEY,
+  def_id     INTEGER NOT NULL,
+  name       TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  sig        TEXT,
+  body       TEXT NOT NULL,
+  hash       BLOB NOT NULL,
+  tokens     INTEGER NOT NULL,
+  gen        INTEGER NOT NULL DEFAULT 1,
+  changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_history_name ON def_history(name, kind);
+
+CREATE TRIGGER IF NOT EXISTS trg_def_history_delete BEFORE DELETE ON def
+BEGIN
+  INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+  VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_def_history_update BEFORE UPDATE OF body ON def
+BEGIN
+  INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+  VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+END;
+
 "#;
 
 /// Triggers that use custom SQL functions (glyph_hash, glyph_tokens).

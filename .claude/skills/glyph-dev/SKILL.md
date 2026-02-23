@@ -48,6 +48,8 @@ All commands: `./glyph <command> <db.glyph> [args...]`
 | `dump` | `dump <db> [--budget N] [--all]` | Token-budgeted context export |
 | `sql` | `sql <db> <query>` | Execute raw SQL. SELECT returns formatted rows |
 | `extern` | `extern <db> <name> <sym> <sig> [--lib L]` | Add FFI declaration to `extern_` table |
+| `undo` | `undo <db> <name> [--kind K]` | Undo last change to a definition (reversible) |
+| `history` | `history <db> <name> [--kind K]` | Show change history for a definition |
 
 ## Two Compilers
 
@@ -135,6 +137,7 @@ tag(def_id, key, val)
 module(id, name, doc)
 module_member(module_id, def_id, exported)
 compiled(def_id, ir, target, hash)
+def_history(id, def_id, name, kind, sig, body, hash, tokens, gen, changed_at)
 
 -- Useful views
 v_dirty     -- dirty defs + transitive dependents
@@ -170,7 +173,7 @@ sqlite3 glyph.glyph "UPDATE def SET body='new_body_here' WHERE name='func_name' 
 sqlite3 glyph.glyph "INSERT INTO def (name, kind, body, hash, tokens, gen) VALUES ('func_name', 'fn', 'body', zeroblob(32), 0, 2);"
 ```
 
-**Rollback**: Since `.glyph` files are SQLite databases tracked by git, use `git checkout -- file.glyph` to restore to last committed state. For finer-grained rollback, maintain SQL dumps (`ninja dump` or `sqlite3 db .dump > db.sql`) before making changes.
+**Rollback**: Every `put`, `rm`, and `undo` automatically saves the previous version to `def_history`. Use `glyph undo <db> <name>` to restore the last version. Running undo again swaps back (it's reversible). Use `glyph history <db> <name>` to see all saved versions. For full-database rollback, use `git checkout -- file.glyph`.
 
 ## Struct Codegen (Gen=2)
 
