@@ -33,7 +33,7 @@ All commands: `./glyph <command> <db.glyph> [args...]`
 | Command | Usage | Description |
 |---------|-------|-------------|
 | `init` | `init <db>` | Create new `.glyph` database with schema |
-| `put` | `put <db> <kind> -b '<body>'` | Insert/update definition. Name extracted from body's first token. Kind: `fn`, `type`, `test`. Also: `-f <file>` to read body from file |
+| `put` | `put <db> <kind> -b '<body>' [--gen N]` | Insert/update definition. Name extracted from body's first token. Kind: `fn`, `type`, `test`. Also: `-f <file>` to read body from file. `--gen N` targets a specific generation (default: auto-detect highest existing gen for that name/kind, or gen=1 for new defs) |
 | `get` | `get <db> <name> [--kind K]` | Print a definition's source body |
 | `rm` | `rm <db> <name> [--force]` | Remove definition. Checks reverse deps unless `--force` |
 | `build` | `build <db> [output]` | Compile all `fn` defs to native executable (default: `a.out`) |
@@ -58,6 +58,8 @@ All commands: `./glyph <command> <db.glyph> [args...]`
 | Use for | App development | Compiler development |
 | Backend | C codegen → cc | Cranelift → native |
 | Build | `./glyph build app.glyph out` | `cargo run -- build app.glyph` |
+| Build (debug) | `./glyph build app.glyph out --debug` | N/A |
+| Build (release) | `./glyph build app.glyph out --release` | N/A |
 | Run | `./glyph run app.glyph` | `cargo run -- run app.glyph` |
 | Tests | `./glyph test app.glyph` | `cargo run -- test app.glyph` |
 | Triggers | Not persisted (safe) | TEMP triggers (session-only) |
@@ -124,7 +126,7 @@ Note: test definitions need a dummy parameter (like all zero-arg side-effect fun
 | tokens=0 from self-hosted | Self-hosted doesn't compute tokens | Run `cargo run -- build app.glyph --full` to fix |
 | Gen=2 only in self-hosted | Rust compiler ignores `gen` column | Build gen=2 defs with `./glyph0 build --gen=2` |
 | Self-hosted can't self-build | Sees both gen=1 and gen=2 overrides | Use `./glyph0 build glyph.glyph --gen=N` to build compiler |
-| `put` only creates gen=1 rows | No `--gen` flag on `put` | Update gen=2 via `sqlite3 ... "UPDATE def SET body='...' WHERE name='X' AND kind='fn' AND gen=2;"` |
+| Gen mismatch on `put` | Default auto-detects gen; may not target intended gen | Use `--gen N` to target a specific generation explicitly |
 
 ## Schema Quick Reference
 
@@ -163,14 +165,17 @@ The `def` table has a `gen` column (default 1) for generational overrides:
 
 This is used internally for compiler evolution. Application programs typically don't need generational versioning — all definitions are gen=1 by default.
 
-**Important**: `glyph put` always creates gen=1 rows. Gen=2 rows are preserved (not deleted), but cannot be created or updated via `put`. To modify gen=2 definitions:
+**Generation targeting with `put`**: By default, `put` auto-detects the highest existing generation for a given name/kind pair (or gen=1 for new definitions). Use `--gen N` to target a specific generation explicitly:
 
 ```bash
-# Update gen=2 body via raw SQL
-sqlite3 glyph.glyph "UPDATE def SET body='new_body_here' WHERE name='func_name' AND kind='fn' AND gen=2;"
+# Create/update a gen=1 definition (default for new defs)
+./glyph put glyph.glyph fn -b 'helper x = x + 1'
 
-# Or insert a new gen=2 row
-sqlite3 glyph.glyph "INSERT INTO def (name, kind, body, hash, tokens, gen) VALUES ('func_name', 'fn', 'body', zeroblob(32), 0, 2);"
+# Create/update a gen=2 override
+./glyph put glyph.glyph fn -b 'helper x = x * 2' --gen 2
+
+# Read body from file, targeting gen=2
+./glyph put glyph.glyph fn -f /tmp/helper.gl --gen 2
 ```
 
 **Rollback**: Every `put`, `rm`, and `undo` automatically saves the previous version to `def_history`. Use `glyph undo <db> <name>` to restore the last version. Running undo again swaps back (it's reversible). Use `glyph history <db> <name>` to see all saved versions. For full-database rollback, use `git checkout -- file.glyph`.

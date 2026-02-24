@@ -81,7 +81,7 @@ The `do_put` command retains `gen=1` in its INSERT since it explicitly sets the 
 
 ## BUG-003: `glyph put` cannot update gen=2 definitions
 
-**Status:** Open (limitation)
+**Status:** Fixed (2026-02-23)
 **Severity:** Medium
 **Component:** glyph.glyph (self-hosted compiler, `do_put`/`cmd_put`)
 **First observed:** 2026-02-23
@@ -100,7 +100,9 @@ sqlite3 glyph.glyph "UPDATE def SET body='...' WHERE name='build_program' AND ki
 
 ### Fix
 
-Add a `--gen=N` flag to `glyph put` that sets the generation on INSERT and filters the DELETE accordingly.
+Added `--gen N` flag to `glyph put`. Without `--gen`, `put` auto-detects the highest existing generation for the given name/kind (falls back to gen=1 for new definitions). Three definitions updated: `do_put` (accepts gen parameter, auto-detect logic), `cmd_put` (parses `--gen` flag), `print_usage` (updated help text).
+
+Also fixed a Cranelift codegen bug discovered during implementation: runtime functions registered with `glyph_` prefix (e.g., `glyph_int_to_str`) were not resolvable when called by user code without the prefix (e.g., `int_to_str(x)`). The codegen now falls back to trying the `glyph_`-prefixed name when a function reference is not found.
 
 ---
 

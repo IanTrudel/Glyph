@@ -151,6 +151,8 @@ CodegenContext {
 ### C Runtime (runtime.rs)
 Embedded as `RUNTIME_C` string constant. Categories: Memory, Print, String, StringBuilder, Array, I/O, Control, Signal. Separate `RUNTIME_SQLITE_C` conditionally linked.
 
+**Runtime name resolution:** Runtime functions are registered with the `glyph_` prefix (e.g., `glyph_int_to_str`). They are also resolvable without the prefix (e.g., `int_to_str`) so that user code calling runtime functions by their short names works in Cranelift-compiled binaries.
+
 ### Linker (linker.rs)
 `link_with_extras(object_bytes, exe_path, extern_libs, runtime_c, extra_sources)` → writes temp files → `cc program.o runtime.c -o OUTPUT -lLIBS`
 

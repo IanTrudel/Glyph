@@ -378,7 +378,9 @@ impl CodegenContext {
 
                 match callee {
                     Operand::FuncRef(name) | Operand::ExternRef(name) => {
-                        if let Some(&func_id) = self.func_ids.get(name.as_str()) {
+                        let resolved_id = self.func_ids.get(name.as_str()).copied()
+                            .or_else(|| self.func_ids.get(&format!("glyph_{name}")).copied());
+                        if let Some(func_id) = resolved_id {
                             let func_ref = self.module.declare_func_in_func(func_id, builder.func);
                             let call = builder.ins().call(func_ref, &arg_vals);
                             let results = builder.inst_results(call);

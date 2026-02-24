@@ -107,6 +107,7 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 | Zero-arg side-effect fn | Evaluated eagerly (treated as constant) | Add dummy param: `usage u = ...` |
 | Self-hosted can't self-build gen=2 | Sees both gen=1 and gen=2 overrides with same names | Use `./glyph0 build --gen=2` |
 | `tokens=0` from self-hosted | Self-hosted doesn't compute BLAKE3 hash or BPE tokens | Run `cargo run -- build --full` for correct values |
+| Runtime fn names in Cranelift | Runtime functions (e.g., `int_to_str`) are resolved with or without `glyph_` prefix | User code can call `int_to_str(x)` directly; Cranelift resolves to `glyph_int_to_str` |
 | MIR has no type info | Build pipeline skips type system (available via `glyph check`) | Runtime errors only; `local_types` tracks strings heuristically |
 | Field offset ambiguity | Multiple record types share field names | Use unique field prefixes; `find_best_type` picks largest match |
 | C keyword as fn name | `double`, `int`, `void` etc. collide in generated C | Avoid C reserved words in Glyph function names |
@@ -114,9 +115,30 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 | Gen=2 parameter reads | Field-access tagging covers most cases; edge cases fall back | Use unique field prefixes for reliable struct detection |
 | Extern headers | Wrappers only see stdlib includes | Heavy FFI: use separate C wrapper file instead of extern_ table |
 
+## Build Modes
+
+| Mode | Flag | cc flags | Debug instrumentation |
+|------|------|----------|-----------------------|
+| Default | (none) | `-DGLYPH_DEBUG -O1` | ON (stack trace, null checks, segfault handler) |
+| Debug | `--debug` | `-DGLYPH_DEBUG -O0 -g` | ON + debug symbols for gdb |
+| Release | `--release` | `-O2` | Compiled out by preprocessor |
+
+All debug instrumentation is wrapped in `#ifdef GLYPH_DEBUG` in the generated C. The `--release` flag omits `-DGLYPH_DEBUG` so the preprocessor strips all debug code. Array bounds checks remain in all modes.
+
+**Stack traces:** On segfault, shows current function + full call chain:
+```
+segfault in count_nl
+--- stack trace ---
+  count_lines
+  sum_lines
+  report_db
+  run_report
+  main
+```
+
 ## Debugging
 
-**Segfaults:** The C runtime prints `segfault in function: <name>` on SIGSEGV. For deeper investigation: `cc -g -O0 -o debug /tmp/glyph_out.c && gdb ./debug`
+**Segfaults:** Default builds show full stack traces. For deeper investigation with gdb: `./glyph build app.glyph --debug && gdb ./app`
 
 **Generated C:** Always inspect `/tmp/glyph_out.c` after a build. Search for the function name to see what codegen produced.
 

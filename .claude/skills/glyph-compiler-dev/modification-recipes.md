@@ -116,15 +116,9 @@ Gen=2 overrides replace gen=1 functions when building with `--gen=2`.
 
 3. **Insert with gen=2:**
    ```bash
-   sqlite3 glyph.glyph "INSERT INTO def (name, kind, body, hash, tokens, gen) \
-     VALUES ('fn_name', 'fn', readfile('/tmp/fn_name.gl'), zeroblob(32), 0, 2)"
+   ./glyph put glyph.glyph fn -f /tmp/fn_name.gl --gen 2
    ```
-   Or via the CLI (which always inserts gen=1):
-   ```bash
-   ./glyph put glyph.glyph fn -f /tmp/fn_name.gl
-   # Then manually update gen:
-   sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='fn_name' AND kind='fn' AND gen=1"
-   ```
+   The `--gen N` flag sets the generation directly on insert. Without `--gen`, it auto-detects the highest existing gen for that name/kind (or defaults to 1 for new definitions).
 
 4. **Rebuild with gen=2:**
    ```bash
@@ -249,9 +243,8 @@ ninja test               # Runs all tests
    # (avoids shell escaping issues with {, !, ", \)
    ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
 
-   # Gen=2 override — insert gen=1 then update gen
-   ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
-   sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='my_fn' AND kind='fn' AND gen=1"
+   # Gen=2 override — use --gen flag
+   ./glyph put glyph.glyph fn -f /tmp/my_fn.gl --gen 2
    ```
 
 5. **Rebuild + test:** `./glyph0 build glyph.glyph --full --gen=2`
@@ -274,8 +267,8 @@ For multi-line functions, use the Write tool to create a temp file, then `./glyp
 # 2. Insert from file
 ./glyph put glyph.glyph fn -f /tmp/fn_name.gl
 
-# 3. For gen=2 overrides, update gen after insert
-sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='fn_name' AND kind='fn' AND gen=1"
+# 3. For gen=2 overrides, use --gen flag
+./glyph put glyph.glyph fn -f /tmp/fn_name.gl --gen 2
 ```
 
 **Shell escaping notes:**
@@ -283,6 +276,8 @@ sqlite3 glyph.glyph "UPDATE def SET gen=2 WHERE name='fn_name' AND kind='fn' AND
 - `./glyph put -f` reads the file directly with no shell interpretation
 - For inline `-b`, single quotes protect most characters; use `'\''` for literal single quotes
 - `\{` in Glyph source is a literal brace (not interpolation) — safe in files, tricky in shell strings
+
+**Gen flag:** `./glyph put --gen 2` inserts directly at gen=2 (no manual SQL UPDATE needed). Without `--gen`, auto-detects the highest existing gen for that name/kind, or defaults to gen=1 for new definitions.
 
 **Batch inserts:** Write each definition to its own temp file and run `./glyph put -f` for each. Or use `sqlite3` with `.read` on a SQL file for bulk operations.
 
@@ -377,6 +372,9 @@ grep -A 50 "glyph_<compiler_fn>" /tmp/glyph_out.c
 
 # Write from file (for multi-line functions)
 ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
+
+# Write with explicit generation (gen=2 override)
+./glyph put glyph.glyph fn -f /tmp/my_fn.gl --gen 2
 
 # List definitions matching a pattern
 ./glyph find glyph.glyph cg_stmt --body             # Search names and bodies
