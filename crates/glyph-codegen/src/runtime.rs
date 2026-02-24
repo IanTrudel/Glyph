@@ -37,6 +37,8 @@ pub const RT_SB_NEW: &str = "glyph_sb_new";
 pub const RT_SB_APPEND: &str = "glyph_sb_append";
 pub const RT_SB_BUILD: &str = "glyph_sb_build";
 pub const RT_RAW_SET: &str = "glyph_raw_set";
+pub const RT_READ_LINE: &str = "glyph_read_line";
+pub const RT_FLUSH: &str = "glyph_flush";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -478,6 +480,33 @@ void* glyph_sb_build(void* sb_ptr) {
     free((char*)sb[0]);
     free(sb);
     return result;
+}
+
+/* Read one line from stdin, return as Glyph string. Returns empty string on EOF. */
+void* glyph_read_line(long long dummy) {
+    char buf[65536];
+    if (!fgets(buf, sizeof(buf), stdin)) {
+        void* s = malloc(16);
+        char* e = malloc(1); e[0] = 0;
+        *(const char**)s = e;
+        *(long long*)((char*)s + 8) = 0;
+        return s;
+    }
+    long long len = strlen(buf);
+    if (len > 0 && buf[len-1] == '\n') len--;
+    char* data = malloc(len + 1);
+    memcpy(data, buf, len);
+    data[len] = 0;
+    void* s = malloc(16);
+    *(const char**)s = data;
+    *(long long*)((char*)s + 8) = len;
+    return s;
+}
+
+/* Flush stdout. */
+long long glyph_flush(long long dummy) {
+    fflush(stdout);
+    return 0;
 }
 
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */

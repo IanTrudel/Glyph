@@ -635,6 +635,18 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     sb_build_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_SB_BUILD, runtime::RT_SB_BUILD, &sb_build_sig);
 
+    // glyph_read_line(dummy: i64) -> *void (string)
+    let mut read_line_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    read_line_sig.params.push(AbiParam::new(types::I64));
+    read_line_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("read_line", runtime::RT_READ_LINE, &read_line_sig);
+
+    // glyph_flush(dummy: i64) -> i64
+    let mut flush_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    flush_sig.params.push(AbiParam::new(types::I64));
+    flush_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("flush", runtime::RT_FLUSH, &flush_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }
