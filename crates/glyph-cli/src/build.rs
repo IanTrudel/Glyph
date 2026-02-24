@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use glyph_codegen::cranelift::CodegenContext;
@@ -108,12 +108,20 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
         .collect();
     add_runtime_known_functions(&mut known_functions);
 
+    // Collect zero-arg function names for auto-call on bare reference
+    let zero_arg_fns: HashSet<String> = typed_fns
+        .iter()
+        .filter(|(_, fndef, _)| fndef.params.is_empty())
+        .map(|(def_row, _, _)| def_row.name.clone())
+        .collect();
+
     // Phase 3: Lower to MIR
     let mut mir_fns = Vec::new();
     let mut lifted_fns = Vec::new();
     for (def_row, fndef, fn_ty) in &typed_fns {
         let mut lower = MirLower::new();
         lower.set_known_functions(known_functions.clone());
+        lower.set_zero_arg_fns(zero_arg_fns.clone());
         // Register enum variants for constructor pattern matching
         for (type_name, variants) in &enum_variants {
             lower.register_enum(type_name, variants);

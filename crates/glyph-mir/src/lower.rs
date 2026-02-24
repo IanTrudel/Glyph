@@ -26,6 +26,8 @@ pub struct MirLower {
     tail_call_params: Vec<LocalId>,
     /// Entry block for tail-call optimization.
     tail_call_entry: BlockId,
+    /// Zero-arg function names: bare references auto-call these.
+    zero_arg_fns: HashSet<String>,
 }
 
 impl MirLower {
@@ -43,12 +45,18 @@ impl MirLower {
             current_fn_name: String::new(),
             tail_call_params: Vec::new(),
             tail_call_entry: 0,
+            zero_arg_fns: HashSet::new(),
         }
     }
 
     /// Set known function types for cross-definition call resolution.
     pub fn set_known_functions(&mut self, fns: HashMap<String, MirType>) {
         self.known_functions = fns;
+    }
+
+    /// Set the names of zero-arg functions (bare references auto-call these).
+    pub fn set_zero_arg_fns(&mut self, fns: HashSet<String>) {
+        self.zero_arg_fns = fns;
     }
 
     /// Register enum variant info for constructor pattern matching and lowering.
@@ -154,6 +162,16 @@ impl MirLower {
                         return Operand::Local(local.id);
                     }
                 }
+                // Auto-call zero-arg functions on bare reference
+                if self.zero_arg_fns.contains(name) {
+                    let ret_ty = self.call_return_type(&Operand::FuncRef(name.clone()), 0);
+                    let dest = self.alloc_local(None, ret_ty);
+                    self.emit(Statement {
+                        dest,
+                        rvalue: Rvalue::Call(Operand::FuncRef(name.clone()), vec![]),
+                    });
+                    return Operand::Local(dest);
+                }
                 // Must be a reference to another function
                 Operand::FuncRef(name.clone())
             }
@@ -248,7 +266,8 @@ impl MirLower {
                         return Operand::Local(dest);
                     }
                 }
-                let callee = self.lower_expr(func);
+                // Use lower_callee_expr to avoid auto-calling zero-arg fns in callee position
+                let callee = self.lower_callee_expr(func);
                 let arg_ops: Vec<_> = args.iter().map(|a| self.lower_expr(a)).collect();
                 let ret_ty = self.call_return_type(&callee, arg_ops.len());
                 let dest = self.alloc_local(None, ret_ty);
@@ -262,7 +281,7 @@ impl MirLower {
             ast::ExprKind::Pipe(left, right) => {
                 // x |> f  →  f(x)
                 let arg = self.lower_expr(left);
-                let func = self.lower_expr(right);
+                let func = self.lower_callee_expr(right);
                 let ret_ty = self.call_return_type(&func, 1);
                 let dest = self.alloc_local(None, ret_ty);
                 self.emit(Statement {
@@ -672,6 +691,21 @@ impl MirLower {
                 Operand::ConstUnit
             }
         }
+    }
+
+    /// Lower an expression in callee position (skips zero-arg auto-call for Ident).
+    fn lower_callee_expr(&mut self, expr: &ast::Expr) -> Operand {
+        if let ast::ExprKind::Ident(name) = &expr.kind {
+            // Look up in locals first
+            for local in self.locals.iter().rev() {
+                if local.name.as_deref() == Some(name.as_str()) {
+                    return Operand::Local(local.id);
+                }
+            }
+            // Return raw FuncRef — no auto-call in callee position
+            return Operand::FuncRef(name.clone());
+        }
+        self.lower_expr(expr)
     }
 
     fn lower_block(&mut self, stmts: &[ast::Stmt]) -> Operand {
