@@ -97,13 +97,26 @@ impl CodegenContext {
                 known_keys.insert(k.as_str());
             }
         }
+        // Find the largest matching complete type (most fields) to avoid
+        // ambiguity when multiple types share the same field name.
+        let mut best_match: Option<(usize, i32)> = None; // (field_count, offset)
         for complete in &self.complete_record_types {
             let complete_keys: BTreeSet<&str> = complete.keys().map(|k| k.as_str()).collect();
             if known_keys.is_subset(&complete_keys) && complete.contains_key(field_name) {
-                if let Some(full_pos) = complete.keys().position(|k| k == field_name) {
-                    return (full_pos as i32) * 8;
+                let field_count = complete.len();
+                let is_better = match best_match {
+                    Some((best_count, _)) => field_count > best_count,
+                    None => true,
+                };
+                if is_better {
+                    if let Some(full_pos) = complete.keys().position(|k| k == field_name) {
+                        best_match = Some((field_count, (full_pos as i32) * 8));
+                    }
                 }
             }
+        }
+        if let Some((_, offset)) = best_match {
+            return offset;
         }
         if let Some(pos) = partial_fields.keys().position(|k| k == field_name) {
             (pos as i32) * 8

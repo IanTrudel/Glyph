@@ -108,7 +108,7 @@ Also fixed a Cranelift codegen bug discovered during implementation: runtime fun
 
 ## BUG-004: `glyph dump` defaults to 500-token budget, not full dump
 
-**Status:** Open
+**Status:** Fixed (2026-02-24)
 **Severity:** Low (usability)
 **Component:** glyph.glyph (self-hosted compiler, `cmd_dump`)
 **First observed:** 2026-02-23
@@ -123,6 +123,10 @@ Also fixed a Cranelift codegen bug discovered during implementation: runtime fun
 1. Default to `--all` (full dump), or
 2. Print a warning that output is truncated and suggest `--all`
 
-### Workaround
+### Fix
+
+Changed `cmd_dump` to default to `dump_all` when no `--budget` or `--root` flags are given. Budgeted mode is only used when explicitly requested. `--all` flag still works but is no longer needed for the default case.
+
+### Workaround (before fix)
 
 Use `glyph dump <db> --all` for full output, or `sqlite3 <db> .dump` for raw SQL.
