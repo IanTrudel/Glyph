@@ -266,6 +266,11 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
+            ast::PatternKind::Or(pats) => {
+                for p in pats {
+                    self.bind_pattern(p);
+                }
+            }
             _ => {}
         }
     }

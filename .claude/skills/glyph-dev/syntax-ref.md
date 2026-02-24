@@ -118,7 +118,7 @@ Patterns: `_`, `x` (bind), `42` (int), `"s"` (string), `true`/`false`, `None` (n
 
 ## Indentation Rules
 
-- Tab = 4 spaces
+- Tab = 2 spaces
 - INDENT/DEDENT/NEWLINE tokens emitted by lexer
 - Inside `()` `[]` `{}`: layout suppressed (free-form)
 - Blank lines ignored

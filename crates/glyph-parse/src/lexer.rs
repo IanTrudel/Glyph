@@ -490,7 +490,31 @@ impl Lexer {
 
     fn scan_raw_string(&mut self, start: usize) {
         self.advance(); // 'r'
-        self.advance(); // '"'
+        self.advance(); // first '"'
+
+        // Check for triple-quote: r"""..."""
+        if self.peek_at(0) == Some('"') && self.peek_at(1) == Some('"') {
+            self.advance(); // second '"'
+            self.advance(); // third '"'
+            let mut buf = String::new();
+            while !self.at_end() {
+                if self.peek() == '"'
+                    && self.peek_at(1) == Some('"')
+                    && self.peek_at(2) == Some('"')
+                {
+                    self.advance(); // closing first '"'
+                    self.advance(); // closing second '"'
+                    self.advance(); // closing third '"'
+                    break;
+                }
+                buf.push(self.peek());
+                self.advance();
+            }
+            self.push(TokenKind::Str(buf), start);
+            return;
+        }
+
+        // Single-quote raw string (existing behavior)
         let mut buf = String::new();
         while !self.at_end() && self.peek() != '"' {
             buf.push(self.peek());
@@ -730,6 +754,54 @@ mod tests {
         assert_eq!(
             tokens,
             vec![TokenKind::Str("hello {name}".into()), TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn test_raw_multiline_string() {
+        let tokens = lex("r\"\"\"hello\nworld\"\"\"");
+        assert_eq!(
+            tokens,
+            vec![TokenKind::Str("hello\nworld".into()), TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn test_raw_multiline_no_escapes() {
+        let tokens = lex("r\"\"\"\\n\\t\"\"\"");
+        assert_eq!(
+            tokens,
+            vec![TokenKind::Str("\\n\\t".into()), TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn test_raw_multiline_empty() {
+        let tokens = lex("r\"\"\"\"\"\"");
+        assert_eq!(tokens, vec![TokenKind::Str("".into()), TokenKind::Eof]);
+    }
+
+    #[test]
+    fn test_raw_multiline_with_braces() {
+        let tokens = lex("r\"\"\"int main() { return 0; }\"\"\"");
+        assert_eq!(
+            tokens,
+            vec![
+                TokenKind::Str("int main() { return 0; }".into()),
+                TokenKind::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_raw_multiline_with_quotes() {
+        let tokens = lex("r\"\"\"she said \"hi\" ok\"\"\"");
+        assert_eq!(
+            tokens,
+            vec![
+                TokenKind::Str("she said \"hi\" ok".into()),
+                TokenKind::Eof,
+            ]
         );
     }
 

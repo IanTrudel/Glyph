@@ -704,6 +704,24 @@ impl Parser {
 
     fn parse_pattern(&mut self) -> Result<Pattern> {
         let start = self.span();
+        let pat = self.parse_single_pattern()?;
+        if self.check(&TokenKind::Pipe) {
+            let mut pats = vec![pat];
+            while self.check(&TokenKind::Pipe) {
+                self.advance();
+                pats.push(self.parse_single_pattern()?);
+            }
+            Ok(Pattern {
+                kind: PatternKind::Or(pats),
+                span: start.merge(self.prev_span()),
+            })
+        } else {
+            Ok(pat)
+        }
+    }
+
+    fn parse_single_pattern(&mut self) -> Result<Pattern> {
+        let start = self.span();
         match self.current_kind() {
             TokenKind::Ident(ref s) if s == "_" => {
                 self.advance();
@@ -757,10 +775,10 @@ impl Parser {
                     self.advance();
                     let mut pats = Vec::new();
                     if !self.check(&TokenKind::RParen) {
-                        pats.push(self.parse_pattern()?);
+                        pats.push(self.parse_single_pattern()?);
                         while self.check(&TokenKind::Comma) {
                             self.advance();
-                            pats.push(self.parse_pattern()?);
+                            pats.push(self.parse_single_pattern()?);
                         }
                     }
                     self.expect(&TokenKind::RParen)?;
@@ -782,7 +800,7 @@ impl Parser {
                     let name = self.expect_ident()?;
                     let pat = if self.check(&TokenKind::Colon) {
                         self.advance();
-                        Some(self.parse_pattern()?)
+                        Some(self.parse_single_pattern()?)
                     } else {
                         None
                     };
@@ -801,7 +819,7 @@ impl Parser {
                 self.advance();
                 let mut pats = Vec::new();
                 if !self.check(&TokenKind::RParen) {
-                    pats.push(self.parse_pattern()?);
+                    pats.push(self.parse_single_pattern()?);
                     while self.check(&TokenKind::Comma) || self.check_ident() || self.check_type_ident() || matches!(self.current_kind(), TokenKind::Int(_)) {
                         if self.check(&TokenKind::Comma) {
                             self.advance();
@@ -809,7 +827,7 @@ impl Parser {
                         if self.check(&TokenKind::RParen) {
                             break;
                         }
-                        pats.push(self.parse_pattern()?);
+                        pats.push(self.parse_single_pattern()?);
                     }
                 }
                 self.expect(&TokenKind::RParen)?;

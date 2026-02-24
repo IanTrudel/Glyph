@@ -1034,6 +1034,90 @@ impl MirLower {
                 self.lower_match_chain(scrutinee, rest, result, merge, tail);
             }
 
+            ast::PatternKind::Or(sub_pats) => {
+                let body_block = self.new_block();
+                let next_block = self.new_block();
+
+                // Chain of tests: if any sub-pattern matches, jump to body_block
+                for (i, sub_pat) in sub_pats.iter().enumerate() {
+                    let is_last = i == sub_pats.len() - 1;
+                    let fail_target = if is_last { next_block } else { self.new_block() };
+
+                    match &sub_pat.kind {
+                        ast::PatternKind::IntLit(n) => {
+                            let cmp = self.alloc_local(None, MirType::Bool);
+                            self.emit(Statement {
+                                dest: cmp,
+                                rvalue: Rvalue::BinOp(BinOp::Eq, scrutinee.clone(), Operand::ConstInt(*n)),
+                            });
+                            self.terminate(Terminator::Branch(
+                                Operand::Local(cmp),
+                                body_block,
+                                fail_target,
+                            ));
+                        }
+                        ast::PatternKind::StrLit(s) => {
+                            let pat_str = self.alloc_local(None, MirType::Str);
+                            self.emit(Statement {
+                                dest: pat_str,
+                                rvalue: Rvalue::Use(Operand::ConstStr(s.clone())),
+                            });
+                            let cmp_int = self.alloc_local(None, MirType::Int);
+                            self.emit(Statement {
+                                dest: cmp_int,
+                                rvalue: Rvalue::Call(
+                                    Operand::ExternRef("glyph_str_eq".to_string()),
+                                    vec![scrutinee.clone(), Operand::Local(pat_str)],
+                                ),
+                            });
+                            let cmp = self.alloc_local(None, MirType::Bool);
+                            self.emit(Statement {
+                                dest: cmp,
+                                rvalue: Rvalue::BinOp(BinOp::Neq, Operand::Local(cmp_int), Operand::ConstInt(0)),
+                            });
+                            self.terminate(Terminator::Branch(
+                                Operand::Local(cmp),
+                                body_block,
+                                fail_target,
+                            ));
+                        }
+                        ast::PatternKind::BoolLit(b) => {
+                            let cmp = self.alloc_local(None, MirType::Bool);
+                            self.emit(Statement {
+                                dest: cmp,
+                                rvalue: Rvalue::BinOp(BinOp::Eq, scrutinee.clone(), Operand::ConstBool(*b)),
+                            });
+                            self.terminate(Terminator::Branch(
+                                Operand::Local(cmp),
+                                body_block,
+                                fail_target,
+                            ));
+                        }
+                        _ => {
+                            // Wildcard/ident in or-pattern: always matches
+                            self.terminate(Terminator::Goto(body_block));
+                        }
+                    }
+
+                    if !is_last {
+                        self.current_block = fail_target;
+                    }
+                }
+
+                // Body block: execute arm body
+                self.current_block = body_block;
+                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
+                self.emit(Statement {
+                    dest: result,
+                    rvalue: Rvalue::Use(val),
+                });
+                self.terminate(Terminator::Goto(merge));
+
+                // Next block: try remaining arms
+                self.current_block = next_block;
+                self.lower_match_chain(scrutinee, rest, result, merge, tail);
+            }
+
             _ => {
                 // For other patterns, treat as wildcard for now
                 let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };

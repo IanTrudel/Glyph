@@ -151,6 +151,7 @@ pub enum PatternKind {
     Constructor(String, Vec<Pattern>),
     Record(Vec<(String, Option<Pattern>)>),
     Tuple(Vec<Pattern>),
+    Or(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]

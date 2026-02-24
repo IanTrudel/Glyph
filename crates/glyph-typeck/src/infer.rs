@@ -676,6 +676,14 @@ impl InferEngine {
                 let types: Vec<_> = pats.iter().map(|p| self.infer_pattern(p)).collect();
                 Type::Tuple(types)
             }
+            ast::PatternKind::Or(pats) => {
+                // Infer type from first sub-pattern; all should unify
+                if let Some(first) = pats.first() {
+                    self.infer_pattern(first)
+                } else {
+                    self.subst.fresh()
+                }
+            }
         }
     }
 
