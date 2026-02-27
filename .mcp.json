@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "glyph": {
+      "type": "stdio",
+      "command": "./glyph",
+      "args": ["mcp", "glyph.glyph"]
+    }
+  }
+}
