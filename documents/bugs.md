@@ -130,3 +130,54 @@ Changed `cmd_dump` to default to `dump_all` when no `--budget` or `--root` flags
 ### Workaround (before fix)
 
 Use `glyph dump <db> --all` for full output, or `sqlite3 <db> .dump` for raw SQL.
+
+---
+
+## BUG-005: MCP server segfaults on C-codegen binary due to field offset ambiguity
+
+**Status:** Fixed (2026-02-24)
+**Severity:** High
+**Component:** glyph.glyph (self-hosted compiler, field offset resolution)
+**First observed:** 2026-02-24
+
+### Description
+
+The MCP server works correctly on glyph1 (Cranelift-compiled) but segfaults on the final `glyph` binary (C-codegen, self-hosted). The crash occurs in `json_get_str` when accessing `.sval` on a JNode pool element — the generated C code uses AstNode's offset (48) instead of JNode's offset (24).
+
+### Root cause
+
+The self-hosted compiler's field offset resolution (`find_best_type`) disambiguates record types by preferring the **largest** matching type. When a local variable's field access set is `{sval}`, three types match:
+
+- **AstNode** (7 fields): sval at offset 48
+- **JNode** (5 fields): sval at offset 24
+- **TyNode** (5 fields): sval at offset 24
+
+"Prefer largest" picks AstNode → offset 48 → wrong for JNode values.
+
+The Cranelift binary (glyph1) doesn't have this problem because the Rust type checker provides richer type information in the MIR, allowing correct resolution.
+
+### Fix
+
+Added disambiguating field access hints to 6 functions that access `.sval` on JNode pool elements. By binding the pool element to a named local and adding `_ = node.tag`, the field access set becomes `{sval, tag}`. AstNode has no `.tag` field, so only JNode (and TyNode, which has the same `.sval` offset) matches.
+
+**Functions modified:** `json_get_str`, `mcp_get_db`, `mcp_tool_get_def`, `mcp_tool_list_defs`, `mcp_tool_remove_def`, `mcp_tool_search_defs`
+
+### Pattern (before → after)
+
+```
+# Before: pool[ci].sval — ambiguous, {sval} matches 3 types
+ci = json_get(pool, node_idx, key)
+pool[ci].sval
+
+# After: bind + hint — {sval, tag} uniquely identifies JNode
+ci = json_get(pool, node_idx, key)
+node = pool[ci]
+_ = node.tag
+node.sval
+```
+
+### Notes
+
+- The gen=2 `blt_find_best` (struct codegen) uses "unique match only" — returns empty string on ambiguity, falling through to gen=1 offset codegen. The hint makes gen=2 find exactly one match (JNode) in the struct_map.
+- Any new function accessing `.sval` on JNode pool elements without other JNode-unique fields will need the same hint pattern.
+- The fundamental issue is that the self-hosted compiler lacks type inference, so field offset resolution relies on heuristic matching of accessed field names against known record types.
