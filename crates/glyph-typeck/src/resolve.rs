@@ -146,6 +146,9 @@ impl<'a> Resolver<'a> {
                 for arm in arms {
                     self.push_scope();
                     self.bind_pattern(&arm.pattern);
+                    if let Some(guard) = &arm.guard {
+                        self.resolve_expr(guard)?;
+                    }
                     self.resolve_expr(&arm.body)?;
                     self.pop_scope();
                 }

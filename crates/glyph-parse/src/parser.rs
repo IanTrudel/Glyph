@@ -665,6 +665,12 @@ impl Parser {
         while !self.check(&TokenKind::Dedent) && !self.check(&TokenKind::Eof) {
             let arm_start = self.span();
             let pattern = self.parse_pattern()?;
+            let guard = if self.check(&TokenKind::Question) {
+                self.advance();
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
             self.expect(&TokenKind::Arrow)?;
             // Match arm body can be inline or an indented block
             self.skip_newlines();
@@ -688,6 +694,7 @@ impl Parser {
             };
             arms.push(MatchArm {
                 pattern,
+                guard,
                 body,
                 span: arm_start.merge(self.prev_span()),
             });

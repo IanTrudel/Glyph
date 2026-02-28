@@ -272,6 +272,12 @@ impl InferEngine {
                     }
                     self.env.push_scope();
                     self.bind_pattern_vars(&arm.pattern);
+                    if let Some(guard) = &arm.guard {
+                        let guard_ty = self.infer_expr(guard);
+                        if let Err(e) = self.subst.unify(&guard_ty, &Type::Bool) {
+                            self.errors.push(e);
+                        }
+                    }
                     let body_ty = self.infer_expr(&arm.body);
                     if let Err(e) = self.subst.unify(&result_ty, &body_ty) {
                         self.errors.push(e);

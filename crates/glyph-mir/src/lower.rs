@@ -870,12 +870,28 @@ impl MirLower {
                         rvalue: Rvalue::Use(scrutinee.clone()),
                     });
                 }
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                if let Some(guard) = &arm.guard {
+                    let guard_val = self.lower_expr(guard);
+                    let body_block = self.new_block();
+                    let next_block = self.new_block();
+                    self.terminate(Terminator::Branch(guard_val, body_block, next_block));
+                    self.current_block = body_block;
+                    let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
+                    self.emit(Statement {
+                        dest: result,
+                        rvalue: Rvalue::Use(val),
+                    });
+                    self.terminate(Terminator::Goto(merge));
+                    self.current_block = next_block;
+                    self.lower_match_chain(scrutinee, rest, result, merge, tail);
+                } else {
+                    let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
+                    self.emit(Statement {
+                        dest: result,
+                        rvalue: Rvalue::Use(val),
+                    });
+                    self.terminate(Terminator::Goto(merge));
+                }
             }
             ast::PatternKind::BoolLit(b) => {
                 let match_block = self.new_block();
@@ -895,12 +911,7 @@ impl MirLower {
 
                 // Match block
                 self.current_block = match_block;
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                self.lower_arm_body_guarded(arm, result, merge, next_block, tail);
 
                 // Next block
                 self.current_block = next_block;
@@ -924,12 +935,7 @@ impl MirLower {
 
                 // Match block
                 self.current_block = match_block;
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                self.lower_arm_body_guarded(arm, result, merge, next_block, tail);
 
                 // Next block
                 self.current_block = next_block;
@@ -966,12 +972,7 @@ impl MirLower {
 
                 // Match block
                 self.current_block = match_block;
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                self.lower_arm_body_guarded(arm, result, merge, next_block, tail);
 
                 // Next block
                 self.current_block = next_block;
@@ -1022,12 +1023,7 @@ impl MirLower {
                     }
                     // TODO: nested constructor patterns
                 }
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                self.lower_arm_body_guarded(arm, result, merge, next_block, tail);
 
                 // Next block
                 self.current_block = next_block;
@@ -1104,14 +1100,9 @@ impl MirLower {
                     }
                 }
 
-                // Body block: execute arm body
+                // Body block: execute arm body (with optional guard)
                 self.current_block = body_block;
-                let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
-                self.emit(Statement {
-                    dest: result,
-                    rvalue: Rvalue::Use(val),
-                });
-                self.terminate(Terminator::Goto(merge));
+                self.lower_arm_body_guarded(arm, result, merge, next_block, tail);
 
                 // Next block: try remaining arms
                 self.current_block = next_block;
@@ -1128,6 +1119,31 @@ impl MirLower {
                 self.terminate(Terminator::Goto(merge));
             }
         }
+    }
+
+    /// Lower an arm body with optional guard. Called after the pattern has matched
+    /// and we're in the match_block. If a guard is present, evaluates it and branches
+    /// to next_block on failure.
+    fn lower_arm_body_guarded(
+        &mut self,
+        arm: &ast::MatchArm,
+        result: LocalId,
+        merge: BlockId,
+        next_block: BlockId,
+        tail: bool,
+    ) {
+        if let Some(guard) = &arm.guard {
+            let guard_val = self.lower_expr(guard);
+            let body_block = self.new_block();
+            self.terminate(Terminator::Branch(guard_val, body_block, next_block));
+            self.current_block = body_block;
+        }
+        let val = if tail { self.lower_expr_tail(&arm.body) } else { self.lower_expr(&arm.body) };
+        self.emit(Statement {
+            dest: result,
+            rvalue: Rvalue::Use(val),
+        });
+        self.terminate(Terminator::Goto(merge));
     }
 
     // ── Closure helpers ──────────────────────────────────────────────
@@ -1192,6 +1208,9 @@ impl MirLower {
             ast::ExprKind::Match(scrut, arms) => {
                 self.walk_free_vars(scrut, bound, seen, result);
                 for arm in arms {
+                    if let Some(guard) = &arm.guard {
+                        self.walk_free_vars(guard, bound, seen, result);
+                    }
                     self.walk_free_vars(&arm.body, bound, seen, result);
                 }
             }
