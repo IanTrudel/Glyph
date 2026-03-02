@@ -94,6 +94,13 @@ impl<'a> Resolver<'a> {
                 self.add_local(name);
                 Ok(())
             }
+            ast::StmtKind::LetDestructure(names, expr) => {
+                self.resolve_expr(expr)?;
+                for name in names {
+                    self.add_local(name);
+                }
+                Ok(())
+            }
             ast::StmtKind::Assign(lhs, rhs) => {
                 self.resolve_expr(lhs)?;
                 self.resolve_expr(rhs)

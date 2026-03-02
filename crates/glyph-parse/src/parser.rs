@@ -145,6 +145,20 @@ impl Parser {
 
     fn parse_stmt(&mut self) -> Result<Stmt> {
         let start = self.span();
+
+        // Check for let destructuring: {ident, ident, ...} = expr
+        if self.check(&TokenKind::LBrace) {
+            if let Some(tok1) = self.peek_at(1) {
+                if matches!(tok1.kind, TokenKind::Ident(_)) {
+                    if let Some(tok2) = self.peek_at(2) {
+                        if matches!(tok2.kind, TokenKind::Comma | TokenKind::RBrace) {
+                            return self.parse_let_destructure(start);
+                        }
+                    }
+                }
+            }
+        }
+
         let expr = self.parse_expr()?;
 
         // Check for assignment: lvalue := expr
@@ -173,6 +187,34 @@ impl Parser {
         Ok(Stmt {
             span: start.merge(self.prev_span()),
             kind: StmtKind::Expr(expr),
+        })
+    }
+
+    fn parse_let_destructure(&mut self, start: Span) -> Result<Stmt> {
+        self.advance(); // consume '{'
+        let mut names = Vec::new();
+        loop {
+            if let TokenKind::Ident(name) = &self.current().kind {
+                names.push(name.clone());
+                self.advance();
+            } else {
+                return Err(ParseError::Custom {
+                    message: "expected field name in destructuring pattern".to_string(),
+                    span: self.span(),
+                });
+            }
+            if self.check(&TokenKind::Comma) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        self.expect(&TokenKind::RBrace)?;
+        self.expect(&TokenKind::Eq)?;
+        let rhs = self.parse_expr()?;
+        Ok(Stmt {
+            span: start.merge(self.prev_span()),
+            kind: StmtKind::LetDestructure(names, rhs),
         })
     }
 

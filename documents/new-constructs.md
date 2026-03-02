@@ -1,80 +1,37 @@
 # New Language Constructs for Glyph
 
-**Version:** 0.1 (2026-02-25)
-**Scope:** Self-hosted compiler (glyph.glyph). Constructs prioritized by impact on the existing ~800 definitions.
+**Version:** 0.2 (2026-03-02)
+**Scope:** Self-hosted compiler (glyph.glyph). Constructs prioritized by impact on the existing ~1,000+ definitions.
 
 ---
 
-## 1. Guards in Match Arms
+## 1. Guards in Match Arms — IMPLEMENTED
 
-**Priority: HIGH — biggest readability win, pure desugar**
+**Status: COMPLETE** (both Rust and self-hosted compilers)
 
-The single biggest source of nesting in glyph.glyph. Nearly every `lower_*`, `cg_*`, and `infer_*` function has deeply nested match-within-match chains.
-
-### Current
-
-```
-match x
-  1 -> "one"
-  _ -> match x > 0
-    true -> "positive"
-    _ -> "negative"
-```
-
-### Proposed
-
-```
-match x
-  1 -> "one"
-  n | n > 0 -> "positive"
-  _ -> "negative"
-```
+Uses `?` token instead of `|` (avoids ambiguity with or-patterns).
 
 ### Syntax
 
 ```
-pattern | condition -> body
-```
-
-The guard `| condition` is an optional boolean expression after the pattern. The arm matches only if both the pattern matches AND the guard evaluates to true. The pattern variable (`n`) is in scope within the guard.
-
-### Implementation
-
-Desugar in MIR lowering. When an arm has a guard:
-
-1. Match the pattern as usual (bind variables)
-2. Evaluate the guard expression
-3. If guard is true, jump to the arm body
-4. If guard is false, jump to the next arm (not the merge block)
-
-This is a conditional branch inside the arm's basic block — a pattern already exists in `lower_match_bool`.
-
-### Parser Changes
-
-In `parse_pattern` or `parse_match_arm`: after parsing the pattern, check for `|` token. If present, parse the guard expression before `->`.
-
-```
-parse_match_arm tokens pos ast =
-  pat = parse_pattern(tokens, pos, ast)
-  guard = match cur_kind(tokens, pat.pos) == tk_pipe
-    true -> parse_expr(tokens, pat.pos + 1, ast)
-    _ -> mk_no_guard()
-  expect_tok(tokens, guard.pos, tk_arrow)
-  body = parse_expr(tokens, guard.pos + 1, ast)
-  mk_arm(pat, guard, body)
-```
-
-Note: `|` is already used for or-patterns (`1 | 2 | 3 -> ...`). Disambiguation: `|` followed by a pattern literal/identifier that looks like a pattern continues or-pattern parsing; `|` followed by an expression with operators (`n > 0`, `f(x)`) is a guard. Alternatively, use a different token for guards (e.g., `when` or `if`):
-
-```
 match x
-  n when n > 0 -> "positive"
+  1 -> "one"
+  n ? n > 0 -> "positive"
   _ -> "negative"
 ```
 
-### Impact
+```
+pattern ? guard_expr -> body
+```
 
-Functions with 4-8 levels of nested `match ... true ->` flatten to a single match with guards. Affects ~100+ definitions.
+The guard `? guard_expr` is an optional boolean expression after the pattern. The arm matches only if both the pattern matches AND the guard evaluates to true. Pattern variables are in scope within the guard.
+
+### Implementation Details
+
+- **Rust compiler**: `guard: Option<Expr>` on `MatchArm`, `lower_arm_body_guarded` helper in MIR lowering
+- **Self-hosted compiler**: stride-3 arms arrays `[pat, body, guard]` (guard=-1 for no guard), `lower_guard_body` helper. 1 new def + 8 modified defs
+- MIR lowering: guard evaluated after pattern match; if false, falls through to next arm
+- Or-patterns (`1 | 2 | 3 -> body`) also implemented — `|` is the or-pattern separator, `?` is the guard separator
 
 ---
 
@@ -239,77 +196,37 @@ Simplifies hundreds of `match condition | true -> ... | _ -> ...` patterns. The 
 
 ---
 
-## 5. Let Destructuring
+## 5. Let Destructuring — IMPLEMENTED
 
-**Priority: HIGH — parser-level, helps everywhere records are used**
+**Status: COMPLETE** (both Rust and self-hosted compilers)
 
-### Current
-
-```
-result = get_person()
-name = result.name
-age = result.age
-```
-
-### Proposed
+### Syntax
 
 ```
 {name, age} = get_person()
 ```
 
-### Syntax
-
 ```
 {field1, field2, ...} = expr
 ```
 
-Each `field` becomes a local variable bound to `expr.field`. Optionally with renaming:
+Each `field` becomes a local variable bound to `expr.field`.
 
-```
-{name: n, age: a} = get_person()
--- n = result.name, a = result.age
-```
+### Implementation Details
 
-### Implementation
-
-Parser desugar. `{name, age} = expr` expands to:
-
-```
-_tmp = expr
-name = _tmp.name
-age = _tmp.age
-```
-
-The parser generates a fresh temporary name, a let binding for the whole expression, and individual let bindings for each field access.
-
-### Impact
-
-The compiler constantly unpacks records — MIR statements (`stmt.sdest`, `stmt.skind`, `stmt.sop1`), AST nodes (`node.kind`, `node.n1`, `node.sval`), parse results (`r.node`, `r.pos`). Destructuring reduces 3-4 lines to 1.
+- **Parser lookahead**: `{` + ident + (`,`|`}`) disambiguates from record literals (which require `field: value` with colon)
+- **Rust compiler**: `StmtKind::LetDestructure(Vec<String>, Expr)` in ast.rs, `parse_let_destructure` in parser.rs, arms in `lower_stmt` and `walk_free_vars` in lower.rs, plus arms in infer.rs and resolve.rs
+- **Self-hosted compiler**: `st_let_destr=203`, new `parse_destr_fields`/`pdf_loop` for field parsing, `lower_let_destr`/`lld_loop` for MIR emission, `parse_stmt_expr` (refactored original parse_stmt logic)
+- **MIR lowering**: evaluates RHS once into temp local `_d`, then emits `Rvalue::Field` for each field name + binds to scope
+- Rename syntax (`{name: n, age: a} = expr`) not yet implemented (v1 is shorthand only)
 
 ---
 
-## 6. Closures in C Codegen
+## 6. Closures in C Codegen — IMPLEMENTED
 
-**Priority: HIGH — unlocks the entire functional programming model**
+**Status: COMPLETE** (both Rust/Cranelift and self-hosted C codegen)
 
-Currently `rv_make_closure` in `cg_stmt` is unimplemented. Programs using closures must be compiled by the Cranelift backend. This blocks all functional combinators.
-
-### Current (manual recursion)
-
-```
-filter_positive arr i acc =
-  match i >= glyph_array_len(arr)
-    true -> acc
-    _ ->
-      x = arr[i]
-      match x > 0
-        true ->
-          glyph_array_push(acc, x)
-          filter_positive(arr, i + 1, acc)
-        _ -> filter_positive(arr, i + 1, acc)
-```
-
-### With Closures
+### Syntax
 
 ```
 positives = filter(nums, \x -> x > 0)
@@ -317,38 +234,15 @@ names = map(people, .name)
 total = fold(nums, 0, \acc x -> acc + x)
 ```
 
-### Implementation
+### Implementation Details
 
-The Rust/Cranelift backend already implements closures:
-
-1. **Heap-allocate closure record**: `{fn_ptr, capture1, capture2, ...}`
-2. **Calling convention**: every function receives a hidden first parameter (closure pointer). Non-closure functions ignore it.
-3. **Capture analysis**: identify free variables in the lambda body
-4. **Indirect call**: call through the function pointer in the closure record
-
-For C codegen, emit:
-
-```c
-// Closure creation
-long long* _closure = (long long*)glyph_alloc(N * 8);
-_closure[0] = (long long)&lambda_123;
-_closure[1] = captured_var1;
-_closure[2] = captured_var2;
-
-// Closure call
-long long result = ((long long(*)(long long, long long))_closure[0])(_closure, arg1);
-```
-
-### New Definitions Needed
-
-- `cg_make_closure` — emit closure allocation and capture storage
-- `cg_closure_call` — emit indirect call through closure pointer
-- `lower_lambda` — capture analysis, generate closure MIR (already exists for Cranelift)
-- `cg_lambda_fn` — emit the lambda as a static C function with closure-pointer parameter
-
-### Impact
-
-Eliminates the most common boilerplate pattern: recursive loops with index + accumulator that are just `map`, `filter`, or `fold`. Also enables `.field` shorthand lambdas and pipe-friendly code.
+- **Lambda lifting**: free-variable capture analysis identifies variables from enclosing scope
+- **Heap-allocated closure environments**: `{fn_ptr, capture1, capture2, ...}` allocated via `glyph_alloc`
+- **Uniform calling convention**: closure pointer as hidden first argument; non-closure functions ignore it
+- **Indirect calling**: call through function pointer in closure record
+- **C codegen**: `cg_make_closure` emits allocation + capture storage, `cg_closure_call` emits indirect call cast
+- **6 self-hosted test definitions**: test_closure_basic, test_closure_capture, test_closure_as_arg, test_closure_nested, test_closure_multi_cap, test_closure_mir
+- See `memory/closures.md` for detailed implementation notes
 
 ---
 
@@ -491,33 +385,29 @@ Useful for documentation and catching bugs. The LLM generating Glyph code could 
 
 ---
 
-## 10. String Formatting
+## 10. String Formatting — PARTIALLY IMPLEMENTED
 
-**Priority: LOW — current approach works**
+**Status: PARTIAL** — type-aware auto-coercion for int and float in string interpolation
 
-### Current
-
-```
-s3("got ", itos(n), " results")
--- or
-"got {itos(n)} results"
-```
-
-### Proposed
-
-Auto-coercion in string interpolation:
+### Syntax
 
 ```
-"got {n} results"    -- n:I auto-converts via itos
+"got {n} results"    -- n:I auto-converts via int_to_str
+"pi is {x}"         -- x:F auto-converts via float_to_str
 ```
 
-### Implementation
+### Implementation Details
 
-In MIR lowering for `ex_str_interp`, when the interpolated expression has a known non-string type (from context-aware inference), automatically wrap it in the appropriate conversion (`itos` for int, `btos` for bool, etc.).
+- MIR lowering for `ex_str_interp` checks the inferred type of each interpolated expression
+- Integer expressions automatically wrapped in `int_to_str` call
+- Float expressions automatically wrapped in `float_to_str` call
+- Implicit int-to-float coercion also added for mixed arithmetic (`3.14 + 1` works)
+- Explicit `int_to_str()`/`float_to_str()` calls still work and are still needed when type inference can't determine the type
 
-### Impact
+### Remaining
 
-Minor convenience. The explicit `itos()` call is clear and LLM-friendly.
+- Bool auto-coercion not yet implemented
+- Custom `to_str` for user types not yet supported
 
 ---
 
@@ -549,23 +439,25 @@ Nice for data processing, less relevant for compiler internals.
 
 ---
 
-## 12. Prioritized Implementation Order
+## 12. Implementation Status
 
-| # | Construct | Effort | Impact | Dependencies |
-|---|-----------|--------|--------|-------------|
-| 1 | **Guards** | Low-Medium | Very High | Parser + MIR lowering |
-| 2 | **Record update** | Medium | High | Parser + type info or runtime copy |
-| 3 | **Partial application (`_`)** | Low-Medium | High | Parser (full use needs closures) |
-| 4 | **Let destructuring** | Low | High | Parser only |
-| 5 | **Closures in C codegen** | Medium-High | Very High | C codegen + MIR |
-| 6 | **Where clauses** | Medium | Medium | Parser + name resolution |
-| 7 | **Multi-way cond** | Very Low | Medium | Parser only (or guards) |
-| 8 | **Type annotations** | Low-Medium | Medium | Parser + type checker |
-| 9 | **String formatting** | Low | Low | Context-aware inference |
-| 10 | **Array comprehensions** | Medium | Low | Closures |
-| — | ~~If-then-else~~ | — | — | Deferred (imperative, use guards instead) |
+| # | Construct | Status | Notes |
+|---|-----------|--------|-------|
+| 1 | **Guards** | DONE | Uses `?` token (not `|`). Or-patterns also implemented. |
+| 2 | **Record update** | TODO | Medium effort. Needs type info at lowering time. |
+| 3 | **Partial application (`_`)** | TODO | Low-medium effort. Closures now available. |
+| 4 | **Let destructuring** | DONE | `{x, y} = expr`. Rename syntax not yet implemented. |
+| 5 | **Closures in C codegen** | DONE | Full lambda lifting, heap-allocated environments, indirect calls. |
+| 6 | **Where clauses** | TODO | Medium effort. Can use closure-based approach now. |
+| 7 | **Multi-way cond** | TODO | Very low effort. Pure parser desugar. |
+| 8 | **Type annotations** | TODO | Low-medium effort. Parser + type checker. |
+| 9 | **String formatting** | PARTIAL | Int and float auto-coercion in interpolation. Bool not yet. |
+| 10 | **Array comprehensions** | TODO | Medium effort. Closures now available. |
+| — | ~~If-then-else~~ | DEFERRED | Use guards instead. |
 
-Guards alone would transform the readability of nearly every function in glyph.glyph. Record update and partial application sugar would eliminate the two most common sources of boilerplate. Closures would unlock the functional programming model that the language's design implies but can't currently deliver in the self-hosted compiler.
+### Remaining priorities
+
+Record update and partial application sugar would eliminate the two most common sources of boilerplate. Multi-way cond is very low effort and would clean up dispatch chains. With closures now working, array comprehensions and partial application are unblocked.
 
 ---
 
@@ -573,12 +465,12 @@ Guards alone would transform the readability of nearly every function in glyph.g
 
 Glyph is designed for minimal BPE token count. Each construct should reduce token count, not increase it:
 
-| Construct | Before (tokens) | After (tokens) | Savings |
-|-----------|-----------------|----------------|---------|
-| Guard | `_ -> match x > 0 \n true -> e` (~10) | `n \| n > 0 -> e` (~6) | ~40% |
-| Record update | 14-field reconstruction (~50) | `{ctx \| fn_name: "x"}` (~6) | ~88% |
-| Partial app | `\x -> x + 1` (~6) | `_ + 1` (~3) | ~50% |
-| Destructure | `r = e \n x = r.x \n y = r.y` (~12) | `{x, y} = e` (~5) | ~58% |
-| Closure | 6-line recursive loop (~30) | `filter(arr, \x -> x > 0)` (~8) | ~73% |
+| Construct | Before (tokens) | After (tokens) | Savings | Status |
+|-----------|-----------------|----------------|---------|--------|
+| Guard | `_ -> match x > 0 \n true -> e` (~10) | `n ? n > 0 -> e` (~6) | ~40% | DONE |
+| Record update | 14-field reconstruction (~50) | `{ctx \| fn_name: "x"}` (~6) | ~88% | TODO |
+| Partial app | `\x -> x + 1` (~6) | `_ + 1` (~3) | ~50% | TODO |
+| Destructure | `r = e \n x = r.x \n y = r.y` (~12) | `{x, y} = e` (~5) | ~58% | DONE |
+| Closure | 6-line recursive loop (~30) | `filter(arr, \x -> x > 0)` (~8) | ~73% | DONE |
 
 All proposed constructs reduce token count, aligning with Glyph's LLM-native design goal.

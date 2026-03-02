@@ -839,6 +839,23 @@ impl MirLower {
                 }
                 Operand::ConstUnit
             }
+            ast::StmtKind::LetDestructure(names, expr) => {
+                let val = self.lower_expr(expr);
+                let val_ty = self.operand_type(&val);
+                let tmp = self.alloc_local(Some("_d".to_string()), val_ty);
+                self.emit(Statement {
+                    dest: tmp,
+                    rvalue: Rvalue::Use(val),
+                });
+                for name in names {
+                    let dest = self.alloc_local(Some(name.clone()), MirType::Int);
+                    self.emit(Statement {
+                        dest,
+                        rvalue: Rvalue::Field(Operand::Local(tmp), 0, name.clone()),
+                    });
+                }
+                Operand::ConstUnit
+            }
         }
     }
 
@@ -1222,6 +1239,12 @@ impl MirLower {
                         ast::StmtKind::Let(name, e) => {
                             self.walk_free_vars(e, &block_bound, seen, result);
                             block_bound.insert(name.clone());
+                        }
+                        ast::StmtKind::LetDestructure(names, e) => {
+                            self.walk_free_vars(e, &block_bound, seen, result);
+                            for name in names {
+                                block_bound.insert(name.clone());
+                            }
                         }
                         ast::StmtKind::Assign(l, r) => {
                             self.walk_free_vars(l, &block_bound, seen, result);

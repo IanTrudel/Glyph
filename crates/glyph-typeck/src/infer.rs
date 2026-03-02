@@ -352,6 +352,16 @@ impl InferEngine {
                 self.env.insert(name.clone(), scheme);
                 Type::Void
             }
+            ast::StmtKind::LetDestructure(names, expr) => {
+                let ty = self.infer_expr(expr);
+                for name in names {
+                    let field_ty = self.subst.fresh();
+                    let scheme = self.env.generalize(&mut self.subst, &field_ty);
+                    self.env.insert(name.clone(), scheme);
+                }
+                let _ = ty;
+                Type::Void
+            }
             ast::StmtKind::Assign(_lhs, rhs) => {
                 self.infer_expr(rhs);
                 Type::Void
