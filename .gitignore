@@ -16,4 +16,5 @@ examples/glint/glint
 examples/gled/gled
 *.glyph-shm
 *.glyph-wal
+*.glyph.cover
 .ninja_log
