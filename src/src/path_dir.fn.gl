@@ -1,0 +1,2 @@
+path_dir path =
+  path_dir_loop(path, str_len(path) - 1)
