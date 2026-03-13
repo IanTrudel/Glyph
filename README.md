@@ -20,30 +20,24 @@ The MCP server gives Claude structured tools to navigate the program graph, quer
 
 ## Hello, World!
 
-```bash
-glyph init hello.glyph
-```
+With the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), prompt Claude:
 
-Open Claude Code with the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), then prompt:
+> Create hello.glyph and write a hello world program in Glyph.
 
-> Write a hello world program in Glyph.
-
-Claude inserts a `main` definition directly into `hello.glyph` via MCP. Then build and run:
+Claude uses the `init` MCP tool to create the database, then `put_def` to insert a `main` definition. Then build and run:
 
 ```bash
 glyph run hello.glyph
 # Hello, World!
 ```
 
-Building an executable file goes as follow:
+To build a standalone executable:
 
 ```bash
-glyph build hello.glyph
+glyph build hello.glyph hello
 ./hello
 # Hello, World!
 ```
-
-
 
 See `examples/hello/hello.glyph` for the resulting database.
 
