@@ -18,3 +18,4 @@ examples/gled/gled
 *.glyph-wal
 *.glyph.cover
 .ninja_log
+*.glyph.bak
