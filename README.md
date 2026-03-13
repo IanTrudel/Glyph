@@ -112,7 +112,23 @@ Point the server at `glyph.glyph` (the compiler's own source database). Add to `
 }
 ```
 
-Available MCP tools: `get_def`, `put_def`, `list_defs`, `search_defs`, `remove_def`, `deps`, `rdeps`, `sql`, `check_def`, `coverage`.
+### MCP tools
+
+All tools accept an optional `db` parameter to target a specific `.glyph` database, overriding the server's default.
+
+| Tool | Description |
+|------|-------------|
+| `init` | Create a new `.glyph` database at the given path (creates parent directories) |
+| `get_def` | Read a definition by name and kind |
+| `put_def` | Insert or replace a definition (validates parse before inserting) |
+| `check_def` | Validate a definition body without inserting it |
+| `remove_def` | Delete a definition |
+| `list_defs` | List all definitions, optionally filtered by kind |
+| `search_defs` | Search definition bodies with a SQL `LIKE` pattern |
+| `deps` | Forward dependencies of a definition (what it calls) |
+| `rdeps` | Reverse dependencies (what calls it) |
+| `sql` | Execute a raw SQL query — full access to the database schema |
+| `coverage` | Show function-level coverage from the last `glyph test --cover` run |
 
 ---
 
