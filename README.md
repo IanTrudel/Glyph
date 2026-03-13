@@ -18,6 +18,27 @@ The MCP server gives Claude structured tools to navigate the program graph, quer
 
 ---
 
+## Hello, World!
+
+```bash
+glyph init hello.glyph
+```
+
+Open Claude Code with the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), pointing `hello.glyph` as the database parameter. Then prompt:
+
+> Write a hello world program in Glyph.
+
+Claude inserts a `main` definition directly into `hello.glyph` via MCP. Then build and run:
+
+```bash
+glyph run hello.glyph
+# Hello, World!
+```
+
+See `examples/hello/hello.glyph` for the resulting database.
+
+---
+
 ## Requirements
 
 - **Linux** (x86-64)
@@ -35,6 +56,7 @@ The MCP server gives Claude structured tools to navigate the program graph, quer
 git clone <repo>
 cd Glyph
 ninja                          # build self-hosted glyph compiler
+sudo ninja install
 ```
 
 `ninja` automatically reconstructs `glyph.glyph` from `src/` if it's missing, then runs the full 3-stage bootstrap chain.
