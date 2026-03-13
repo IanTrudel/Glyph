@@ -12,6 +12,7 @@ glyph0
 glyph1
 /glyph
 examples/hello/hello
+examples/fibonacci/fibonacci
 examples/calculator/calc
 examples/life/life
 examples/glint/glint
