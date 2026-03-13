@@ -11,6 +11,7 @@
 #   ninja test         run all tests (Rust + self-hosted)
 #   ninja cover        run self-hosted tests with coverage (→ glyph.glyph.cover)
 #   ninja dump         regenerate glyph.sql from glyph.glyph
+#   ninja install      install glyph + glyph.glyph to /usr/local (override with PREFIX=)
 #   ninja -t clean     remove ninja build artifacts (not Rust target/)
 #   cargo clean        remove Rust build artifacts (target/)
 
@@ -73,6 +74,15 @@ rule cover_test
 build glyph.glyph.cover: cover_test | glyph
 
 build cover: phony glyph.glyph.cover
+
+# Install system-wide
+# Override prefix:  PREFIX=/usr ninja install
+# Override destdir: DESTDIR=/tmp/pkg ninja install
+rule do_install
+  command = install -Dm755 glyph $${DESTDIR}$${PREFIX:-/usr/local}/bin/glyph && install -Dm644 glyph.glyph $${DESTDIR}$${PREFIX:-/usr/local}/share/glyph/glyph.glyph
+  description = Installing glyph → $${PREFIX:-/usr/local}
+
+build install: do_install | glyph
 
 # Dump the database to SQL
 rule dump_sql

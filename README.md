@@ -178,6 +178,8 @@ ninja                      # full chain: glyph0 → glyph1 → glyph
 ninja reconstruct          # rebuild glyph.glyph from src/ files
 ninja test                 # run Rust + self-hosted tests
 ninja cover                # run tests with coverage instrumentation
+ninja install              # install glyph + glyph.glyph to /usr/local
+PREFIX=/usr ninja install  # install to /usr instead
 ninja -t clean             # remove ninja build artifacts (glyph0, glyph1, glyph, glyph.glyph.cover)
 cargo clean                # remove Rust build artifacts (target/)
 ```
