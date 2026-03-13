@@ -57,8 +57,8 @@ The database path is passed as an MCP initialization parameter (JSON), so one se
 {
   "mcpServers": {
     "glyph": {
-      "command": "/path/to/glyph",
-      "args": ["mcp", "glyph.glyph"],
+      "command": "/usr/local/bin/glyph",
+      "args": ["mcp"],
       "disabled": false,
       "autoApprove": []
     }
