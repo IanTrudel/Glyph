@@ -51,14 +51,14 @@ Glyph ships a built-in MCP (Model Context Protocol) server. Claude uses it to re
 
 ### For application development
 
-The database path is passed as an MCP initialization parameter (JSON), so one server instance can serve any `.glyph` file. Add to `~/.claude.json`:
+The system-installed `glyph.glyph` is passed as the MCP argument — it serves as the language documentation and standard library reference. The program being worked on is passed as an additional MCP initialization parameter (JSON). Add to `~/.claude.json`:
 
 ```json
 {
   "mcpServers": {
     "glyph": {
       "command": "/usr/local/bin/glyph",
-      "args": ["mcp"],
+      "args": ["mcp", "/usr/local/share/glyph/glyph.glyph"],
       "disabled": false,
       "autoApprove": []
     }
