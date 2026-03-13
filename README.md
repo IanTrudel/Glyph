@@ -1,16 +1,16 @@
 # Glyph
 
-**A programming language where the programmer has a context window, not a filesystem.**
+**A programming language written by an LLM, for LLMs.**
 
-Every tool built around code — files, imports, namespaces, IDEs — exists to help humans navigate large codebases. LLMs don't navigate; they select. They don't browse; they query. Glyph takes that seriously from first principles.
+Glyph is a compiled, statically-typed functional language designed from first principles for LLM authorship. You don't write Glyph — you direct an LLM that does. The compiler itself was written in Glyph by Claude, and is stored as a Glyph program.
 
-A Glyph program is a SQLite database. Each function is a row. The module system is `SELECT`. The dependency graph is a table with edges. An LLM reads context by querying definitions ordered by relevance, token budget, or dependency depth — and writes code with `INSERT`. There are no files to open, no paths to remember, no imports to manage.
+Two design decisions follow from this premise:
 
-The syntax is token-minimal by design: single-character type aliases, no semicolons, no braces, no `return` or `let` keywords. Not for aesthetics — to reduce the cost and noise of LLM generation.
+1. **Programs are databases, not files.** A `.glyph` file is a SQLite3 database. The unit of source code is the *definition* — a named, hashed row in a SQL table. There are no source files, no imports. An LLM reads context with `SELECT` and writes code with `INSERT`.
 
-The compiler is self-hosted and stored in the same format. This means the language's own source code is its documentation: when Claude works on a Glyph program, it queries the compiler's definitions for runtime functions, idioms, and type signatures — through the same MCP tools it uses to write code.
+2. **Token-minimal syntax.** Every construct is chosen to minimize BPE token count. Single-character type aliases (`I`=Int64, `S`=Str, `B`=Bool), no semicolons, no braces, no `return`/`let`/`import` keywords.
 
-Glyph is not a language with LLM tooling bolted on. It is a language built around the assumption that the LLM is the author, and the human's role is to direct.
+The MCP server gives Claude structured tools to navigate the program graph, query definitions, check types, and write code directly into the database. The compiler's own source — stored in the same format — serves as the language reference.
 
 > **Status:** Working self-hosted compiler (v0.2). ~1,100 definitions, C codegen backend, MCP server, full bootstrap chain.
 
