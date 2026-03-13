@@ -1,12 +1,16 @@
 # Glyph
 
-**An LLM-native programming language where programs are SQLite databases.**
+**A programming language where the programmer has a context window, not a filesystem.**
 
-Glyph is a compiled, statically-typed functional language with two foundational design decisions:
+Every tool built around code — files, imports, namespaces, IDEs — exists to help humans navigate large codebases. LLMs don't navigate; they select. They don't browse; they query. Glyph takes that seriously from first principles.
 
-1. **Programs are databases, not files.** A `.glyph` file is a SQLite3 database. The unit of source code is the *definition* — a named, hashed row in a SQL table. There are no source files, no imports. An LLM reads context with `SELECT` and writes code with `INSERT`.
+A Glyph program is a SQLite database. Each function is a row. The module system is `SELECT`. The dependency graph is a table with edges. An LLM reads context by querying definitions ordered by relevance, token budget, or dependency depth — and writes code with `INSERT`. There are no files to open, no paths to remember, no imports to manage.
 
-2. **Token-minimal syntax.** Every construct is chosen to minimize BPE token count. Single-character type aliases (`I`=Int64, `S`=Str, `B`=Bool), no semicolons, no braces, no `return`/`let`/`import` keywords.
+The syntax is token-minimal by design: single-character type aliases, no semicolons, no braces, no `return` or `let` keywords. Not for aesthetics — to reduce the cost and noise of LLM generation.
+
+The compiler is self-hosted and stored in the same format. This means the language's own source code is its documentation: when Claude works on a Glyph program, it queries the compiler's definitions for runtime functions, idioms, and type signatures — through the same MCP tools it uses to write code.
+
+Glyph is not a language with LLM tooling bolted on. It is a language built around the assumption that the LLM is the author, and the human's role is to direct.
 
 > **Status:** Working self-hosted compiler (v0.2). ~1,100 definitions, C codegen backend, MCP server, full bootstrap chain.
 
