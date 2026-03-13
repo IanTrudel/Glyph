@@ -8,4 +8,3 @@ test_needs_sqlite u =
   assert_eq(lib_seen(["a", "b", "c"], "b", 0), 1)
   assert_eq(lib_seen(["a", "b", "c"], "d", 0), 0)
   0
-

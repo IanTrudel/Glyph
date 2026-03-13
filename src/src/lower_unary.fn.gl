@@ -9,4 +9,3 @@ lower_unary ctx ast node =
       _ -> 0
     _ -> 0
   mk_op_local(dest)
-

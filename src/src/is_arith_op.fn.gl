@@ -10,4 +10,3 @@ is_arith_op op =
           _ -> match op == op_mod()
             true -> 1
             _ -> 0
-

@@ -12,4 +12,3 @@ cg_struct_stores_typed ops names types i =
           true -> s4("__r->", names[i], s3(" = (", ftype, ")_glyph_i2f("), s2(val, "); "))
           _ -> s4("__r->", names[i], s3(" = (", ftype, ")"), s2(val, "; "))
       s2(store, cg_struct_stores_typed(ops, names, types, i + 1))
-

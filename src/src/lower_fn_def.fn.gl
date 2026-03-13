@@ -9,4 +9,3 @@ lower_fn_def ast fn_idx za_fns tctx =
   {fn_name: node.sval, fn_params: ctx.fn_params, fn_locals: ctx.local_names,
    fn_blocks_stmts: ctx.block_stmts, fn_blocks_terms: ctx.block_terms,
    fn_entry: entry, fn_subs: ctx.lifted_fns, fn_types: ctx.local_types}
-

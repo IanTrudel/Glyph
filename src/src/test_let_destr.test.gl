@@ -7,4 +7,3 @@ test_let_destr u =
   assert_eq(node, 42)
   assert_eq(pos, 7)
   0
-

@@ -31,4 +31,3 @@ lower_str_binop ctx ast_op left right =
           dest = mir_alloc_local(ctx, "")
           mir_emit_binop(ctx, dest, mop, left, right)
           mk_op_local(dest)
-

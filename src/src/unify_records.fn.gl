@@ -5,4 +5,3 @@ unify_records eng na nb =
   match r1 < 0
     true -> r1
     _ -> unify_fields_against(eng, nb.ns, na.ns, na.n1, 0)
-

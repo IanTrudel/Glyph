@@ -26,4 +26,3 @@ test_json_extra u =
   assert(str_contains(r3, "null"))
   assert(str_contains(r3, "false"))
   0
-

@@ -6,4 +6,3 @@ test_mir_lower_bool u =
   mir3 = compile_fn("f x = match x\n  y -> y", [])
   assert(mir_block_count(mir3) >= 1)
   0
-

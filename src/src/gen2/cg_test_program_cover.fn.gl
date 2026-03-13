@@ -2,4 +2,3 @@ cg_test_program_cover fn_mirs test_mirs test_names struct_map cover_path =
   cov_names = cg_cov_collect_names(fn_mirs, test_mirs)
   cov_runtime = cg_runtime_coverage(cover_path, cov_names)
   s7(cg_preamble(), s3(cg_all_typedefs(struct_map), cov_runtime, cg_test_preamble_extra), s2(cg_forward_decls(fn_mirs, 0), cg_test_forward_decls(test_names, 0)), cg_functions2_cover(fn_mirs, 0, struct_map, cov_names), cg_functions2_cover(test_mirs, 0, struct_map, cov_names), "\n", cg_test_dispatch_cover(test_names))
-

@@ -14,4 +14,3 @@ test_ty_pipeline u =
   assert_eq(param_ty.tag, ty_int())
   assert_eq(ret_ty.tag, ty_int())
   0
-

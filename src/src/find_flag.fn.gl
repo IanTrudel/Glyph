@@ -21,4 +21,3 @@ find_flag argv flag start =
                 _ -> find_flag(argv, flag, start + 1)
             _ -> find_flag(argv, flag, start + 1)
     _ -> ""
-

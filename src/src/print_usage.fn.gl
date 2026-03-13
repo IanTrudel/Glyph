@@ -23,4 +23,3 @@ print_usage =
   eprintln("  history <db> <name> [--kind K] Show change history")
   eprintln("  mcp <db>                      Start MCP tool server")
   1
-

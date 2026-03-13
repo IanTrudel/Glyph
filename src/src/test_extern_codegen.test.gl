@@ -18,4 +18,3 @@ test_extern_codegen u =
   assert_eq(has_glyph_prefix("glyph_foo"), 1)
   assert_eq(has_glyph_prefix("bar"), 0)
   0
-

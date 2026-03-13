@@ -5,4 +5,3 @@ fv_is_bound name bound i =
       match glyph_str_eq(bound[i], name) == 1
         true -> 1
         _ -> fv_is_bound(name, bound, i + 1)
-

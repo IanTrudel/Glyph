@@ -23,4 +23,3 @@ lower_match_ident ctx ast arms scrutinee result merge i pat_node =
       mir_switch_block(ctx, next_block)
       mir_pop_scope(ctx)
       lower_match_arms(ctx, ast, arms, scrutinee, result, merge, i + 3)
-

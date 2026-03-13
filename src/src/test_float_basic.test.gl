@@ -6,4 +6,3 @@ test_float_basic u =
   assert_eq(float_to_int(x * y), 6)
   assert_eq(float_to_int(10.0 / 3.0), 3)
   0
-

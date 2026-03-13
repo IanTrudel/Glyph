@@ -5,4 +5,3 @@ test_extract_bodies u =
   assert_str_eq(r[0], "body1")
   assert_str_eq(r[2], "body3")
   0
-

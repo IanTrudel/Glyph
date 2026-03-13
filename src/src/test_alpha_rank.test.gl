@@ -5,4 +5,3 @@ test_alpha_rank u =
   assert_eq(alpha_rank(names, "apple"), 0)
   assert_eq(alpha_rank(names, "zzz"), 3)
   0
-

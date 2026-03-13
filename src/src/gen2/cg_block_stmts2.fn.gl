@@ -2,4 +2,3 @@ cg_block_stmts2 stmts i struct_map local_struct_types mir_local_types =
   match i >= glyph_array_len(stmts)
     true -> ""
     _ -> s2(cg_stmt2(stmts[i], struct_map, local_struct_types, mir_local_types), cg_block_stmts2(stmts, i + 1, struct_map, local_struct_types, mir_local_types))
-

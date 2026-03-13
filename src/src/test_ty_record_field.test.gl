@@ -20,4 +20,3 @@ test_ty_record_field dummy =
   resolved_node = pool_get(eng, resolved)
   _ = resolved_node.tag
   assert_eq(resolved_node.tag, ty_int())
-

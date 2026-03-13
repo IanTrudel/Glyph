@@ -1,3 +1,2 @@
 cg_test_program fn_mirs test_mirs test_names =
   s7(cg_preamble(), cg_test_preamble_extra(0), cg_forward_decls(fn_mirs, 0), cg_test_forward_decls(test_names, 0), cg_functions(fn_mirs, 0), cg_functions(test_mirs, 0), s2("\n", cg_test_dispatch(test_names)))
-

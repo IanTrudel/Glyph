@@ -6,4 +6,3 @@ mcp_cov_add_uncovered pool arr names hits i =
         true -> jb_push(pool, arr, jb_str(pool, names[i]))
         _ -> 0
       mcp_cov_add_uncovered(pool, arr, names, hits, i + 1)
-

@@ -9,4 +9,3 @@ export_schema db out_dir =
   meta_rows = glyph_db_query_rows(db, "SELECT key,value FROM meta ORDER BY key")
   meta = export_meta_loop(meta_rows, 0, glyph_array_len(meta_rows), "\n-- meta\n")
   glyph_write_file(s2(out_dir, "/schema.sql"), s4(ddl, ext, mod, meta))
-

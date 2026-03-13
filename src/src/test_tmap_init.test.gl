@@ -6,4 +6,3 @@ test_tmap_init u =
   ctx = mk_tctx(tm)
   assert_eq(glyph_array_len(ctx.tc_tmap), 5)
   0
-

@@ -8,4 +8,3 @@ lower_match_bool ctx ast arms scrutinee result merge i pat_node =
   lower_guard_body(ctx, ast, arms, result, merge, i, next_block)
   mir_switch_block(ctx, next_block)
   lower_match_arms(ctx, ast, arms, scrutinee, result, merge, i + 3)
-

@@ -18,4 +18,3 @@ resolve_fields eng field_ns i =
           result = resolve_fields(eng, field_ns, i + 1)
           glyph_array_push(result, new_fi)
           result
-

@@ -2,4 +2,3 @@ cg_block2 mir_fn block_id struct_map local_struct_types mir_local_types =
   stmts = mir_fn.fn_blocks_stmts[block_id]
   term = mir_fn.fn_blocks_terms[block_id]
   s4(s2(cg_label(block_id), ":\n"), cg_block_stmts2(stmts, 0, struct_map, local_struct_types, mir_local_types), cg_term(term), "")
-

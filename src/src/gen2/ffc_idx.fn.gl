@@ -8,4 +8,3 @@ ffc_idx fname fields ctypes j =
             true -> ctypes[j]
             _ -> ""
         _ -> ffc_idx(fname, fields, ctypes, j + 1)
-

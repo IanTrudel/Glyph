@@ -8,4 +8,3 @@ test_mir_deep u =
   mir5 = compile_fn("f x = match x\n  1 | 2 | 3 -> 10\n  _ -> 0", [])
   assert(mir_block_count(mir5) >= 3)
   0
-

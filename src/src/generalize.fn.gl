@@ -9,4 +9,3 @@ generalize eng ty =
       new_body = inst_type(eng, ty, var_map)
       new_bound_ids = extract_new_var_ids(eng, var_map, 0)
       mk_tforall(new_body, new_bound_ids, eng.ty_pool)
-

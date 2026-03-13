@@ -3,4 +3,3 @@ infer_ident eng node =
   match r < 0
     true -> mk_terror(eng.ty_pool)
     _ -> instantiate(eng, r)
-

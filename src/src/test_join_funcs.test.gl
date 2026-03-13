@@ -13,4 +13,3 @@ test_join_funcs u =
   assert(str_contains(r3, "x"))
   assert(str_contains(r3, "z"))
   0
-

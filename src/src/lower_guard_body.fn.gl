@@ -15,4 +15,3 @@ lower_guard_body ctx ast arms result merge i next_block =
       mir_emit_use(ctx, result, bv)
       mir_terminate(ctx, mk_term_goto(merge))
       0
-

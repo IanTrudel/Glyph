@@ -17,4 +17,3 @@ test_parse_patterns u =
   p3 = pool[arms[9]]
   assert_eq(p3.kind, pat_wildcard())
   0
-

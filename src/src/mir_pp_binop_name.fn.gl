@@ -9,4 +9,3 @@ mir_pp_binop_name n =
           true -> "not"
           _ -> s2("op", itos(n))
     _ -> s2("op", itos(n))
-

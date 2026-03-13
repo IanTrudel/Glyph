@@ -4,4 +4,3 @@ collect_nested_lifted dst src i =
     _ ->
       glyph_array_push(dst, src[i])
       collect_nested_lifted(dst, src, i + 1)
-

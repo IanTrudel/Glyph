@@ -22,4 +22,3 @@ mcp_tool_coverage db_path id pool args_idx =
       mcp_cov_add_uncovered(pool, uncov_arr, names, hits, 0)
       jb_put(pool, result, "uncovered", uncov_arr)
       mcp_text_result(id, json_gen(pool, result))
-

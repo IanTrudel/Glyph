@@ -6,4 +6,3 @@ is_float_op ctx left right =
     _ -> match rt == 3
       true -> 1
       _ -> 0
-

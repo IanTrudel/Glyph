@@ -22,4 +22,3 @@ test_string_utils u =
   c3 = make_caret(3)
   assert_str_eq(c3, "  ^")
   0
-

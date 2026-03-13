@@ -16,4 +16,3 @@ walk_fv_block ctx ast stmts i bound seen result =
           _ ->
             walk_free_vars(ctx, ast, snode.n1, bound, seen, result)
             walk_fv_block(ctx, ast, stmts, i + 1, bound, seen, result)
-

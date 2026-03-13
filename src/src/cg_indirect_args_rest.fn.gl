@@ -2,4 +2,3 @@ cg_indirect_args_rest ops i =
   match i >= glyph_array_len(ops)
     true -> ""
     _ -> s3(", ", cg_operand(ops[i]), cg_indirect_args_rest(ops, i + 1))
-

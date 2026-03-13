@@ -6,4 +6,3 @@ resolve_tuple_elems eng elems i =
       rest = resolve_tuple_elems(eng, elems, i + 1)
       glyph_array_push(rest, resolved)
       rest
-

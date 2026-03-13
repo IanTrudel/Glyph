@@ -27,4 +27,3 @@ unify_fields_against eng fs1 fs2 rest_var i =
                     match r < 0
                       true -> r
                       _ -> unify_fields_against(eng, fs1, fs2, rest_var, i + 1)
-

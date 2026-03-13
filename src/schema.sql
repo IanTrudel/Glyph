@@ -18,22 +18,23 @@ CREATE TABLE def (
   hash      BLOB    NOT NULL,
   tokens    INTEGER NOT NULL,
   compiled  INTEGER NOT NULL DEFAULT 0,
+  gen       INTEGER NOT NULL DEFAULT 1,
   created   TEXT    NOT NULL DEFAULT (datetime('now')),
   modified  TEXT    NOT NULL DEFAULT (datetime('now'))
-, gen INTEGER NOT NULL DEFAULT 1);
+);
 
 CREATE TABLE def_history (
-                   id         INTEGER PRIMARY KEY,
-                   def_id     INTEGER NOT NULL,
-                   name       TEXT NOT NULL,
-                   kind       TEXT NOT NULL,
-                   sig        TEXT,
-                   body       TEXT NOT NULL,
-                   hash       BLOB NOT NULL,
-                   tokens     INTEGER NOT NULL,
-                   gen        INTEGER NOT NULL DEFAULT 1,
-                   changed_at TEXT NOT NULL DEFAULT (datetime('now'))
-                 );
+  id         INTEGER PRIMARY KEY,
+  def_id     INTEGER NOT NULL,
+  name       TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  sig        TEXT,
+  body       TEXT NOT NULL,
+  hash       BLOB NOT NULL,
+  tokens     INTEGER NOT NULL,
+  gen        INTEGER NOT NULL DEFAULT 1,
+  changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TABLE dep (
   from_id   INTEGER NOT NULL REFERENCES def(id) ON DELETE CASCADE,
@@ -89,20 +90,19 @@ CREATE INDEX idx_history_name ON def_history(name, kind);
 CREATE INDEX idx_tag_key_val ON tag(key, val);
 
 CREATE TRIGGER trg_def_history_delete BEFORE DELETE ON def
-                 BEGIN
-                   INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
-                   VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
-                 END;
+BEGIN
+  INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+  VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+END;
 
 CREATE TRIGGER trg_def_history_update BEFORE UPDATE OF body ON def
-                 BEGIN
-                   INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
-                   VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
-                 END;
+BEGIN
+  INSERT INTO def_history (def_id, name, kind, sig, body, hash, tokens, gen)
+  VALUES (OLD.id, OLD.name, OLD.kind, OLD.sig, OLD.body, OLD.hash, OLD.tokens, OLD.gen);
+END;
 
 
 -- extern declarations
-INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('eprintln','glyph_eprintln',NULL,'S -> I');
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('glyph_args','glyph_args',NULL,'[S]');
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('glyph_array_len','glyph_array_len',NULL,'[I] -> I');
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('glyph_array_pop','glyph_array_pop',NULL,'[I] -> I');

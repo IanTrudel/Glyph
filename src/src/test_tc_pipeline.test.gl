@@ -7,4 +7,3 @@ test_tc_pipeline u =
   errs = eng.errors
   assert_eq(glyph_array_len(errs), 0)
   0
-

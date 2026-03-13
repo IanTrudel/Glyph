@@ -8,4 +8,3 @@ ty_fields_contain_var eng field_ns i var =
       match ty_contains_var(eng, fnode.n1, var)
         true -> true
         _ -> ty_fields_contain_var(eng, field_ns, i + 1, var)
-

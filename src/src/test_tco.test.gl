@@ -5,4 +5,3 @@ test_tco u =
   bc = mir_block_count(mirs[0])
   assert(bc >= 1)
   0
-

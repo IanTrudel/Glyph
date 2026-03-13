@@ -7,4 +7,3 @@ test_resolve_fld u =
   r3 = resolve_fld_off(reg, "z", ["q"])
   assert_eq(r3, 0 - 1)
   0
-

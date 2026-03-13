@@ -4,4 +4,3 @@ test_cg_coverage u =
   assert(str_contains(r, "_glyph_cov_write"))
   assert(str_contains(r, "fn1"))
   0
-

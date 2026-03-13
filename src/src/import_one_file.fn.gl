@@ -18,4 +18,3 @@ import_one_file db path =
                s7(sql_escape(name), "','", knd, "','", sql_escape(clean_body), "',",
                   s2(itos(gen), ",zeroblob(32),0,0)")))
       glyph_db_exec(db, sql)
-

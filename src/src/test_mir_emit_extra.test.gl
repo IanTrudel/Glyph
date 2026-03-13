@@ -12,4 +12,3 @@ test_mir_emit_extra u =
   found3 = test_find_stmt_kind(stmts3, rv_binop(), 0)
   assert(found3 >= 0)
   0
-

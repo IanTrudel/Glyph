@@ -31,4 +31,3 @@ lower_or_subs ctx ast subs scrutinee body_block next_block i =
         _ ->
           mir_switch_block(ctx, fail_target)
           lower_or_subs(ctx, ast, subs, scrutinee, body_block, next_block, i + 1)
-

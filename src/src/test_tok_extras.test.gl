@@ -8,4 +8,3 @@ test_tok_extras u =
   kinds = test_collect_kinds(toks, 0, [])
   assert(has_kind(kinds, tk_str_interp_end()))
   0
-

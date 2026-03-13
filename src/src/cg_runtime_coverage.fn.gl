@@ -12,4 +12,3 @@ cg_runtime_coverage cover_path cov_names =
   writer_body = s5(lb, "\n    fprintf(f, \"%s", "\\t%lld", "\\n\", _glyph_cov_names[i], _glyph_cov_hits[i]);\n  ", rb)
   writer_tail = s3("\n  fclose(f);\n", rb, "\n#endif\n\n")
   s7(s1, s2a, s3a, s4a, writer_head, writer_body, writer_tail)
-

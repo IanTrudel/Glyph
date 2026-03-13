@@ -46,4 +46,3 @@ cmd_test argv argc =
     _ ->
       eprintln("Usage: glyph test <db> [test_name...] [--debug|--release] [--gen N] [--cover]")
       1
-

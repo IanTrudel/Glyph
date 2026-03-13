@@ -5,4 +5,3 @@ lookup_var_map var_map var_id i =
       match var_map[i] == var_id
         true -> var_map[i + 1]
         _ -> lookup_var_map(var_map, var_id, i + 2)
-

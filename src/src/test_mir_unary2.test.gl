@@ -6,4 +6,3 @@ test_mir_unary2 u =
   mir2 = compile_fn("f b = match b\n  true -> 0\n  _ -> 1", [])
   assert(mir2.fn_block_count >= 2)
   0
-

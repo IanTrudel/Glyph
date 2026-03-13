@@ -25,4 +25,3 @@ unify eng a b =
                       _ -> match nb.tag == ty_var()
                         true -> subst_bind(eng, nb.n1, a1)
                         _ -> unify_tags(eng, na, nb, a1, b1)
-

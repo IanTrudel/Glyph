@@ -6,4 +6,3 @@ test_2d_arrays u =
   assert_eq(glyph_array_len(r[0]), 1)
   assert_eq(glyph_array_len(r[1]), 0)
   0
-

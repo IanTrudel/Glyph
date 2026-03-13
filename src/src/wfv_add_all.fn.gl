@@ -4,4 +4,3 @@ wfv_add_all dst src i =
     _ ->
       glyph_array_push(dst, src[i])
       wfv_add_all(dst, src, i + 1)
-

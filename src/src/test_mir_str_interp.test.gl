@@ -5,4 +5,3 @@ test_mir_str_interp u =
   found = test_find_stmt_kind(stmts, rv_str_interp(), 0)
   assert(found >= 0)
   0
-

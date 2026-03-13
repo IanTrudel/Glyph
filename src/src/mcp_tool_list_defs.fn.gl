@@ -25,4 +25,3 @@ mcp_tool_list_defs db_path id pool args =
   rows = glyph_db_query_rows(db, sql)
   glyph_db_close(db)
   mcp_format_def_list(id, rows)
-

@@ -7,4 +7,3 @@ test_c_layout_float u =
   sum = p.fx + p.fy
   assert_eq(float_to_int(sum), 4)
   0
-

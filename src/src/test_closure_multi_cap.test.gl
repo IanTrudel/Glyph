@@ -4,4 +4,3 @@ test_closure_multi_cap u =
   f = \x -> a + b + x
   result = f(3)
   assert_eq(result, 33)
-

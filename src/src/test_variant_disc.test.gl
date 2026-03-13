@@ -7,4 +7,3 @@ test_variant_disc u =
   assert_eq(variant_discriminant("Right"), 1)
   assert_eq(variant_discriminant("Unknown"), 0)
   0
-

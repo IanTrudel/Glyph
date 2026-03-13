@@ -5,4 +5,3 @@ test_mir_negate u =
   term = mir.fn_blocks_terms[0]
   assert_eq(term.tkind, tm_return())
   0
-

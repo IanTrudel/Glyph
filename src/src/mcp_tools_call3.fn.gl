@@ -1,0 +1,4 @@
+mcp_tools_call3 db_path id pool args_idx tool_name =
+  match str_eq(tool_name, "init")
+    true -> mcp_tool_init(db_path, id, pool, args_idx)
+    _ -> mcp_error(id, 0 - 32602, s2("Unknown tool: ", tool_name))

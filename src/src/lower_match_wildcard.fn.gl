@@ -17,4 +17,3 @@ lower_match_wildcard ctx ast arms scrutinee result merge i =
       mir_terminate(ctx, mk_term_goto(merge))
       mir_switch_block(ctx, next_block)
       lower_match_arms(ctx, ast, arms, scrutinee, result, merge, i + 3)
-

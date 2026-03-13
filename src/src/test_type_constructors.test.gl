@@ -61,4 +61,3 @@ test_type_constructors u =
   tk = mir_term_kind(mir, 0)
   assert(tk >= 1)
   0
-

@@ -19,4 +19,3 @@ pcl_line content pos names hits =
               match nl_pos >= len
                 true -> len
                 _ -> nl_pos + 1
-

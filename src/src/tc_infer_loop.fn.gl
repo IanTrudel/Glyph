@@ -21,4 +21,3 @@ tc_infer_loop eng parsed i acc =
         _ -> {fn_ty: 0 - 1, fn_tmap: []}
       glyph_array_push(acc, result)
       tc_infer_loop(eng, parsed, i + 1, acc)
-

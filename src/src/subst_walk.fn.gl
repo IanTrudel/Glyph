@@ -21,4 +21,3 @@ subst_walk eng ti =
                         true -> mk_terror(eng.ty_pool)
                         _ -> b
             _ -> ti
-

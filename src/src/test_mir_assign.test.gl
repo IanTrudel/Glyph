@@ -5,4 +5,3 @@ test_mir_assign u =
   lc = mir_local_count(mir)
   assert(lc >= 1)
   0
-

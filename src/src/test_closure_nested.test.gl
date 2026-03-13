@@ -4,4 +4,3 @@ test_closure_nested u =
   inner = outer(10)
   result = inner(20)
   assert_eq(result, 35)
-

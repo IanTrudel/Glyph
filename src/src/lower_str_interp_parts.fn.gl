@@ -17,4 +17,3 @@ lower_str_interp_parts ctx ast parts i acc =
           mir_emit_call(ctx, conv, mk_op_func(conv_fn), [val])
           glyph_array_push(acc, mk_op_local(conv))
           lower_str_interp_parts(ctx, ast, parts, i + 1, acc)
-

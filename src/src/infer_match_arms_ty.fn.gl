@@ -15,4 +15,3 @@ infer_match_arms_ty eng ast arms scrutinee_ty result_ty i =
         _ -> 0
       env_pop(eng)
       infer_match_arms_ty(eng, ast, arms, scrutinee_ty, result_ty, i + 3)
-

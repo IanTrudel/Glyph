@@ -2,4 +2,3 @@ cg_main_wrapper =
   lb = cg_lbrace()
   rb = cg_rbrace()
   s7("extern void glyph_set_args(int argc, char** argv);\nint main(int argc, char** argv) ", lb, "\n  signal(SIGSEGV, _glyph_sigsegv);\n  signal(SIGFPE, _glyph_sigfpe);\n  glyph_set_args(argc, argv);\n  return (int)glyph_main();\n", rb, "\n", "", "")
-

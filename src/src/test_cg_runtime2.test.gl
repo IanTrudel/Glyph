@@ -9,4 +9,3 @@ test_cg_runtime2 u =
   r3 = cg_test_preamble_extra()
   assert(str_contains(r3, "glyph_assert"))
   0
-

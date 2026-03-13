@@ -3,4 +3,3 @@ mir_pp_blocks mir i =
   match i >= n
     true -> ""
     _ -> s2(mir_pp_block(mir, i), mir_pp_blocks(mir, i + 1))
-

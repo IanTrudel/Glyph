@@ -4,4 +4,3 @@ test_build_type_reg u =
   reg = build_type_reg(mirs)
   assert(glyph_array_len(reg) >= 0)
   0
-

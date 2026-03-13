@@ -10,4 +10,3 @@ cg_function2_cover mir_fn struct_map cov_names =
   mir_local_types = mir_fn.fn_types
   blocks = cg_blocks2(mir_fn, 0, struct_map, local_struct_types, mir_local_types)
   s7(header, fntrack, cov_inc, locals, blocks, cg_rbrace(), "\n\n")
-

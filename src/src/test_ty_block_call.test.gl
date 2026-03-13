@@ -17,4 +17,3 @@ test_ty_block_call u =
   node2 = pool_get(eng2, ty2)
   assert_eq(node2.tag, ty_fn())
   0
-

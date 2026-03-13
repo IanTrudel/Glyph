@@ -7,4 +7,3 @@ lower_lambda_params_full ctx ast params i =
       mir_bind_var(ctx, pnode.sval, local_id)
       glyph_array_push(ctx.fn_params, local_id)
       lower_lambda_params_full(ctx, ast, params, i + 1)
-

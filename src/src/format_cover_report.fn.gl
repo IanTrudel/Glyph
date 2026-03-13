@@ -13,4 +13,3 @@ format_cover_report names hits =
       println(s3("\nUncovered (", itos(uncovered), "):"))
       fcr_print_uncovered(names, hits, 0)
     _ -> println("\nAll functions covered!")
-

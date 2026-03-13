@@ -8,4 +8,3 @@ test_mir_pp_fns u =
   pp2 = mir_pp_fn(mir2)
   assert(glyph_str_len(pp2) > 10)
   0
-

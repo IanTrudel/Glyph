@@ -10,4 +10,3 @@ export_defs_loop rows i n out_dir =
       path = export_def_path(out_dir, name, knd, gen)
       glyph_write_file(path, s2(body, "\n"))
       export_defs_loop(rows, i+1, n, out_dir)
-

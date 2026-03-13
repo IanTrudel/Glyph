@@ -8,4 +8,3 @@ parse_pattern src tokens pos pool =
           subs = [pr.node]
           parse_or_pats(src, tokens, pr.pos, pool, subs)
         _ -> pr
-

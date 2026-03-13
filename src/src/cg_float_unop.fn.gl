@@ -1,3 +1,2 @@
 cg_float_unop stmt =
   s5("  ", cg_local(stmt.sdest), " = _glyph_f2i(-_glyph_i2f(", cg_operand(stmt.sop1), "));\n")
-

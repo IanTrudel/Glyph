@@ -7,4 +7,3 @@ compile_fns sources i za_fns =
       collect_nested_lifted(rest, mir.fn_subs, 0)
       glyph_array_push(rest, mir)
       rest
-

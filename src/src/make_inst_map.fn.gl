@@ -8,4 +8,3 @@ make_inst_map eng var_ids i =
       glyph_array_push(rest, old_id)
       glyph_array_push(rest, new_var)
       rest
-

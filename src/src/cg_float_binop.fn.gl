@@ -2,4 +2,3 @@ cg_float_binop stmt =
   a = s3("_glyph_i2f(", cg_operand(stmt.sop1), ")")
   b = s3("_glyph_i2f(", cg_operand(stmt.sop2), ")")
   s7("  ", cg_local(stmt.sdest), " = _glyph_f2i(", a, cg_binop_str(stmt.sival), b, ");\n")
-

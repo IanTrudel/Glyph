@@ -15,4 +15,3 @@ ty_contains_var eng ti var =
           _ -> match node.tag == ty_record()
             true -> ty_fields_contain_var(eng, node.ns, 0, var)
             _ -> false
-

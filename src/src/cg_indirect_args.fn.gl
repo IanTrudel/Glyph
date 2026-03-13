@@ -3,4 +3,3 @@ cg_indirect_args closure ops i =
     true -> closure
     _ ->
       s4(closure, ", ", cg_operand(ops[i]), cg_indirect_args_rest(ops, i + 1))
-

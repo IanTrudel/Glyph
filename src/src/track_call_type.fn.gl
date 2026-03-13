@@ -4,4 +4,3 @@ track_call_type ctx dest callee =
       true -> mir_set_lt(ctx, dest, 4)
       _ -> 0
     _ -> 0
-

@@ -24,7 +24,7 @@ The MCP server gives Claude structured tools to navigate the program graph, quer
 glyph init hello.glyph
 ```
 
-Open Claude Code with the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), pointing `hello.glyph` as the database parameter. Then prompt:
+Open Claude Code with the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), then prompt:
 
 > Write a hello world program in Glyph.
 
@@ -34,6 +34,16 @@ Claude inserts a `main` definition directly into `hello.glyph` via MCP. Then bui
 glyph run hello.glyph
 # Hello, World!
 ```
+
+Building an executable file goes as follow:
+
+```bash
+glyph build hello.glyph
+./hello
+# Hello, World!
+```
+
+
 
 See `examples/hello/hello.glyph` for the resulting database.
 
@@ -175,6 +185,7 @@ documents/
 ```
 
 **Crate dependency order** (no cycles):
+
 ```
 glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → glyph-db
 ```

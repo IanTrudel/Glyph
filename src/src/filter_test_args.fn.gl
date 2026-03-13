@@ -36,4 +36,3 @@ filter_test_args argv start end =
             _ ->
               glyph_array_push(rest, arg)
               rest
-

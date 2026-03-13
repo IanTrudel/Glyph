@@ -8,4 +8,3 @@ test_mcp_helpers u =
   assert(str_contains(t1, "jsonrpc"))
   assert(str_contains(t1, "result"))
   0
-

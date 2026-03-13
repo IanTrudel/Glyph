@@ -37,4 +37,3 @@ subst_resolve eng ti =
                         resolved_body = subst_resolve(eng, n1)
                         mk_tforall(resolved_body, node.ns, eng.ty_pool)
                       _ -> w
-

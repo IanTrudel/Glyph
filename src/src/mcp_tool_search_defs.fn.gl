@@ -20,4 +20,3 @@ mcp_tool_search_defs db_path id pool args =
   arr = jb_arr(rp)
   mcp_fmt_search_loop(rp, arr, rows, 0, glyph_array_len(rows))
   mcp_text_result(id, json_gen(rp, arr))
-

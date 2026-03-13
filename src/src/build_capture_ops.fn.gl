@@ -7,4 +7,3 @@ build_capture_ops free_vars i =
       rest = build_capture_ops(free_vars, i + 1)
       glyph_array_push(rest, mk_op_local(local_id))
       rest
-

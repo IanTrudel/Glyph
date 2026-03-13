@@ -11,4 +11,3 @@ test_mcp_tools_list u =
   assert(str_contains(r, "check_def"))
   assert(str_contains(r, "jsonrpc"))
   0
-

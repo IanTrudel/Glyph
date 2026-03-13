@@ -5,4 +5,3 @@ parse_cover_lines content pos names hits =
     _ ->
       next = pcl_line(content, pos, names, hits)
       parse_cover_lines(content, next, names, hits)
-

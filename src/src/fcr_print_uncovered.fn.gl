@@ -6,4 +6,3 @@ fcr_print_uncovered names hits i =
         true -> println(s2("  ", names[i]))
         _ -> 0
       fcr_print_uncovered(names, hits, i + 1)
-

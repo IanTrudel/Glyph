@@ -39,4 +39,3 @@ inst_type eng ti var_map =
                       new_ns = inst_type_ns(eng, node.ns, 0, var_map)
                       mk_ttuple(new_ns, eng.ty_pool)
                     _ -> ti
-

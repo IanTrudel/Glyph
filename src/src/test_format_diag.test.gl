@@ -8,4 +8,3 @@ test_format_diag u =
   assert(str_contains(diag, "my_fn"))
   assert(str_contains(diag, "bad thing"))
   0
-

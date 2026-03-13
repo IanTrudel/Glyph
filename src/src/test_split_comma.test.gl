@@ -7,4 +7,3 @@ test_split_comma u =
   r2 = split_comma("single")
   assert_eq(glyph_array_len(r2), 1)
   0
-

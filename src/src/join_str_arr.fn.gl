@@ -6,4 +6,3 @@ join_str_arr arr i =
       match i == n - 1
         true -> arr[i]
         _ -> s3(arr[i], " ", join_str_arr(arr, i + 1))
-

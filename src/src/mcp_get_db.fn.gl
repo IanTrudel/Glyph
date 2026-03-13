@@ -6,4 +6,3 @@ mcp_get_db pool args default_db =
       _ = node.tag
       node.sval
     _ -> default_db
-

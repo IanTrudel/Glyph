@@ -15,4 +15,3 @@ mcp_tool_remove_def db_path id pool args =
   r = jb_obj(rp)
   jb_put(rp, r, "status", jb_str(rp, "ok"))
   mcp_text_result(id, json_gen(rp, r))
-

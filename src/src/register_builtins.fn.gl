@@ -20,4 +20,3 @@ register_builtins eng =
   aset_ty = mk_tfn(aset_arr, mk_tfn(i, mk_tfn(i, v, p), p), p)
   env_insert(eng, "glyph_array_set", generalize(eng, aset_ty))
   0
-

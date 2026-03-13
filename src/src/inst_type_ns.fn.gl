@@ -6,4 +6,3 @@ inst_type_ns eng ns i var_map =
       rest = inst_type_ns(eng, ns, i + 1, var_map)
       glyph_array_push(rest, new_elem)
       rest
-

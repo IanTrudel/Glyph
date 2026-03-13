@@ -32,4 +32,3 @@ test_ty_infer_exprs u =
   node4 = pool_get(eng4, ty4)
   assert_eq(node4.tag, ty_fn())
   0
-

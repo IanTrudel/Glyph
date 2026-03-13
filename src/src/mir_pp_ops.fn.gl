@@ -7,4 +7,3 @@ mir_pp_ops ops i =
       match i + 1 >= n
         true -> cur
         _ -> s3(cur, ", ", mir_pp_ops(ops, i + 1))
-

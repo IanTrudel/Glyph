@@ -4,4 +4,3 @@ cg_runtime_float =
   stf = "GVal glyph_str_to_float(GVal s) \{ const char* p=*(const char**)s; long long l=*(long long*)((char*)s+8); char buf[64]; if(l>63) l=63; memcpy(buf,p,(size_t)l); buf[l]=0; return _glyph_f2i(atof(buf)); }\n"
   itf = "GVal glyph_int_to_float(GVal n) \{ return _glyph_f2i((double)n); }\nGVal glyph_float_to_int(GVal v) \{ return (GVal)(long long)_glyph_i2f(v); }\n"
   s4(helpers, fts, stf, itf)
-

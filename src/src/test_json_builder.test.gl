@@ -17,4 +17,3 @@ test_json_builder u =
   r2 = json_gen(pool2, arr)
   assert(str_contains(r2, "[1,2]"))
   0
-

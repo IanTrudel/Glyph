@@ -11,4 +11,3 @@ test_sort_str u =
   sorted3 = sort_str_arr(arr3)
   assert_eq(glyph_array_len(sorted3), 0)
   0
-

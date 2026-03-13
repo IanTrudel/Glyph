@@ -6,4 +6,3 @@ test_mir_pp2 u =
   op_pp = mir_pp_op(mk_op_int(42))
   assert(str_contains(op_pp, "42"))
   0
-

@@ -9,4 +9,3 @@ test_mir_str_match u =
   bc3 = mir_block_count(mir3)
   assert(bc3 >= 2)
   0
-

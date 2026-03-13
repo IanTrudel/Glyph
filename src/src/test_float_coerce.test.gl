@@ -8,4 +8,3 @@ test_float_coerce u =
   w = 2 * 3.5
   assert_eq(float_to_int(w), 7)
   0
-

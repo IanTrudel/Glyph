@@ -5,4 +5,3 @@ test_float_convert u =
   y = int_to_float(n)
   assert_eq(float_to_int(y), n)
   0
-

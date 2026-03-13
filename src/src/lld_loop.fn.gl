@@ -7,4 +7,3 @@ lld_loop ctx names i tmp =
       mir_emit_field(ctx, dest, mk_op_local(tmp), 0, name)
       mir_bind_var(ctx, name, dest)
       lld_loop(ctx, names, i + 1, tmp)
-

@@ -6,4 +6,3 @@ is_str_op ctx left right =
     _ -> match rt == 4
       true -> 1
       _ -> 0
-

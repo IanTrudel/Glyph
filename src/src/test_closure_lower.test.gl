@@ -8,4 +8,3 @@ test_closure_lower u =
   lc = mir_local_count(mir)
   assert(lc >= 2)
   0
-

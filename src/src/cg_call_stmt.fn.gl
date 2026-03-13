@@ -6,4 +6,3 @@ cg_call_stmt stmt =
       args_str = cg_call_args(stmt.sops, 0)
       s6("  ", cg_local(stmt.sdest), " = ", callee_str, s2("(", args_str), ");\n")
     _ -> cg_indirect_call_stmt(stmt)
-

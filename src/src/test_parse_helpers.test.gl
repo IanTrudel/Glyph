@@ -20,4 +20,3 @@ test_parse_helpers u =
   assert_eq(glyph_array_len(filtered), 1)
   assert_str_eq(filtered[0], "test_foo")
   0
-

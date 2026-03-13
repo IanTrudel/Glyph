@@ -13,5 +13,4 @@ mcp_tools_call2 db_path id pool args_idx tool_name =
               true -> mcp_tool_check_def(db_path, id, pool, args_idx)
               _ -> match str_eq(tool_name, "coverage")
                 true -> mcp_tool_coverage(db_path, id, pool, args_idx)
-                _ -> mcp_error(id, 0 - 32602, s2("Unknown tool: ", tool_name))
-
+                _ -> mcp_tools_call3(db_path, id, pool, args_idx, tool_name)

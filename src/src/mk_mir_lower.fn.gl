@@ -17,4 +17,3 @@ mk_mir_lower fn_name za_fns tctx =
    lifted_fns: [],
    lambda_ctr: [0],
    outer_fn_name: fn_name}
-

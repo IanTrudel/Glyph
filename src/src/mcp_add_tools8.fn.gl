@@ -3,5 +3,4 @@ mcp_add_tools8 pool tools =
   jb_put(pool, p8, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
   rb = jb_arr(pool)
   jb_push(pool, tools, mcp_tool_schema(pool, "coverage", "Get code coverage report from last test run", p8, rb))
-  0
-
+  mcp_add_tools9(pool, tools)

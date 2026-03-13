@@ -10,4 +10,3 @@ emit_mir_db db_path =
   fix_extern_calls(mirs, externs)
   mir_pp_fns(mirs, 0)
   0
-

@@ -7,4 +7,3 @@ cg_cov_names_init cov_names i =
       match i < n - 1
         true -> s3(entry, ", ", cg_cov_names_init(cov_names, i + 1))
         _ -> entry
-

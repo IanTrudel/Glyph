@@ -21,4 +21,3 @@ cg_field_stmt2 stmt local_struct_types struct_map mir_local_types =
         _ -> access
       s2(chk, s4("  ", cg_local(stmt.sdest), " = ", s2(wrapped, ";\n")))
     _ -> cg_field_stmt(stmt)
-

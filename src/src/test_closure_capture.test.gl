@@ -3,4 +3,3 @@ test_closure_capture u =
   add_base = \x -> base + x
   result = add_base(42)
   assert_eq(result, 142)
-

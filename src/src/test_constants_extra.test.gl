@@ -12,4 +12,3 @@ test_constants_extra u =
   assert(is_arith_op(op_mod()))
   assert(is_arith_op(op_eq()) == 0)
   0
-

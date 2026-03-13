@@ -6,4 +6,3 @@ test_validate_extra u =
   assert_eq(r2.vr_ok, 0)
   assert(glyph_str_len(r2.vr_msg) > 0)
   0
-

@@ -3,4 +3,3 @@ cg_closure_stores ops i =
     true -> ""
     _ ->
       s5("__c[", itos(i + 1), "] = ", cg_operand(ops[i]), s2("; ", cg_closure_stores(ops, i + 1)))
-

@@ -9,4 +9,3 @@ test_is_op_float u =
   loc2 = mk_op_local(0)
   assert_eq(is_op_float(local_types, loc2), 0)
   0
-

@@ -23,4 +23,3 @@ mcp_tool_get_def db_path id pool args =
       jb_put(rp, r, "tokens", jb_int(rp, str_to_int(row[4])))
       mcp_text_result(id, json_gen(rp, r))
     _ -> mcp_text_result(id, s3("Definition '", name, "' not found"))
-

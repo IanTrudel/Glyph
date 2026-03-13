@@ -19,4 +19,3 @@ cmd_check argv argc =
       n_tc_errs = glyph_array_len(eng.errors)
       println(s5("Checked ", itos(glyph_array_len(parsed)), " definitions: ", itos(n_errs), s2(" parse errors, ", s2(itos(n_tc_errs), " type warnings"))))
     _ -> eprintln("Usage: glyph check <db.glyph> [--gen N]")
-

@@ -28,4 +28,3 @@ test_ty_deep u =
   n3 = pool_get(eng3, ty3)
   assert_eq(n3.tag, ty_fn())
   0
-

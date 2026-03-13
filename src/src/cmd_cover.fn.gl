@@ -17,4 +17,3 @@ cmd_cover argv argc =
     _ ->
       eprintln("Usage: glyph cover <db>")
       1
-

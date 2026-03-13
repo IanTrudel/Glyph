@@ -7,4 +7,3 @@ pdf_loop src tokens pos pool names =
         true -> pdf_loop(src, tokens, pos + 2, pool, names)
         _ -> {node: names, pos: pos + 1}
     _ -> {node: names, pos: pos}
-

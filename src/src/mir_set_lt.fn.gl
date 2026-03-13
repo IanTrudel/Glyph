@@ -1,4 +1,3 @@
 mir_set_lt ctx local ty =
   glyph_array_set(ctx.local_types, local, ty)
   0
-

@@ -5,4 +5,3 @@ pcl_find_tab content pos len =
       match glyph_str_char_at(content, pos) == 9
         true -> pos
         _ -> pcl_find_tab(content, pos + 1, len)
-

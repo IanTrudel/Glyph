@@ -7,4 +7,3 @@ test_tc_errors u =
   errs = tc_report_errors(eng)
   assert_eq(errs, 0)
   0
-

@@ -4,4 +4,3 @@ cg_runtime_full externs =
   match needs_sqlite(externs)
     true -> s2(base, cg_runtime_sqlite())
     _ -> base
-

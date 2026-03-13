@@ -65,4 +65,3 @@ tok_one4 src len pos line bdepth tokens c =
                       glyph_array_push(tokens, mk_token(tk_ident(), pos, end, line))
                       tok_pack(end, line, bdepth)
             _ -> tok_pack(pos + 1, line, bdepth)
-

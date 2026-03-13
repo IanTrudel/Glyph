@@ -10,4 +10,3 @@ test_mir_lower_extra u =
   mir5 = compile_fn("f u = y = 10\n  y", [])
   assert(mir_block_count(mir5) >= 1)
   0
-

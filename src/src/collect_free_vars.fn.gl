@@ -5,4 +5,3 @@ collect_free_vars ctx ast body_idx params =
   result = []
   walk_free_vars(ctx, ast, body_idx, bound, seen, result)
   result
-

@@ -15,4 +15,3 @@ test_parse_extras u =
   r3 = parse_fn_def(src3, toks3, 0, ast3)
   assert(r3.node >= 0)
   0
-

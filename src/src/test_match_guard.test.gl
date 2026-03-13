@@ -28,4 +28,3 @@ test_match_guard u =
     _ -> "other"
   assert_str_eq(r6, "other")
   0
-

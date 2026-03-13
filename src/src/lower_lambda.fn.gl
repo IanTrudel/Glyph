@@ -20,4 +20,3 @@ lower_lambda ctx ast node =
   capture_ops = build_capture_ops(free_vars, 0)
   mir_emit(ctx, mk_stmt(dest, rv_make_closure(), 0, lam_name, mk_op_nil(), mk_op_nil(), capture_ops))
   mk_op_local(dest)
-

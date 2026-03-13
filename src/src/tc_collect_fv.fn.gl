@@ -33,4 +33,3 @@ tc_collect_fv eng ti acc =
                   _ -> match tag == ty_tuple()
                     true -> tc_collect_fv_ns(eng, node.ns, 0, acc)
                     _ -> acc
-

@@ -16,4 +16,3 @@ compile_fns_parsed parsed i za_fns tc_results verbose =
       collect_nested_lifted(rest, mir.fn_subs, 0)
       glyph_array_push(rest, mir)
       rest
-

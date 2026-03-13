@@ -7,4 +7,3 @@ tc_collect_fv_fields eng ns i acc =
       _ = fnode.tag
       tc_collect_fv(eng, fnode.n1, acc)
       tc_collect_fv_fields(eng, ns, i + 1, acc)
-

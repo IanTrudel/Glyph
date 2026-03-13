@@ -14,4 +14,3 @@ find_field eng fs name i =
             match glyph_str_eq(f.sval, name)
               true -> fi
               _ -> find_field(eng, fs, name, i + 1)
-

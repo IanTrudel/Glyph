@@ -7,4 +7,3 @@ test_collect_libs u =
   r2 = collect_libs(e2)
   assert_str_eq(r2, "")
   0
-

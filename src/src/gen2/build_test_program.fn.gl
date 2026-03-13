@@ -31,4 +31,3 @@ build_test_program fn_sources test_sources test_names externs output_path struct
       true -> s2("-w -Wno-int-conversion -Wno-incompatible-pointer-types -O2", cov_flag)
       _ -> s2("-w -Wno-int-conversion -Wno-incompatible-pointer-types -DGLYPH_DEBUG -O1", cov_flag)
   glyph_system(s5("cc ", cc_flags, s2(" ", c_path), s3(" -o ", output_path, " -no-pie"), lib_flags))
-

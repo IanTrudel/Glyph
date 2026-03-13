@@ -7,4 +7,3 @@ coerce_to_float ctx op =
       mir_set_lt(ctx, dest, 3)
       mir_emit_call(ctx, dest, mk_op_func("glyph_int_to_float"), [op])
       mk_op_local(dest)
-

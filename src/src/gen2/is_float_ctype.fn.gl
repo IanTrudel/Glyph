@@ -4,4 +4,3 @@ is_float_ctype t =
     _ -> match glyph_str_eq(t, "double") == 1
       true -> 1
       _ -> 0
-

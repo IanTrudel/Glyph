@@ -6,4 +6,3 @@ lower_float_binop ctx ast_op left right =
     true -> mir_set_lt(ctx, dest, 3)
     _ -> 0
   mk_op_local(dest)
-

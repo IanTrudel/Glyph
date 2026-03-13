@@ -10,4 +10,3 @@ cg_cov_collect_subs subs i acc =
           glyph_array_push(acc, nm)
           0
       cg_cov_collect_subs(subs, i + 1, acc)
-

@@ -6,4 +6,3 @@ str_contains_loop haystack needle hlen nlen i =
       match glyph_str_eq(sub, needle)
         true -> 1
         _ -> str_contains_loop(haystack, needle, hlen, nlen, i + 1)
-
