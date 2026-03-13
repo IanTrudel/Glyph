@@ -30,7 +30,6 @@ Glyph is a compiled, statically-typed functional language with two foundational 
 ```bash
 git clone <repo>
 cd Glyph
-cargo build --release          # build glyph0 (Rust bootstrap compiler)
 ninja                          # build self-hosted glyph compiler
 ```
 
