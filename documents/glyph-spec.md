@@ -808,7 +808,7 @@ main pat:S paths:[S] --color:B=true =
 
 - **Categorical semantics**: Formal mapping of `|>` to morphism composition, `map` to
   functorial lifting, `?` to Kleisli arrows in the `Result` monad. This would allow
-  Glyph programs to be verified using the Eilenberg categorical framework.
+  Glyph programs to be formally verified using categorical semantics.
 - **Dependent types**: For compile-time array length checking and more expressive FFI.
 - **Effect system**: Track I/O, mutation, and concurrency as type-level effects.
 - **WASM target**: For running Glyph in browsers and sandboxed environments.

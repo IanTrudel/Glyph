@@ -9,7 +9,10 @@
 #   ninja              build self-hosted compiler (default)
 #   ninja bootstrap    full chain: cargo → glyph0 → glyph1 → glyph
 #   ninja test         run all tests (Rust + self-hosted)
+#   ninja cover        run self-hosted tests with coverage (→ glyph.glyph.cover)
 #   ninja dump         regenerate glyph.sql from glyph.glyph
+#   ninja -t clean     remove ninja build artifacts (not Rust target/)
+#   cargo clean        remove Rust build artifacts (target/)
 
 # Stage 0: Build the Rust bootstrap compiler
 rule cargo_build
@@ -54,13 +57,22 @@ build rust_tests: cargo_test | glyph0
 
 # Run self-hosted test suite
 rule self_test
-  command = ./glyph build test_comprehensive.glyph /tmp/test_comp 2>&1 && /tmp/test_comp
+  command = ./glyph test glyph.glyph --gen 2 2>&1
   description = Running self-hosted tests
 
 build self_tests: self_test | glyph
 
 # Run all tests
 build test: phony rust_tests self_tests
+
+# Run self-hosted compiler tests with coverage instrumentation
+rule cover_test
+  command = ./glyph test glyph.glyph --gen 2 --cover 2>&1
+  description = Running self-hosted tests with coverage
+
+build glyph.glyph.cover: cover_test | glyph
+
+build cover: phony glyph.glyph.cover
 
 # Dump the database to SQL
 rule dump_sql
