@@ -1,0 +1,9 @@
+test_mir_call u =
+  mir = compile_fn("f x = foo(x)", [])
+  stmts = mir.fn_blocks_stmts[mir.fn_entry]
+  i = test_find_stmt_kind(stmts, rv_call(), 0)
+  assert(i >= 0)
+  s = stmts[i]
+  assert_eq(s.sop1.okind, ok_func_ref())
+  assert_str_eq(s.sop1.ostr, "foo")
+  0

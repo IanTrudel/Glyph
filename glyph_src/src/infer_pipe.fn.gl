@@ -1,0 +1,7 @@
+infer_pipe eng ast node =
+  left_ty = infer_expr(eng, ast, node.n1)
+  right_ty = infer_expr(eng, ast, node.n2)
+  ret = subst_fresh(eng)
+  fn_ty = mk_tfn(left_ty, ret, eng.ty_pool)
+  unify(eng, right_ty, fn_ty)
+  ret

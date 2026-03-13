@@ -1,0 +1,10 @@
+mcp_tool_rdeps db_path id pool args =
+  name = json_get_str(pool, args, "name")
+  db = glyph_db_open(db_path)
+  sql = s3("SELECT DISTINCT f.name, f.kind FROM dep d JOIN def f ON d.from_id = f.id JOIN def t ON d.to_id = t.id WHERE t.name = '", sql_escape(name), "' ORDER BY f.name")
+  rows = glyph_db_query_rows(db, sql)
+  glyph_db_close(db)
+  rp = []
+  arr = jb_arr(rp)
+  mcp_fmt_dep_loop(rp, arr, rows, 0, glyph_array_len(rows))
+  mcp_text_result(id, json_gen(rp, arr))

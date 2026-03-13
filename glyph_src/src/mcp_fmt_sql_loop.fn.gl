@@ -1,0 +1,9 @@
+mcp_fmt_sql_loop rp arr rows i len =
+  match i < len
+    true ->
+      row = rows[i]
+      row_arr = jb_arr(rp)
+      mcp_fmt_sql_cols(rp, row_arr, row, 0, array_len(row))
+      jb_push(rp, arr, row_arr)
+      mcp_fmt_sql_loop(rp, arr, rows, i + 1, len)
+    _ -> 0

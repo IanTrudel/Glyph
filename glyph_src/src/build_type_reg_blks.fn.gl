@@ -1,0 +1,6 @@
+build_type_reg_blks blocks bi reg =
+  match bi >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      build_type_reg_stmts(blocks[bi], 0, reg)
+      build_type_reg_blks(blocks, bi + 1, reg)

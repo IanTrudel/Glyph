@@ -1,0 +1,5 @@
+lower_record ctx ast node =
+  r = lower_record_fields(ctx, ast, node.ns, 0)
+  dest = mir_alloc_local(ctx, "")
+  mir_emit_aggregate(ctx, dest, ag_record(), r.ostr, r.sops)
+  mk_op_local(dest)

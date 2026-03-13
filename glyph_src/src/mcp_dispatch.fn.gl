@@ -1,0 +1,18 @@
+mcp_dispatch db_path line =
+  pool = []
+  tokens = json_tokenize(line)
+  pr = json_parse(line, tokens, 0, pool)
+  root = pr.node
+  method = json_get_str(pool, root, "method")
+  id = json_get_int(pool, root, "id")
+  match str_eq(method, "initialize")
+    true -> mcp_initialize(id)
+    _ -> match str_eq(method, "notifications/initialized")
+      true -> ""
+      _ -> match str_eq(method, "tools/list")
+        true -> mcp_tools_list(id)
+        _ -> match str_eq(method, "tools/call")
+          true -> mcp_tools_call(db_path, id, pool, root)
+          _ -> match str_eq(method, "ping")
+            true -> mcp_respond(id, "\{}")
+            _ -> mcp_error(id, 0 - 32601, "Method not found")

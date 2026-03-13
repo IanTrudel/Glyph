@@ -1,0 +1,9 @@
+tco_transform mir blks bi stmts s_call n =
+  nparams = glyph_array_len(mir.fn_params)
+  base_tmp = glyph_array_len(mir.fn_locals)
+  tco_alloc_temps(mir.fn_locals, nparams, 0)
+  new_stmts = tco_build_stmts(stmts, n - 2)
+  tco_emit_temps(new_stmts, s_call.sops, base_tmp, 0)
+  tco_emit_params(new_stmts, base_tmp, nparams, 0)
+  glyph_array_set(blks, bi, new_stmts)
+  glyph_array_set(mir.fn_blocks_terms, bi, mk_term_goto(mir.fn_entry))

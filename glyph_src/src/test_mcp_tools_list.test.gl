@@ -1,0 +1,14 @@
+test_mcp_tools_list u =
+  r = mcp_tools_list(1)
+  assert(str_contains(r, "get_def"))
+  assert(str_contains(r, "put_def"))
+  assert(str_contains(r, "list_defs"))
+  assert(str_contains(r, "search_defs"))
+  assert(str_contains(r, "remove_def"))
+  assert(str_contains(r, "deps"))
+  assert(str_contains(r, "rdeps"))
+  assert(str_contains(r, "sql"))
+  assert(str_contains(r, "check_def"))
+  assert(str_contains(r, "jsonrpc"))
+  0
+

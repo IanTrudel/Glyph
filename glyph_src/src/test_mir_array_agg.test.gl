@@ -1,0 +1,9 @@
+test_mir_array_agg u =
+  mir = compile_fn("f u = [1, 2]", [])
+  stmts = mir.fn_blocks_stmts[mir.fn_entry]
+  i = test_find_stmt_kind(stmts, rv_aggregate(), 0)
+  assert(i >= 0)
+  s = stmts[i]
+  assert_eq(s.sival, ag_array())
+  assert_eq(glyph_array_len(s.sops), 2)
+  0

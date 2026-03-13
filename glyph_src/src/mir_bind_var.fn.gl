@@ -1,0 +1,4 @@
+mir_bind_var ctx name local_id =
+  glyph_array_push(ctx.var_names, name)
+  glyph_array_push(ctx.var_locals, local_id)
+  0

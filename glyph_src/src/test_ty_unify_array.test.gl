@@ -1,0 +1,12 @@
+test_ty_unify_array u =
+  eng = mk_engine()
+  pool = eng.ty_pool
+  va = subst_fresh_var(eng)
+  ti = mk_tint(pool)
+  arr1 = mk_tarray(va, pool)
+  arr2 = mk_tarray(ti, pool)
+  unify(eng, arr1, arr2)
+  assert_eq(glyph_array_len(eng.errors), 0)
+  ra = subst_walk(eng, va)
+  assert_eq((pool[ra]).tag, ty_int())
+  0

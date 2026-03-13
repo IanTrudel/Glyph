@@ -1,0 +1,5 @@
+infer_ctor_pattern eng ast node =
+  ctor_ty = env_lookup(eng, node.sval)
+  match ctor_ty < 0
+    true -> subst_fresh(eng)
+    _ -> ctor_ty

@@ -1,0 +1,7 @@
+cg_test_dispatch_cover names =
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  s2(s5("static int should_run(const char* name, int argc, char** argv) ", lb, "\n  if (argc <= 1) return 1;\n  for (int i = 1; i < argc; i++) if (strcmp(argv[i], name) == 0) return 1;\n  return 0;\n", rb, "\n\n"),
+  s2(s5("int main(int argc, char** argv) ", lb, "\n#ifdef GLYPH_COVERAGE\n  atexit(_glyph_cov_write);\n#endif\n  int passed = 0, failed = 0;\n", cg_test_dispatch_case(names, 0), ""),
+  s5("  printf(\"%d/%d passed\\n\", passed, passed + failed);\n  return failed > 0 ? 1 : 0;\n", rb, "\n", "", "")))
+

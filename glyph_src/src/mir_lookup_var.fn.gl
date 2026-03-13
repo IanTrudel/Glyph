@@ -1,0 +1,2 @@
+mir_lookup_var ctx name =
+  mir_lookup_var_at(ctx.var_names, ctx.var_locals, name, glyph_array_len(ctx.var_names) - 1)

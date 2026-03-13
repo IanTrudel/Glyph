@@ -1,0 +1,11 @@
+infer_expr2 eng ast node k =
+  match k
+    _ ? k == ex_field_access() -> infer_field_access(eng, ast, node)
+    _ ? k == ex_index() -> infer_index(eng, ast, node)
+    _ ? k == ex_array() -> infer_array(eng, ast, node)
+    _ ? k == ex_record() -> infer_record(eng, ast, node)
+    _ ? k == ex_lambda() -> infer_lambda(eng, ast, node)
+    _ ? k == ex_match() -> infer_match(eng, ast, node)
+    _ ? k == ex_block() -> infer_block(eng, ast, node)
+    _ ? k == ex_pipe() -> infer_pipe(eng, ast, node)
+    _ -> infer_expr3(eng, ast, node, k)

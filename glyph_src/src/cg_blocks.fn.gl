@@ -1,0 +1,4 @@
+cg_blocks mir_fn i =
+  match i >= mir_block_count(mir_fn)
+    true -> ""
+    _ -> s2(cg_block(mir_fn, i), cg_blocks(mir_fn, i + 1))

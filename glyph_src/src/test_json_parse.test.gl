@@ -1,0 +1,15 @@
+test_json_parse u =
+  pool = []
+  toks = json_tokenize("42")
+  pr = json_parse("42", toks, 0, pool)
+  assert_eq(pool[pr.node].tag, jn_int)
+  assert_eq(pool[pr.node].nval, 42)
+  pool2 = []
+  toks2 = json_tokenize("-7")
+  pr2 = json_parse("-7", toks2, 0, pool2)
+  assert_eq(pool2[pr2.node].nval, 0 - 7)
+  pool3 = []
+  toks3 = json_tokenize("true")
+  pr3 = json_parse("true", toks3, 0, pool3)
+  assert_eq(pool3[pr3.node].tag, jn_bool)
+  assert_eq(pool3[pr3.node].nval, 1)

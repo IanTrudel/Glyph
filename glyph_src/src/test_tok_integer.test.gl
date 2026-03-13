@@ -1,0 +1,8 @@
+test_tok_integer u =
+  toks = tokenize("42")
+  kinds = test_collect_kinds(toks, 0, [])
+  assert(has_kind(kinds, tk_int()))
+  i = test_find_kind(toks, tk_int(), 0)
+  assert(i >= 0)
+  assert_eq(cur_ival("42", toks, i), 42)
+  0

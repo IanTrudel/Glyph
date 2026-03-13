@@ -1,0 +1,6 @@
+blt_propagate_blks blocks i lst =
+  match i >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      blt_propagate_stmts(blocks[i], 0, lst)
+      blt_propagate_blks(blocks, i + 1, lst)

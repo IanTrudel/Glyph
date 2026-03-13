@@ -1,0 +1,11 @@
+lower_record_fields_acc ctx ast ns i acc_names acc_ops =
+  match i >= glyph_array_len(ns)
+    true -> {ostr: acc_names, sops: acc_ops}
+    _ ->
+      name_node = ast[ns[i]]
+      val_op = lower_expr(ctx, ast, ns[i + 1])
+      glyph_array_push(acc_ops, val_op)
+      new_names = match glyph_str_len(acc_names) == 0
+        true -> name_node.sval
+        _ -> s3(acc_names, ",", name_node.sval)
+      lower_record_fields_acc(ctx, ast, ns, i + 2, new_names, acc_ops)

@@ -1,0 +1,18 @@
+ty_contains_var eng ti var =
+  w = subst_walk(eng, ti)
+  node = pool_get(eng, w)
+  match node.tag == ty_var()
+    true -> node.n1 == var
+    _ -> match node.tag == ty_fn()
+      true ->
+        match ty_contains_var(eng, node.n1, var)
+          true -> true
+          _ -> ty_contains_var(eng, node.n2, var)
+      _ -> match node.tag == ty_array()
+        true -> ty_contains_var(eng, node.n1, var)
+        _ -> match node.tag == ty_opt()
+          true -> ty_contains_var(eng, node.n1, var)
+          _ -> match node.tag == ty_record()
+            true -> ty_fields_contain_var(eng, node.ns, 0, var)
+            _ -> false
+

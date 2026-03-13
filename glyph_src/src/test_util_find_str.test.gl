@@ -1,0 +1,10 @@
+test_util_find_str u =
+  arr = ["apple", "banana", "cherry"]
+  assert_eq(find_str_in(arr, "banana", 0), 1)
+  assert_eq(find_str_in(arr, "apple", 0), 0)
+  assert_eq(find_str_in(arr, "cherry", 0), 2)
+  assert_eq(find_str_in(arr, "grape", 0), 0 - 1)
+  assert(has_str_in(arr, "banana"))
+  assert(has_str_in(arr, "grape") == 0)
+  assert(has_str_in([], "x") == 0)
+  0

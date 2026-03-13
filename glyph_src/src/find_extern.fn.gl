@@ -1,0 +1,2 @@
+find_extern externs name =
+  find_extern_loop(externs, name, 0)

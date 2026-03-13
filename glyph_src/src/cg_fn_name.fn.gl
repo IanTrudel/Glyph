@@ -1,0 +1,4 @@
+cg_fn_name name =
+  match is_runtime_fn(name)
+    true -> s2("glyph_", name)
+    _ -> name

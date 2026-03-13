@@ -1,0 +1,50 @@
+parse_match_arms src tokens pos pool scrut arms =
+  k = cur_kind(tokens, pos)
+  match k
+    _ ? k == tk_dedent() ->
+      idx = pool_push(pool, mk_node(ex_match(), 0, "", scrut, 0 - 1, 0 - 1, arms))
+      mk_result(idx, pos + 1)
+    _ ? k == tk_eof() ->
+      idx = pool_push(pool, mk_node(ex_match(), 0, "", scrut, 0 - 1, 0 - 1, arms))
+      mk_result(idx, pos)
+    _ ->
+      pr = parse_pattern(src, tokens, pos, pool)
+      match is_err(pr)
+        true -> pr
+        _ ->
+          gpos = pr.pos
+          match cur_kind(tokens, gpos) == tk_question()
+            true ->
+              gr = parse_expr(src, tokens, gpos + 1, pool)
+              match is_err(gr)
+                true -> gr
+                _ ->
+                  p2 = expect_tok(tokens, gr.pos, tk_arrow())
+                  match p2 < 0
+                    true -> mk_err_msg(gr.pos, "expected '->' in match arm")
+                    _ ->
+                      pos3 = skip_nl(tokens, p2)
+                      br = parse_match_arm_body(src, tokens, pos3, pool)
+                      match is_err(br)
+                        true -> br
+                        _ ->
+                          glyph_array_push(arms, pr.node)
+                          glyph_array_push(arms, br.node)
+                          glyph_array_push(arms, gr.node)
+                          pos4 = skip_nl(tokens, br.pos)
+                          parse_match_arms(src, tokens, pos4, pool, scrut, arms)
+            _ ->
+              p2 = expect_tok(tokens, gpos, tk_arrow())
+              match p2 < 0
+                true -> mk_err_msg(gpos, "expected '->' in match arm")
+                _ ->
+                  pos3 = skip_nl(tokens, p2)
+                  br = parse_match_arm_body(src, tokens, pos3, pool)
+                  match is_err(br)
+                    true -> br
+                    _ ->
+                      glyph_array_push(arms, pr.node)
+                      glyph_array_push(arms, br.node)
+                      glyph_array_push(arms, 0 - 1)
+                      pos4 = skip_nl(tokens, br.pos)
+                      parse_match_arms(src, tokens, pos4, pool, scrut, arms)

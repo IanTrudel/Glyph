@@ -1,0 +1,12 @@
+test_ty_primitives u =
+  eng = mk_engine()
+  pool = eng.ty_pool
+  ti = mk_tint(pool)
+  ts = mk_tstr(pool)
+  tb = mk_tbool(pool)
+  tv = mk_tvoid(pool)
+  assert_eq((pool[ti]).tag, ty_int())
+  assert_eq((pool[ts]).tag, ty_str())
+  assert_eq((pool[tb]).tag, ty_bool())
+  assert_eq((pool[tv]).tag, ty_void())
+  0

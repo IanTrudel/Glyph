@@ -1,0 +1,34 @@
+tok_one3 src len pos line bdepth tokens c =
+  match c
+    38 ->
+      match peek(src, pos + 1, len) == 38
+        true ->
+          glyph_array_push(tokens, mk_token(tk_and(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ -> tok_pack(pos + 1, line, bdepth)
+    43 ->
+      glyph_array_push(tokens, mk_token(tk_plus(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    42 ->
+      glyph_array_push(tokens, mk_token(tk_star(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    47 ->
+      glyph_array_push(tokens, mk_token(tk_slash(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    37 ->
+      glyph_array_push(tokens, mk_token(tk_percent(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    63 ->
+      glyph_array_push(tokens, mk_token(tk_question(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    34 ->
+      match scan_str_has_interp(src, pos + 1)
+        true ->
+          glyph_array_push(tokens, mk_token(tk_str_interp_start(), pos, pos + 1, line))
+          end = tok_str_interp_loop(src, pos + 1, len, line, tokens, pos + 1)
+          tok_pack(end, line, bdepth)
+        _ ->
+          end = scan_string_end(src, pos + 1)
+          glyph_array_push(tokens, mk_token(tk_str(), pos + 1, end - 1, line))
+          tok_pack(end, line, bdepth)
+    _ -> tok_one4(src, len, pos, line, bdepth, tokens, c)

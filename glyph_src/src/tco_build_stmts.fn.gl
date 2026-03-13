@@ -1,0 +1,3 @@
+tco_build_stmts old_stmts limit =
+  acc = []
+  tco_copy_stmts(acc, old_stmts, limit, 0)

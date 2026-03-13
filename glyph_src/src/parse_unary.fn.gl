@@ -1,0 +1,18 @@
+parse_unary src tokens pos pool =
+  k = cur_kind(tokens, pos)
+  match k
+    _ ? k == tk_minus() ->
+      inner = parse_unary(src, tokens, pos + 1, pool)
+      match is_err(inner)
+        true -> inner
+        _ ->
+          idx = pool_push(pool, mk_node(ex_unary(), op_neg(), "", inner.node, 0 - 1, 0 - 1, []))
+          mk_result(idx, inner.pos)
+    _ ? k == tk_bang() ->
+      inner = parse_unary(src, tokens, pos + 1, pool)
+      match is_err(inner)
+        true -> inner
+        _ ->
+          idx = pool_push(pool, mk_node(ex_unary(), op_not(), "", inner.node, 0 - 1, 0 - 1, []))
+          mk_result(idx, inner.pos)
+    _ -> parse_postfix(src, tokens, pos, pool)

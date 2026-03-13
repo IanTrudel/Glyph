@@ -1,0 +1,7 @@
+cg_runtime_full externs =
+  base1 = s7(cg_runtime_c(), cg_runtime_args(), cg_runtime_sb(), cg_runtime_raw(), cg_runtime_io(), cg_runtime_extra(), "\n")
+  base = s5(base1, cg_runtime_float(), cg_runtime_result, cg_runtime_mcp, "\n")
+  match needs_sqlite(externs)
+    true -> s2(base, cg_runtime_sqlite())
+    _ -> base
+

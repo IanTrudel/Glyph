@@ -1,0 +1,14 @@
+is_str_ret_fn name =
+  match str_eq(name, "str_concat")
+    true -> 1
+    _ -> match str_eq(name, "int_to_str")
+      true -> 1
+      _ -> match str_eq(name, "str_slice")
+        true -> 1
+        _ -> match str_eq(name, "sb_build")
+          true -> 1
+          _ -> match str_eq(name, "read_file")
+            true -> 1
+            _ -> match str_eq(name, "cstr_to_str")
+              true -> 1
+              _ -> 0

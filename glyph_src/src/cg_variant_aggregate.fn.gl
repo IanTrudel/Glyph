@@ -1,0 +1,8 @@
+cg_variant_aggregate stmt nops =
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  gv = gval_t()
+  total_size = (nops + 1) * 8
+  disc = variant_discriminant(stmt.sstr)
+  stores = cg_store_ops_offset(stmt.sops, 0, "__v", 1)
+  s7("  ", lb, s4(" ", gv, "* __v = (", gv), s2("*)glyph_alloc(", itos(total_size)), s2("); __v[0] = ", itos(disc)), s2("; ", stores), s4(cg_local(stmt.sdest), s3(" = (", gv, ")__v; "), rb, "\n"))

@@ -1,0 +1,9 @@
+print_sql_rows rows i n =
+  match i < n
+    true ->
+      row = rows[i]
+      cols = glyph_array_len(row)
+      line = join_cols(row, 0, cols, "")
+      println(line)
+      print_sql_rows(rows, i + 1, n)
+    _ -> 0

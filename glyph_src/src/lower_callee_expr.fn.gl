@@ -1,0 +1,10 @@
+lower_callee_expr ctx ast ni =
+  node = ast[ni]
+  k = node.kind
+  match k == ex_ident()
+    true ->
+      local_id = mir_lookup_var(ctx, node.sval)
+      match local_id < 0
+        true -> mk_op_func(node.sval)
+        _ -> mk_op_local(local_id)
+    _ -> lower_expr(ctx, ast, ni)

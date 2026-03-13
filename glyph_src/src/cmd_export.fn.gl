@@ -1,0 +1,19 @@
+cmd_export argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph export <db> <out_dir>")
+      1
+    _ ->
+      db_path = argv[2]
+      out_dir = argv[3]
+      db = glyph_db_open(db_path)
+      glyph_system(s3("mkdir -p ", out_dir, "/src/gen2"))
+      sql = "SELECT name,kind,body,gen FROM def WHERE kind IN ('fn','type','test','const') ORDER BY gen,kind,name"
+      rows = glyph_db_query_rows(db, sql)
+      n = glyph_array_len(rows)
+      export_defs_loop(rows, 0, n, out_dir)
+      export_schema(db, out_dir)
+      glyph_db_close(db)
+      println(s3("exported ", itos(n), " definitions"))
+      0
+

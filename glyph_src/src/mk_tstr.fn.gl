@@ -1,0 +1,1 @@
+mk_tstr pool = mk_ty_prim(ty_str(), pool)

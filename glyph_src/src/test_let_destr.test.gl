@@ -1,0 +1,10 @@
+test_let_destr u =
+  p = {x: 10, y: 20}
+  {x, y} = p
+  assert_eq(x, 10)
+  assert_eq(y, 20)
+  {node, pos} = {node: 42, pos: 7}
+  assert_eq(node, 42)
+  assert_eq(pos, 7)
+  0
+

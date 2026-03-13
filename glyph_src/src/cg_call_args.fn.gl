@@ -1,0 +1,9 @@
+cg_call_args ops i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      arg = ops[i]
+      rest = cg_call_args(ops, i + 1)
+      match i == 0
+        true -> s2(cg_operand(arg), rest)
+        _ -> s3(", ", cg_operand(arg), rest)

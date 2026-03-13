@@ -1,0 +1,7 @@
+lower_call_args_acc ctx ast ns i acc =
+  match i >= glyph_array_len(ns)
+    true -> acc
+    _ ->
+      arg = lower_expr(ctx, ast, ns[i])
+      glyph_array_push(acc, arg)
+      lower_call_args_acc(ctx, ast, ns, i + 1, acc)

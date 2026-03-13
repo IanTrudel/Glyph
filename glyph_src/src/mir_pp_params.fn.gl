@@ -1,0 +1,16 @@
+mir_pp_params locals params i =
+  n = glyph_array_len(params)
+  match i >= n
+    true -> ""
+    _ ->
+      p = params[i]
+      name = match p < glyph_array_len(locals)
+        true -> locals[p]
+        _ -> ""
+      cur = match glyph_str_len(name) > 0
+        true -> s4("_", itos(p), ":", name)
+        _ -> s2("_", itos(p))
+      match i + 1 >= n
+        true -> cur
+        _ -> s3(cur, ", ", mir_pp_params(locals, params, i + 1))
+

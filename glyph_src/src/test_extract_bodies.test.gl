@@ -1,0 +1,8 @@
+test_extract_bodies u =
+  rows = [["body1"], ["body2"], ["body3"]]
+  r = extract_bodies_acc(rows, 0, [])
+  assert_eq(glyph_array_len(r), 3)
+  assert_str_eq(r[0], "body1")
+  assert_str_eq(r[2], "body3")
+  0
+

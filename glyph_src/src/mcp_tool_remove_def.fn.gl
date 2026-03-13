@@ -1,0 +1,18 @@
+mcp_tool_remove_def db_path id pool args =
+  name = json_get_str(pool, args, "name")
+  kind_idx = json_get(pool, args, "kind")
+  kind = match kind_idx >= 0
+    true ->
+      knode = pool[kind_idx]
+      _ = knode.tag
+      knode.sval
+    _ -> "fn"
+  db = glyph_db_open(db_path)
+  sql = s5("DELETE FROM def WHERE name='", sql_escape(name), "' AND kind='", kind, "'")
+  glyph_db_exec(db, sql)
+  glyph_db_close(db)
+  rp = []
+  r = jb_obj(rp)
+  jb_put(rp, r, "status", jb_str(rp, "ok"))
+  mcp_text_result(id, json_gen(rp, r))
+

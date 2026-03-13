@@ -1,0 +1,10 @@
+parse_logic_and_loop src tokens pos pool left =
+  match cur_kind(tokens, pos) == tk_and()
+    true ->
+      right = parse_cmp(src, tokens, pos + 1, pool)
+      match is_err(right)
+        true -> right
+        _ ->
+          idx = pool_push(pool, mk_node(ex_binary(), op_and(), "", left, right.node, 0 - 1, []))
+          parse_logic_and_loop(src, tokens, right.pos, pool, idx)
+    _ -> mk_result(left, pos)

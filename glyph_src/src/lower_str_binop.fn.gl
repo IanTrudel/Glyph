@@ -1,0 +1,34 @@
+lower_str_binop ctx ast_op left right =
+  match ast_op == op_add()
+    true ->
+      dest = mir_alloc_local(ctx, "")
+      mir_set_lt(ctx, dest, 4)
+      args = []
+      glyph_array_push(args, left)
+      glyph_array_push(args, right)
+      mir_emit_call(ctx, dest, mk_op_func("str_concat"), args)
+      mk_op_local(dest)
+    _ -> match ast_op == op_eq()
+      true ->
+        dest = mir_alloc_local(ctx, "")
+        args = []
+        glyph_array_push(args, left)
+        glyph_array_push(args, right)
+        mir_emit_call(ctx, dest, mk_op_func("str_eq"), args)
+        mk_op_local(dest)
+      _ -> match ast_op == op_neq()
+        true ->
+          tmp = mir_alloc_local(ctx, "")
+          args = []
+          glyph_array_push(args, left)
+          glyph_array_push(args, right)
+          mir_emit_call(ctx, tmp, mk_op_func("str_eq"), args)
+          dest = mir_alloc_local(ctx, "")
+          mir_emit_binop(ctx, dest, mir_eq(), mk_op_local(tmp), mk_op_int(0))
+          mk_op_local(dest)
+        _ ->
+          mop = lower_binop(ast_op)
+          dest = mir_alloc_local(ctx, "")
+          mir_emit_binop(ctx, dest, mop, left, right)
+          mk_op_local(dest)
+

@@ -1,0 +1,16 @@
+blt_scan_stmts stmts i lst struct_map =
+  match i >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[i]
+      match stmt.skind == rv_aggregate()
+        true ->
+          match stmt.sival == ag_record()
+            true ->
+              tname = find_struct_name(stmt.sstr, struct_map)
+              match glyph_str_len(tname) > 0
+                true -> glyph_array_set(lst, stmt.sdest, tname)
+                _ -> 0
+            _ -> 0
+        _ -> 0
+      blt_scan_stmts(stmts, i + 1, lst, struct_map)

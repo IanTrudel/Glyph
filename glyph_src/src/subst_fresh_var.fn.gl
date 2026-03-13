@@ -1,0 +1,6 @@
+subst_fresh_var eng =
+  v = eng.next_var[0]
+  glyph_array_push(eng.parent, v)
+  glyph_array_push(eng.bindings, 0 - 1)
+  glyph_array_set(eng.next_var, 0, v + 1)
+  v

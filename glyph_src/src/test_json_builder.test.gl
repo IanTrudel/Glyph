@@ -1,0 +1,20 @@
+test_json_builder u =
+  pool = []
+  obj = jb_obj(pool)
+  jb_put(pool, obj, "name", jb_str(pool, "test"))
+  jb_put(pool, obj, "count", jb_int(pool, 42))
+  jb_put(pool, obj, "flag", jb_bool(pool, 1))
+  jb_put(pool, obj, "empty", jb_null(pool))
+  r = json_gen(pool, obj)
+  assert(str_contains(r, "test"))
+  assert(str_contains(r, "42"))
+  assert(str_contains(r, "true"))
+  assert(str_contains(r, "null"))
+  pool2 = []
+  arr = jb_arr(pool2)
+  jb_push(pool2, arr, jb_int(pool2, 1))
+  jb_push(pool2, arr, jb_int(pool2, 2))
+  r2 = json_gen(pool2, arr)
+  assert(str_contains(r2, "[1,2]"))
+  0
+

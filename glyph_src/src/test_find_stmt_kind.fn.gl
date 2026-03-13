@@ -1,0 +1,6 @@
+test_find_stmt_kind stmts kind i =
+  match i >= glyph_array_len(stmts)
+    true -> 0 - 1
+    _ -> match (stmts[i]).skind == kind
+      true -> i
+      _ -> test_find_stmt_kind(stmts, kind, i + 1)

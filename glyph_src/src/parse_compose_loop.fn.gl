@@ -1,0 +1,10 @@
+parse_compose_loop src tokens pos pool left =
+  match cur_kind(tokens, pos) == tk_gt_gt()
+    true ->
+      right = parse_logic_or(src, tokens, pos + 1, pool)
+      match is_err(right)
+        true -> right
+        _ ->
+          idx = pool_push(pool, mk_node(ex_compose(), 0, "", left, right.node, 0 - 1, []))
+          parse_compose_loop(src, tokens, right.pos, pool, idx)
+    _ -> mk_result(left, pos)

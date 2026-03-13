@@ -1,0 +1,5 @@
+tco_alloc_temps locals nparams i = match i >= nparams
+  true -> 0
+  _ ->
+    glyph_array_push(locals, "tco_tmp")
+    tco_alloc_temps(locals, nparams, i + 1)

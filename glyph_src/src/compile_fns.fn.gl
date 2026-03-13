@@ -1,0 +1,10 @@
+compile_fns sources i za_fns =
+  match i >= glyph_array_len(sources)
+    true -> []
+    _ ->
+      mir = compile_fn(sources[i], za_fns)
+      rest = compile_fns(sources, i + 1, za_fns)
+      collect_nested_lifted(rest, mir.fn_subs, 0)
+      glyph_array_push(rest, mir)
+      rest
+

@@ -1,0 +1,5 @@
+lower_array ctx ast node =
+  ops = lower_call_args(ctx, ast, node.ns, 0)
+  dest = mir_alloc_local(ctx, "")
+  mir_emit_aggregate(ctx, dest, ag_array(), "", ops)
+  mk_op_local(dest)

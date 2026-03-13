@@ -1,0 +1,51 @@
+tok_one2 src len pos line bdepth tokens c =
+  match c
+    61 ->
+      match peek(src, pos + 1, len) == 61
+        true ->
+          glyph_array_push(tokens, mk_token(tk_eq_eq(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_eq(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    33 ->
+      match peek(src, pos + 1, len) == 61
+        true ->
+          glyph_array_push(tokens, mk_token(tk_bang_eq(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_bang(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    60 ->
+      match peek(src, pos + 1, len) == 61
+        true ->
+          glyph_array_push(tokens, mk_token(tk_lt_eq(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_lt(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    62 ->
+      c2 = peek(src, pos + 1, len)
+      match c2
+        62 ->
+          glyph_array_push(tokens, mk_token(tk_gt_gt(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        61 ->
+          glyph_array_push(tokens, mk_token(tk_gt_eq(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_gt(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    124 ->
+      c2 = peek(src, pos + 1, len)
+      match c2
+        62 ->
+          glyph_array_push(tokens, mk_token(tk_pipe_gt(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        124 ->
+          glyph_array_push(tokens, mk_token(tk_or(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_pipe(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    _ -> tok_one3(src, len, pos, line, bdepth, tokens, c)

@@ -1,0 +1,11 @@
+make_inst_map eng var_ids i =
+  match i >= glyph_array_len(var_ids)
+    true -> []
+    _ ->
+      old_id = var_ids[i]
+      new_var = subst_fresh(eng)
+      rest = make_inst_map(eng, var_ids, i + 1)
+      glyph_array_push(rest, old_id)
+      glyph_array_push(rest, new_var)
+      rest
+

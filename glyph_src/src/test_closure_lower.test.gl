@@ -1,0 +1,11 @@
+test_closure_lower u =
+  mir = compile_fn("f x = \\y -> x + y", [])
+  stmts = mir.fn_blocks_stmts[0]
+  found = test_find_stmt_kind(stmts, rv_make_closure(), 0)
+  assert(found >= 0)
+  bc = mir_block_count(mir)
+  assert(bc >= 1)
+  lc = mir_local_count(mir)
+  assert(lc >= 2)
+  0
+

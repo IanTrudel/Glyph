@@ -1,0 +1,8 @@
+lower_assign ctx ast node =
+  val = lower_expr(ctx, ast, node.n1)
+  existing = mir_lookup_var(ctx, node.sval)
+  match existing >= 0
+    true ->
+      mir_emit_use(ctx, existing, val)
+      mk_op_unit()
+    _ -> mk_op_unit()

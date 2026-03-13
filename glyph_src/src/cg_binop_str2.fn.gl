@@ -1,0 +1,12 @@
+cg_binop_str2 op =
+  match op == mir_bitand()
+    true -> " & "
+    _ -> match op == mir_bitor()
+      true -> " | "
+      _ -> match op == mir_bitxor()
+        true -> " ^ "
+        _ -> match op == mir_shl()
+          true -> " << "
+          _ -> match op == mir_shr()
+            true -> " >> "
+            _ -> " + "

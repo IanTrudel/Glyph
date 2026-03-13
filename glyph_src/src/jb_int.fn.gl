@@ -1,0 +1,2 @@
+jb_int pool n =
+  json_pool_push(pool, mk_jnode(jn_int, n, "", [], []))

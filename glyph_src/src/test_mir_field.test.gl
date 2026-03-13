@@ -1,0 +1,8 @@
+test_mir_field u =
+  mir = compile_fn("f x = x.name", [])
+  stmts = mir.fn_blocks_stmts[mir.fn_entry]
+  i = test_find_stmt_kind(stmts, rv_field(), 0)
+  assert(i >= 0)
+  s = stmts[i]
+  assert_str_eq(s.sstr, "name")
+  0

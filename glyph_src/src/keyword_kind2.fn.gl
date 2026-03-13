@@ -1,0 +1,12 @@
+keyword_kind2 text =
+  match glyph_str_eq(text, "bitand")
+    true -> tk_bitand()
+    _ -> match glyph_str_eq(text, "bitor")
+      true -> tk_bitor()
+      _ -> match glyph_str_eq(text, "bitxor")
+        true -> tk_bitxor()
+        _ -> match glyph_str_eq(text, "shl")
+          true -> tk_shl()
+          _ -> match glyph_str_eq(text, "shr")
+            true -> tk_shr()
+            _ -> 0

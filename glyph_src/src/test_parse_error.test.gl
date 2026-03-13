@@ -1,0 +1,8 @@
+test_parse_error u =
+  src = "f x = ="
+  toks = tokenize(src)
+  pool = []
+  r = parse_fn_def(src, toks, 0, pool)
+  assert(is_err(r))
+  assert(glyph_str_len(r.pr_err) > 0)
+  0

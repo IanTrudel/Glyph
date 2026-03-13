@@ -1,0 +1,5 @@
+cg_runtime_result =
+  s2("GVal glyph_ok(GVal val) \{ long long* r=(long long*)glyph_alloc(16); r[0]=0; r[1]=val; return (long long)r; }\n",
+  s2("GVal glyph_err(GVal msg) \{ long long* r=(long long*)glyph_alloc(16); r[0]=1; r[1]=msg; return (long long)r; }\n",
+  s2("GVal glyph_try_read_file(GVal path) \{ GVal result=glyph_read_file(path); if(*(long long*)((char*)result+8)<0) \{ const char* m=\"file read failed\"; char* s=(char*)malloc(16); *(const char**)s=m; *(long long*)(s+8)=16; return glyph_err((GVal)s); } return glyph_ok(result); }\n",
+  "GVal glyph_try_write_file(GVal path, GVal content) \{ long long result=glyph_write_file(path,content); if(result<0) \{ const char* m=\"file write failed\"; char* s=(char*)malloc(16); *(const char**)s=m; *(long long*)(s+8)=17; return glyph_err((GVal)s); } return glyph_ok(0); }\n")))

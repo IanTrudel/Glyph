@@ -1,0 +1,30 @@
+do_undo db name kind =
+  sql = match glyph_str_len(kind) > 0
+    true -> s7("SELECT id, kind, sig, body, gen FROM def_history WHERE name = '", sql_escape(name), "' AND kind = '", sql_escape(kind), "' ORDER BY id DESC LIMIT 1", "", "")
+    _ -> s5("SELECT id, kind, sig, body, gen FROM def_history WHERE name = '", sql_escape(name), "' ORDER BY id DESC LIMIT 1", "", "")
+  rows = glyph_db_query_rows(db, sql)
+  n = glyph_array_len(rows)
+  match n == 0
+    true ->
+      glyph_db_close(db)
+      eprintln(s3("No history for '", name, "'"))
+      1
+    _ ->
+      row = rows[0]
+      hist_id = row[0]
+      old_kind = row[1]
+      old_sig = row[2]
+      old_body = row[3]
+      old_gen = row[4]
+      del_sql = match glyph_str_len(kind) > 0
+        true -> s7("DELETE FROM def WHERE name = '", sql_escape(name), "' AND kind = '", sql_escape(kind), "'", "", "")
+        _ -> s3("DELETE FROM def WHERE name = '", sql_escape(name), "'")
+      glyph_db_exec(db, del_sql)
+      ins_sql = match glyph_str_len(old_sig) > 0
+        true -> s7("INSERT INTO def (name, kind, sig, body, hash, tokens, gen) VALUES ('", sql_escape(name), s7("', '", sql_escape(old_kind), "', '", sql_escape(old_sig), "', '", sql_escape(old_body), s3("', zeroblob(32), 0, ", old_gen, ")")), "", "", "", "")
+        _ -> s7("INSERT INTO def (name, kind, body, hash, tokens, gen) VALUES ('", sql_escape(name), s5("', '", sql_escape(old_kind), "', '", sql_escape(old_body), s3("', zeroblob(32), 0, ", old_gen, ")")), "", "", "", "")
+      glyph_db_exec(db, ins_sql)
+      glyph_db_exec(db, s3("DELETE FROM def_history WHERE id = ", hist_id, ""))
+      glyph_db_close(db)
+      println(s5("Restored '", name, "' (", old_kind, ")"))
+      0

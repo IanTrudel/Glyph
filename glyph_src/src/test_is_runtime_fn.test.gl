@@ -1,0 +1,11 @@
+test_is_runtime_fn u =
+  assert(is_runtime_fn("println"))
+  assert(is_runtime_fn("str_len"))
+  assert(is_runtime_fn("array_push"))
+  assert(is_runtime_fn("sb_new"))
+  assert(is_runtime_fn("assert_eq"))
+  assert(is_runtime_fn("raw_set"))
+  assert(is_runtime_fn("my_func") == 0)
+  assert(is_runtime_fn("foo") == 0)
+  assert(is_runtime_fn("test") == 0)
+  0

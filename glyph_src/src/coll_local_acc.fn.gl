@@ -1,0 +1,5 @@
+coll_local_acc mir =
+  nlocals = glyph_array_len(mir.fn_locals)
+  la = make_empty_2d(nlocals, 0)
+  coll_acc_blks(mir.fn_blocks_stmts, 0, la)
+  la

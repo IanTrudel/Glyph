@@ -1,0 +1,6 @@
+cg_runtime_io =
+  s2("char* glyph_str_to_cstr(GVal s) \{ const char* p=*(const char**)s; long long l=*(long long*)((char*)s+8); char* c=(char*)malloc(l+1); memcpy(c,p,(size_t)l); c[l]=0; return c; }\n",
+  s2("GVal glyph_read_file(GVal ps) \{ char* cp=glyph_str_to_cstr(ps); FILE* f=fopen(cp,\"rb\"); free(cp); if(!f)\{ char* r=(char*)malloc(16); *(const char**)r=0; *(long long*)(r+8)=-1; return (GVal)r; } fseek(f,0,SEEK_END); long long sz=ftell(f); fseek(f,0,SEEK_SET); char* r=(char*)malloc(16+sz); char* d=r+16; size_t nr=fread(d,1,(size_t)sz,f); fclose(f); *(const char**)r=d; *(long long*)(r+8)=(long long)nr; return (GVal)r; }\n",
+  s2("GVal glyph_write_file(GVal ps, GVal cs) \{ char* cp=glyph_str_to_cstr(ps); const char* dp=*(const char**)cs; long long dl=*(long long*)((char*)cs+8); FILE* f=fopen(cp,\"wb\"); free(cp); if(!f) return -1; size_t w=fwrite(dp,1,(size_t)dl,f); fclose(f); return w==(size_t)dl?0:-1; }\n",
+  "GVal glyph_system(GVal cs) \{ char* c=glyph_str_to_cstr(cs); int rc=system(c); free(c); if(rc==-1) return -1; return (long long)((rc>>8)&0xFF); }\n")))
+

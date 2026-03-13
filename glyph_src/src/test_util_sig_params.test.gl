@@ -1,0 +1,6 @@
+test_util_sig_params u =
+  assert_eq(sig_param_count(split_arrow("V -> I")), 0)
+  assert_eq(sig_param_count(split_arrow("I -> I")), 1)
+  assert_eq(sig_param_count(split_arrow("I -> S -> I")), 2)
+  assert_eq(sig_param_count(split_arrow("I -> I -> I -> S")), 3)
+  0

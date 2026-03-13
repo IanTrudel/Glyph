@@ -1,0 +1,15 @@
+test_constants_extra u =
+  assert_eq(ex_compose(), 31)
+  assert_eq(ex_field_accessor(), 25)
+  assert_eq(ex_float_lit(), 54)
+  assert_eq(ex_propagate(), 32)
+  assert_eq(ex_unwrap(), 33)
+  assert_eq(jt_false(), 10)
+  assert(is_arith_op(op_add()))
+  assert(is_arith_op(op_sub()))
+  assert(is_arith_op(op_mul()))
+  assert(is_arith_op(op_div()))
+  assert(is_arith_op(op_mod()))
+  assert(is_arith_op(op_eq()) == 0)
+  0
+

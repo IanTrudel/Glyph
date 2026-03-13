@@ -1,0 +1,2 @@
+mk_tarray elem pool =
+  mk_ty(ty_array(), elem, 0 - 1, pool)

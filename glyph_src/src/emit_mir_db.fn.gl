@@ -1,0 +1,13 @@
+emit_mir_db db_path =
+  db = glyph_db_open(db_path)
+  sources = read_fn_defs(db)
+  externs = read_externs(db)
+  glyph_db_close(db)
+  parsed = parse_all_fns(sources, 0)
+  za_fns = build_za_fns(parsed, 0, [])
+  mirs = compile_fns_parsed(parsed, 0, za_fns, [], false)
+  fix_all_field_offsets(mirs)
+  fix_extern_calls(mirs, externs)
+  mir_pp_fns(mirs, 0)
+  0
+

@@ -1,0 +1,10 @@
+parse_pipe_loop src tokens pos pool left =
+  match cur_kind(tokens, pos) == tk_pipe_gt()
+    true ->
+      right = parse_compose(src, tokens, pos + 1, pool)
+      match is_err(right)
+        true -> right
+        _ ->
+          idx = pool_push(pool, mk_node(ex_pipe(), 0, "", left, right.node, 0 - 1, []))
+          parse_pipe_loop(src, tokens, right.pos, pool, idx)
+    _ -> mk_result(left, pos)

@@ -1,0 +1,6 @@
+json_parse_num src tokens pos pool =
+  tok = tokens[pos]
+  s = str_slice(src, tok.start, tok.end)
+  n = str_to_int(s)
+  idx = json_pool_push(pool, mk_jnode(jn_int, n, "", [], []))
+  {node: idx, pos: pos + 1}

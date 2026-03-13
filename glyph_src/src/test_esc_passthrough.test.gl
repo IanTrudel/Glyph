@@ -1,0 +1,6 @@
+test_esc_passthrough u =
+  result = process_escapes("hello")
+  assert_str_eq(result, "hello")
+  r2 = process_escapes("")
+  assert_str_eq(r2, "")
+  0

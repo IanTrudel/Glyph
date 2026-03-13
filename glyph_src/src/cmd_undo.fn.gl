@@ -1,0 +1,12 @@
+cmd_undo argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph undo <db> <name> [--kind K]")
+      1
+    _ ->
+      db_path = argv[2]
+      name = argv[3]
+      db = glyph_db_open(db_path)
+      _m = migrate_history(db)
+      kind = find_flag(argv, "--kind", 4)
+      do_undo(db, name, kind)

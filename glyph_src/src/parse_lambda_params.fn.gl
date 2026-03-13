@@ -1,0 +1,16 @@
+parse_lambda_params src tokens pos pool params =
+  match cur_kind(tokens, pos) == tk_arrow()
+    true ->
+      body_r = parse_expr(src, tokens, pos + 1, pool)
+      match is_err(body_r)
+        true -> body_r
+        _ ->
+          idx = pool_push(pool, mk_node(ex_lambda(), 0, "", body_r.node, 0 - 1, 0 - 1, params))
+          mk_result(idx, body_r.pos)
+    _ -> match cur_kind(tokens, pos) == tk_ident()
+      true ->
+        pname = cur_text(src, tokens, pos)
+        pidx = push_simple(pool, nd_param(), 0, pname)
+        glyph_array_push(params, pidx)
+        parse_lambda_params(src, tokens, pos + 1, pool, params)
+      _ -> mk_err_msg(pos, "expected '->' or parameter name")

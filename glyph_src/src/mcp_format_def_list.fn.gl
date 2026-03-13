@@ -1,0 +1,5 @@
+mcp_format_def_list id rows =
+  rp = []
+  arr = jb_arr(rp)
+  mcp_fmt_list_loop(rp, arr, rows, 0, array_len(rows))
+  mcp_text_result(id, json_gen(rp, arr))

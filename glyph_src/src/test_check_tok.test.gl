@@ -1,0 +1,8 @@
+test_check_tok u =
+  src = "f x = x"
+  toks = tokenize(src)
+  assert_eq(check_tok(toks, 0, tk_ident()), 1)
+  assert_eq(check_tok(toks, 2, tk_eq()), 1)
+  assert_eq(check_tok(toks, 0, tk_eq()), 0)
+  0
+

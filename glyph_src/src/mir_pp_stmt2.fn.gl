@@ -1,0 +1,18 @@
+mir_pp_stmt2 stmt d =
+  k = stmt.skind
+  match k
+    _ ? k == 5 ->
+      ak = stmt.sival
+      match ak
+        _ ? ak == 3 -> s5(d, "record\{", stmt.sstr, "}(", s2(mir_pp_ops(stmt.sops, 0), ")"))
+        _ ? ak == 2 -> s4(d, "array[", mir_pp_ops(stmt.sops, 0), "]")
+        _ ? ak == 4 -> s5(d, "variant:", stmt.sstr, "(", s2(mir_pp_ops(stmt.sops, 0), ")"))
+        _ -> s4(d, "tuple(", mir_pp_ops(stmt.sops, 0), ")")
+    _ ? k == 6 ->
+      match glyph_str_len(stmt.sstr) > 0
+        true -> s3(d, mir_pp_op(stmt.sop1), s2(".", stmt.sstr))
+        _ -> s4(d, mir_pp_op(stmt.sop1), "[", s2(itos(stmt.sival), "]"))
+    _ ? k == 7 -> s4(d, mir_pp_op(stmt.sop1), "[", s2(mir_pp_op(stmt.sop2), "]"))
+    _ ? k == 8 -> s4(d, "interp(", mir_pp_ops(stmt.sops, 0), ")")
+    _ ? k == 9 -> s4(d, "closure(", mir_pp_ops(stmt.sops, 0), ")")
+    _ -> s3(d, "?rv:", itos(k))

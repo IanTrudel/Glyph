@@ -1,0 +1,2 @@
+has_kind kinds k =
+  has_kind_loop(kinds, k, 0)

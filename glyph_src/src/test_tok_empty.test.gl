@@ -1,0 +1,6 @@
+test_tok_empty u =
+  toks = tokenize("")
+  kinds = test_collect_kinds(toks, 0, [])
+  assert(has_kind(kinds, tk_eof()))
+  assert_eq(glyph_array_len(kinds), 1)
+  0

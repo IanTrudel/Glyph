@@ -1,0 +1,26 @@
+fix_offs_stmts stmts si reg la =
+  match si >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[si]
+      match stmt.skind == rv_field()
+        true ->
+          match glyph_str_len(stmt.sstr) == 0
+            true -> 0
+            _ ->
+              base_kind = stmt.sop1.okind
+              match base_kind == ok_local()
+                true ->
+                  local_id = stmt.sop1.oval
+                  local_fields = match local_id >= 0
+                    true -> match local_id < glyph_array_len(la)
+                      true -> la[local_id]
+                      _ -> []
+                    _ -> []
+                  offset = resolve_fld_off(reg, stmt.sstr, local_fields)
+                  match offset >= 0
+                    true -> raw_set(stmt, 1, offset)
+                    _ -> 0
+                _ -> 0
+        _ -> 0
+      fix_offs_stmts(stmts, si + 1, reg, la)

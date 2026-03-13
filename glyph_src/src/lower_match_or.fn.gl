@@ -1,0 +1,10 @@
+lower_match_or ctx ast arms scrutinee result merge i pat_node =
+  body_block = mir_new_block(ctx)
+  next_block = mir_new_block(ctx)
+  subs = pat_node.ns
+  lower_or_subs(ctx, ast, subs, scrutinee, body_block, next_block, 0)
+  mir_switch_block(ctx, body_block)
+  lower_guard_body(ctx, ast, arms, result, merge, i, next_block)
+  mir_switch_block(ctx, next_block)
+  lower_match_arms(ctx, ast, arms, scrutinee, result, merge, i + 3)
+

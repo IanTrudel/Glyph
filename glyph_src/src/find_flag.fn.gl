@@ -1,0 +1,24 @@
+find_flag argv flag start =
+  argc = glyph_array_len(argv)
+  match start < argc
+    true ->
+      arg = argv[start]
+      match glyph_str_eq(arg, flag) == 1
+        true ->
+          match start + 1 < argc
+            true -> argv[start + 1]
+            _ -> ""
+        _ ->
+          flen = glyph_str_len(flag)
+          match glyph_str_len(arg) > flen + 1
+            true ->
+              prefix = glyph_str_slice(arg, 0, flen)
+              match glyph_str_eq(prefix, flag) == 1
+                true ->
+                  match glyph_str_char_at(arg, flen) == 61
+                    true -> glyph_str_slice(arg, flen + 1, glyph_str_len(arg))
+                    _ -> find_flag(argv, flag, start + 1)
+                _ -> find_flag(argv, flag, start + 1)
+            _ -> find_flag(argv, flag, start + 1)
+    _ -> ""
+

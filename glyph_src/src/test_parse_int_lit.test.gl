@@ -1,0 +1,11 @@
+test_parse_int_lit u =
+  src = "f x = 42"
+  toks = tokenize(src)
+  pool = []
+  r = parse_fn_def(src, toks, 0, pool)
+  assert(is_err(r) == 0)
+  fn_node = pool[r.node]
+  body = pool[fn_node.n1]
+  assert_eq(body.kind, ex_int_lit())
+  assert_eq(body.ival, 42)
+  0

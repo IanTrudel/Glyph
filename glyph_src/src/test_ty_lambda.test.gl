@@ -1,0 +1,20 @@
+test_ty_lambda u =
+  eng = mk_engine()
+  src = "f x = \\y -> x + y"
+  toks = tokenize(src)
+  ast = []
+  r = parse_fn_def(src, toks, 0, ast)
+  ty = infer_fn_def(eng, ast, r.node)
+  resolved = subst_resolve(eng, ty)
+  node = pool_get(eng, resolved)
+  assert_eq(node.tag, ty_fn())
+  eng2 = mk_engine()
+  src2 = "f x y = x |> y"
+  toks2 = tokenize(src2)
+  ast2 = []
+  r2 = parse_fn_def(src2, toks2, 0, ast2)
+  ty2 = infer_fn_def(eng2, ast2, r2.node)
+  node2 = pool_get(eng2, ty2)
+  assert_eq(node2.tag, ty_fn())
+  0
+

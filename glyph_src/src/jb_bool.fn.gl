@@ -1,0 +1,2 @@
+jb_bool pool b =
+  json_pool_push(pool, mk_jnode(jn_bool, b, "", [], []))

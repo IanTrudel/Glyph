@@ -1,0 +1,12 @@
+c_field_type2 spec =
+  match glyph_str_eq(spec, "i64")
+    true -> "int64_t"
+    _ -> match glyph_str_eq(spec, "u64")
+      true -> "uint64_t"
+      _ -> match glyph_str_eq(spec, "f32")
+        true -> "float"
+        _ -> match glyph_str_eq(spec, "f64")
+          true -> "double"
+          _ -> match glyph_str_eq(spec, "ptr")
+            true -> "void*"
+            _ -> gval_t()

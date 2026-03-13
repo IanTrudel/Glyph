@@ -1,0 +1,3 @@
+read_test_defs db =
+  rows = glyph_db_query_rows(db, "SELECT body FROM def WHERE kind='test' ORDER BY name")
+  extract_bodies_acc(rows, 0, [])

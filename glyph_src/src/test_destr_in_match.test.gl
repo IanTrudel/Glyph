@@ -1,0 +1,13 @@
+test_destr_in_match u =
+  p = {fst: 3, snd: 7}
+  {fst, snd} = p
+  r = match fst
+    _ ? fst > 0 -> fst + snd
+    _ -> snd
+  assert_eq(r, 10)
+  q = {fst: 0, snd: 42}
+  {fst, snd} = q
+  r2 = match fst
+    _ ? fst > 0 -> fst + snd
+    _ -> snd
+  assert_eq(r2, 42)

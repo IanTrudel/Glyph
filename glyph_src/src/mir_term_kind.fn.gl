@@ -1,0 +1,3 @@
+mir_term_kind mir_fn block_id =
+  term = mir_fn.fn_blocks_terms[block_id]
+  term.tkind

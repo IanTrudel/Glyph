@@ -1,0 +1,14 @@
+instantiate eng ti =
+  pool_len = glyph_array_len(eng.ty_pool)
+  match ti < 0
+    true -> ti
+    _ -> match ti >= pool_len
+      true -> ti
+      _ ->
+        node = pool_get(eng, ti)
+        match node.tag == ty_forall()
+          true ->
+            var_map = make_inst_map(eng, node.ns, 0)
+            inst_type(eng, node.n1, var_map)
+          _ -> ti
+

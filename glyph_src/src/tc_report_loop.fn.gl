@@ -1,0 +1,6 @@
+tc_report_loop errors i =
+  match i >= glyph_array_len(errors)
+    true -> 0
+    _ ->
+      eprintln(s2("  ", errors[i]))
+      tc_report_loop(errors, i + 1)

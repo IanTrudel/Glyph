@@ -1,0 +1,4 @@
+test_closure_as_arg u =
+  result = apply_fn(\x -> x * 3, 7)
+  assert_eq(result, 21)
+

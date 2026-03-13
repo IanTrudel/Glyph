@@ -1,0 +1,7 @@
+test_c_layout_struct u =
+  p = {x: 100, y: 200}
+  assert_eq(p.x, 100)
+  assert_eq(p.y, 200)
+  p2 = {x: 65535, y: 0 - 1}
+  assert_eq(p2.x, 65535)
+  0

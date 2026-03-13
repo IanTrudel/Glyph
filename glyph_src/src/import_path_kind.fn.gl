@@ -1,0 +1,5 @@
+import_path_kind filename =
+  len = glyph_str_len(filename)
+  base = glyph_str_slice(filename, 0, len-3)
+  blen = glyph_str_len(base)
+  import_kind_loop(base, blen-1, blen)

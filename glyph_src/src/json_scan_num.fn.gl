@@ -1,0 +1,11 @@
+json_scan_num src pos =
+  len = str_len(src)
+  match pos < len
+    true ->
+      c = str_char_at(src, pos)
+      match c >= 48
+        true -> match c <= 57
+          true -> json_scan_num(src, pos + 1)
+          _ -> pos
+        _ -> pos
+    _ -> pos

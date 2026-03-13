@@ -1,0 +1,17 @@
+find_field eng fs name i =
+  match i >= glyph_array_len(fs)
+    true -> 0 - 1
+    _ ->
+      fi = fs[i]
+      pool_len = glyph_array_len(eng.ty_pool)
+      match fi >= pool_len
+        true -> find_field(eng, fs, name, i + 1)
+        _ -> match fi < 0
+          true -> find_field(eng, fs, name, i + 1)
+          _ ->
+            f = pool_get(eng, fi)
+            _ = f.tag
+            match glyph_str_eq(f.sval, name)
+              true -> fi
+              _ -> find_field(eng, fs, name, i + 1)
+

@@ -1,0 +1,2 @@
+mk_tnamed name type_args pool =
+  ty_push(pool, {tag: ty_named(), n1: 0 - 1, n2: 0 - 1, ns: type_args, sval: name})

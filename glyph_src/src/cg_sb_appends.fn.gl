@@ -1,0 +1,7 @@
+cg_sb_appends ops i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      op = ops[i]
+      append = s3("glyph_sb_append(__sb, ", cg_operand(op), "); ")
+      s2(append, cg_sb_appends(ops, i + 1))

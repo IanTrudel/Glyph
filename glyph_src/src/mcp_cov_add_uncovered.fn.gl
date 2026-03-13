@@ -1,0 +1,9 @@
+mcp_cov_add_uncovered pool arr names hits i =
+  match i >= glyph_array_len(names)
+    true -> 0
+    _ ->
+      match hits[i] == 0
+        true -> jb_push(pool, arr, jb_str(pool, names[i]))
+        _ -> 0
+      mcp_cov_add_uncovered(pool, arr, names, hits, i + 1)
+

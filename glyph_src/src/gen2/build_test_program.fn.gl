@@ -1,0 +1,34 @@
+build_test_program fn_sources test_sources test_names externs output_path struct_map mode cover_path =
+  parsed_fns = parse_all_fns(fn_sources, 0)
+  parsed_tests = parse_all_fns(test_sources, 0)
+  za_fns = build_za_fns(parsed_fns, 0, [])
+  build_za_fns(parsed_tests, 0, za_fns)
+  fn_mirs = compile_fns_parsed(parsed_fns, 0, za_fns, [], false)
+  test_mirs = compile_fns_parsed(parsed_tests, 0, za_fns, [], false)
+  reg = build_type_reg(fn_mirs)
+  add_types_to_reg(test_mirs, reg)
+  fix_offs_mirs(fn_mirs, 0, reg)
+  fix_offs_mirs(test_mirs, 0, reg)
+  fix_extern_calls(fn_mirs, externs)
+  fix_extern_calls(test_mirs, externs)
+  tco_optimize(fn_mirs)
+  tco_optimize(test_mirs)
+  use_cover = glyph_str_len(cover_path) > 0
+  c_code = match use_cover
+    true -> cg_test_program_cover(fn_mirs, test_mirs, test_names, struct_map, cover_path)
+    _ -> cg_test_program(fn_mirs, test_mirs, test_names, struct_map)
+  wrappers = cg_extern_wrappers(externs, 0)
+  full_c = s6(cg_runtime_full(externs), "\n", wrappers, "\n", cg_test_runtime, c_code)
+  lib_flags = collect_libs(externs)
+  c_path = "/tmp/glyph_test.c"
+  glyph_write_file(c_path, full_c)
+  cov_flag = match use_cover
+    true -> " -DGLYPH_COVERAGE"
+    _ -> ""
+  cc_flags = match mode == 1
+    true -> s2("-w -Wno-int-conversion -Wno-incompatible-pointer-types -DGLYPH_DEBUG -O0 -g", cov_flag)
+    _ -> match mode == 2
+      true -> s2("-w -Wno-int-conversion -Wno-incompatible-pointer-types -O2", cov_flag)
+      _ -> s2("-w -Wno-int-conversion -Wno-incompatible-pointer-types -DGLYPH_DEBUG -O1", cov_flag)
+  glyph_system(s5("cc ", cc_flags, s2(" ", c_path), s3(" -o ", output_path, " -no-pie"), lib_flags))
+

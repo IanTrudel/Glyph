@@ -1,0 +1,7 @@
+test_mir_int_return u =
+  mir = compile_fn("f u = 42", [])
+  term = mir.fn_blocks_terms[mir.fn_entry]
+  assert_eq(term.tkind, tm_return())
+  assert_eq(term.top.okind, ok_const_int())
+  assert_eq(term.top.oval, 42)
+  0

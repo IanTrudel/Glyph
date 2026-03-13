@@ -1,0 +1,11 @@
+cmd_init argv argc =
+  match argc < 3
+    true ->
+      eprintln("Usage: glyph init <db>")
+      1
+    _ ->
+      db = glyph_db_open(argv[2])
+      glyph_db_exec(db, init_schema())
+      glyph_db_close(db)
+      println(s2("Created ", argv[2]))
+      0

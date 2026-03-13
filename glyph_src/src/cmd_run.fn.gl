@@ -1,0 +1,9 @@
+cmd_run argv argc =
+  match argc >= 3
+    true ->
+      output = "/tmp/glyph_run_tmp"
+      compile_db(argv[2], output)
+      glyph_system(output)
+    _ ->
+      eprintln("Usage: glyph run <db>")
+      1

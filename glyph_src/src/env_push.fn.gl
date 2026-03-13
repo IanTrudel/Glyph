@@ -1,0 +1,3 @@
+env_push eng =
+  glyph_array_push(eng.env_marks, glyph_array_len(eng.env_names))
+  0

@@ -1,0 +1,4 @@
+skip_nl tokens pos =
+  match cur_kind(tokens, pos) == tk_newline()
+    true -> skip_nl(tokens, pos + 1)
+    _ -> pos

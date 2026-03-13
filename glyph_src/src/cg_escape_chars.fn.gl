@@ -1,0 +1,13 @@
+cg_escape_chars s i len out =
+  match i >= len
+    true -> out
+    _ ->
+      ch = glyph_str_char_at(s, i)
+      esc = match ch == 92
+        true -> "\\\\"
+        _ -> match ch == 34
+          true -> "\\\""
+          _ -> match ch == 10
+            true -> "\\n"
+            _ -> glyph_str_slice(s, i, i + 1)
+      cg_escape_chars(s, i + 1, len, s2(out, esc))

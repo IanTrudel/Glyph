@@ -1,0 +1,2 @@
+jb_obj pool =
+  json_pool_push(pool, mk_jnode(jn_object, 0, "", [], []))

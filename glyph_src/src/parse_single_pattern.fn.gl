@@ -1,0 +1,36 @@
+parse_single_pattern src tokens pos pool =
+  k = cur_kind(tokens, pos)
+  match k
+    _ ? k == tk_ident() ->
+      text = cur_text(src, tokens, pos)
+      match text
+        _ ? glyph_str_eq(text, "_") ->
+          idx = push_simple(pool, pat_wildcard(), 0, "")
+          mk_result(idx, pos + 1)
+        _ ? glyph_str_eq(text, "true") ->
+          idx = push_simple(pool, pat_bool(), 1, "")
+          mk_result(idx, pos + 1)
+        _ ? glyph_str_eq(text, "false") ->
+          idx = push_simple(pool, pat_bool(), 0, "")
+          mk_result(idx, pos + 1)
+        _ ->
+          idx = push_simple(pool, pat_ident(), 0, text)
+          mk_result(idx, pos + 1)
+    _ ? k == tk_int() ->
+      v = cur_ival(src, tokens, pos)
+      idx = push_simple(pool, pat_int(), v, "")
+      mk_result(idx, pos + 1)
+    _ ? k == tk_str() ->
+      s = cur_text(src, tokens, pos)
+      idx = push_simple(pool, pat_str(), 0, glyph_str_slice(s, 1, glyph_str_len(s) - 1))
+      mk_result(idx, pos + 1)
+    _ ? k == tk_type_ident() ->
+      name = cur_text(src, tokens, pos)
+      match cur_kind(tokens, pos + 1) == tk_lparen()
+        true ->
+          cpats = []
+          parse_ctor_pats(src, tokens, pos + 2, pool, name, cpats)
+        _ ->
+          idx = pool_push(pool, mk_node(pat_ctor(), 0, name, 0 - 1, 0 - 1, 0 - 1, []))
+          mk_result(idx, pos + 1)
+    _ -> mk_err(pos)

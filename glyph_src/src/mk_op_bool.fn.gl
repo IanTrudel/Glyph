@@ -1,0 +1,1 @@
+mk_op_bool b = mk_op(ok_const_bool(), b, "")

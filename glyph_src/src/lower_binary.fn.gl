@@ -1,0 +1,16 @@
+lower_binary ctx ast node =
+  left = lower_expr(ctx, ast, node.n1)
+  right = lower_expr(ctx, ast, node.n2)
+  match tctx_is_str_bin(ctx.tctx, node.n1, node.n2, ctx, left, right) == 1
+    true -> lower_str_binop(ctx, node.ival, left, right)
+    _ -> match tctx_is_float_bin(ctx.tctx, node.n1, node.n2, ctx, left, right) == 1
+      true ->
+        left2 = coerce_to_float(ctx, left)
+        right2 = coerce_to_float(ctx, right)
+        lower_float_binop(ctx, node.ival, left2, right2)
+      _ ->
+        mop = lower_binop(node.ival)
+        dest = mir_alloc_local(ctx, "")
+        mir_emit_binop(ctx, dest, mop, left, right)
+        mk_op_local(dest)
+

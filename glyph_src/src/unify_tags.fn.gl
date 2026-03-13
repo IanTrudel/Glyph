@@ -1,0 +1,21 @@
+unify_tags eng na nb a1 b1 =
+  match na.tag == nb.tag
+    true ->
+      match na.tag == ty_fn()
+        true ->
+          r1 = unify(eng, na.n1, nb.n1)
+          match r1 < 0
+            true -> r1
+            _ -> unify(eng, na.n2, nb.n2)
+        _ -> match na.tag == ty_array()
+          true -> unify(eng, na.n1, nb.n1)
+          _ -> match na.tag == ty_opt()
+            true -> unify(eng, na.n1, nb.n1)
+            _ -> match na.tag == ty_res()
+              true -> unify(eng, na.n1, nb.n1)
+              _ -> match na.tag == ty_record()
+                true -> unify_records(eng, na, nb)
+                _ -> match na.tag == ty_tuple()
+                  true -> unify_ns(eng, na.ns, nb.ns, 0)
+                  _ -> 0
+    _ -> 0 - 1

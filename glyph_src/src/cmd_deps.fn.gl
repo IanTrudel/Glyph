@@ -1,0 +1,21 @@
+cmd_deps argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph deps <db> <name>")
+      1
+    _ ->
+      db_path = argv[2]
+      name = argv[3]
+      db = glyph_db_open(db_path)
+      sql = s3("SELECT DISTINCT t.name FROM dep d JOIN def f ON d.from_id = f.id JOIN def t ON d.to_id = t.id WHERE f.name = '", sql_escape(name), "' ORDER BY t.name")
+      rows = glyph_db_query_rows(db, sql)
+      glyph_db_close(db)
+      n = glyph_array_len(rows)
+      match n == 0
+        true ->
+          println(s2(name, " -> (none)"))
+          0
+        _ ->
+          deps_str = join_names(rows, 0, n, "")
+          println(s3(name, " -> ", deps_str))
+          0

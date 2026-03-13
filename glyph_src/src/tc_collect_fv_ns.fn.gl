@@ -1,0 +1,7 @@
+tc_collect_fv_ns eng ns i acc =
+  match i >= glyph_array_len(ns)
+    true -> acc
+    _ ->
+      tc_collect_fv(eng, ns[i], acc)
+      tc_collect_fv_ns(eng, ns, i + 1, acc)
+

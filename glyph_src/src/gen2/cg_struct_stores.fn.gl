@@ -1,0 +1,4 @@
+cg_struct_stores ops names i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ -> s4("__r->", names[i], s2(" = ", cg_operand(ops[i])), s2("; ", cg_struct_stores(ops, names, i + 1)))

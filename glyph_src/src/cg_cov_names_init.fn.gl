@@ -1,0 +1,10 @@
+cg_cov_names_init cov_names i =
+  n = glyph_array_len(cov_names)
+  match i >= n
+    true -> ""
+    _ ->
+      entry = s3("\"", cg_escape_str(cov_names[i]), "\"")
+      match i < n - 1
+        true -> s3(entry, ", ", cg_cov_names_init(cov_names, i + 1))
+        _ -> entry
+

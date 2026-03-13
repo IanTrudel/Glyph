@@ -1,0 +1,35 @@
+test_ty_infer_exprs u =
+  eng1 = mk_engine()
+  src1 = "f u = [1, 2, 3]"
+  toks1 = tokenize(src1)
+  ast1 = []
+  r1 = parse_fn_def(src1, toks1, 0, ast1)
+  ty1 = infer_fn_def(eng1, ast1, r1.node)
+  node1 = pool_get(eng1, ty1)
+  assert_eq(node1.tag, ty_fn())
+  eng2 = mk_engine()
+  src2 = "f r = r.x"
+  toks2 = tokenize(src2)
+  ast2 = []
+  r2 = parse_fn_def(src2, toks2, 0, ast2)
+  ty2 = infer_fn_def(eng2, ast2, r2.node)
+  node2 = pool_get(eng2, ty2)
+  assert_eq(node2.tag, ty_fn())
+  eng3 = mk_engine()
+  src3 = "f a = a[0]"
+  toks3 = tokenize(src3)
+  ast3 = []
+  r3 = parse_fn_def(src3, toks3, 0, ast3)
+  ty3 = infer_fn_def(eng3, ast3, r3.node)
+  node3 = pool_get(eng3, ty3)
+  assert_eq(node3.tag, ty_fn())
+  eng4 = mk_engine()
+  src4 = "f x = 0 - x"
+  toks4 = tokenize(src4)
+  ast4 = []
+  r4 = parse_fn_def(src4, toks4, 0, ast4)
+  ty4 = infer_fn_def(eng4, ast4, r4.node)
+  node4 = pool_get(eng4, ty4)
+  assert_eq(node4.tag, ty_fn())
+  0
+

@@ -1,0 +1,9 @@
+json_parse_arr_loop src tokens pos pool items =
+  vr = json_parse(src, tokens, pos, pool)
+  array_push(items, vr.node)
+  npos = vr.pos
+  match tokens[npos].kind == jt_comma
+    true -> json_parse_arr_loop(src, tokens, npos + 1, pool, items)
+    _ ->
+      idx = json_pool_push(pool, mk_jnode(jn_array, 0, "", items, []))
+      {node: idx, pos: npos + 1}

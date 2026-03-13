@@ -1,0 +1,5 @@
+mcp_int_prop pool desc =
+  p = jb_obj(pool)
+  jb_put(pool, p, "type", jb_str(pool, "integer"))
+  jb_put(pool, p, "description", jb_str(pool, desc))
+  p

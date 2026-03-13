@@ -1,0 +1,12 @@
+cg_index_stmt stmt =
+  arr = cg_operand(stmt.sop1)
+  idx = cg_operand(stmt.sop2)
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  gv = gval_t()
+  chk = cg_null_check(stmt.sop1, "array index")
+  p1 = s5("  ", lb, " ", gv, "* __hdr = (")
+  p2 = s5(gv, "*)", arr, "; ", gv)
+  p3 = s5(" __idx = ", idx, "; glyph_array_bounds_check(__idx, __hdr[1]); ", cg_local(stmt.sdest), " = ((")
+  p4 = s4(gv, "*)__hdr[0])[__idx]; ", rb, "\n")
+  s5(chk, p1, p2, p3, p4)

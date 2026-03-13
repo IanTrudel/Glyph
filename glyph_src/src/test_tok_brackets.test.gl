@@ -1,0 +1,10 @@
+test_tok_brackets u =
+  toks1 = tokenize("(a)")
+  k1 = test_collect_kinds(toks1, 0, [])
+  assert(has_kind(k1, tk_lparen()))
+  assert(has_kind(k1, tk_rparen()))
+  toks2 = tokenize("[b]")
+  k2 = test_collect_kinds(toks2, 0, [])
+  assert(has_kind(k2, tk_lbracket()))
+  assert(has_kind(k2, tk_rbracket()))
+  0

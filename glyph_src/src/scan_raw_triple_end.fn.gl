@@ -1,0 +1,13 @@
+scan_raw_triple_end src pos =
+  match pos + 2 < glyph_str_len(src)
+    true ->
+      match glyph_str_char_at(src, pos) == 34
+        true ->
+          match glyph_str_char_at(src, pos + 1) == 34
+            true ->
+              match glyph_str_char_at(src, pos + 2) == 34
+                true -> pos + 3
+                _ -> scan_raw_triple_end(src, pos + 1)
+            _ -> scan_raw_triple_end(src, pos + 1)
+        _ -> scan_raw_triple_end(src, pos + 1)
+    _ -> pos

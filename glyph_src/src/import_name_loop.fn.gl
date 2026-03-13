@@ -1,0 +1,8 @@
+import_name_loop filename i len =
+  match i >= len
+    true -> filename
+    _ ->
+      ch = glyph_str_char_at(filename, i)
+      match ch == 46
+        true -> glyph_str_slice(filename, 0, i)
+        _ -> import_name_loop(filename, i+1, len)

@@ -1,0 +1,8 @@
+test_alpha_rank u =
+  names = ["apple", "banana", "cherry"]
+  assert_eq(alpha_rank(names, "banana"), 1)
+  assert_eq(alpha_rank(names, "cherry"), 2)
+  assert_eq(alpha_rank(names, "apple"), 0)
+  assert_eq(alpha_rank(names, "zzz"), 3)
+  0
+

@@ -1,0 +1,8 @@
+needs_sqlite_loop externs i =
+  match i >= glyph_array_len(externs)
+    true -> 0
+    _ ->
+      row = externs[i]
+      match glyph_str_eq(row[3], "sqlite3")
+        true -> 1
+        _ -> needs_sqlite_loop(externs, i + 1)

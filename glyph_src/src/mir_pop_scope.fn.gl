@@ -1,0 +1,3 @@
+mir_pop_scope ctx =
+  target = glyph_array_pop(ctx.var_marks)
+  mir_pop_scope_to(ctx.var_names, ctx.var_locals, target)

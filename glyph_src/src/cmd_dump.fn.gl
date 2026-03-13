@@ -1,0 +1,24 @@
+cmd_dump argv argc =
+  match argc < 3
+    true ->
+      eprintln("Usage: glyph dump <db> [--budget N] [--root NAME] [--all] [--sigs]")
+      1
+    _ ->
+      db_path = argv[2]
+      db = glyph_db_open(db_path)
+      budget_str = find_flag(argv, "--budget", 3)
+      root = find_flag(argv, "--root", 3)
+      do_all = has_flag(argv, "--all", 3)
+      sigs_only = has_flag(argv, "--sigs", 3)
+      has_budget = glyph_str_len(budget_str) > 0
+      has_root = glyph_str_len(root) > 0
+      match has_budget == 0
+        true -> match has_root == 0
+          true -> dump_all(db, sigs_only)
+          _ -> dump_budgeted(db, root, 500, sigs_only)
+        _ ->
+          budget = glyph_str_to_int(budget_str)
+          root_name = match has_root
+            true -> root
+            _ -> "main"
+          dump_budgeted(db, root_name, budget, sigs_only)

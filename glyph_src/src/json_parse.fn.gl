@@ -1,0 +1,17 @@
+json_parse src tokens pos pool =
+  tok = tokens[pos]
+  k = tok.kind
+  match k
+    7 -> json_parse_str(src, tokens, pos, pool)
+    8 -> json_parse_num(src, tokens, pos, pool)
+    1 -> json_parse_obj(src, tokens, pos + 1, pool)
+    3 -> json_parse_arr(src, tokens, pos + 1, pool)
+    9 ->
+      idx = json_pool_push(pool, mk_jnode(jn_bool, 1, "", [], []))
+      {node: idx, pos: pos + 1}
+    10 ->
+      idx = json_pool_push(pool, mk_jnode(jn_bool, 0, "", [], []))
+      {node: idx, pos: pos + 1}
+    _ ->
+      idx = json_pool_push(pool, mk_jnode(jn_null, 0, "", [], []))
+      {node: idx, pos: pos + 1}

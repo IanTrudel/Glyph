@@ -1,0 +1,9 @@
+infer_compose eng ast node =
+  left_ty = infer_expr(eng, ast, node.n1)
+  right_ty = infer_expr(eng, ast, node.n2)
+  a = subst_fresh(eng)
+  b = subst_fresh(eng)
+  c = subst_fresh(eng)
+  unify(eng, left_ty, mk_tfn(a, b, eng.ty_pool))
+  unify(eng, right_ty, mk_tfn(b, c, eng.ty_pool))
+  mk_tfn(a, c, eng.ty_pool)

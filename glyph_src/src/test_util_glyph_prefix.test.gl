@@ -1,0 +1,8 @@
+test_util_glyph_prefix u =
+  assert(has_glyph_prefix("glyph_println"))
+  assert(has_glyph_prefix("glyph_alloc"))
+  assert(has_glyph_prefix("glyph_") == 1)
+  assert(has_glyph_prefix("foo") == 0)
+  assert(has_glyph_prefix("glyp") == 0)
+  assert(has_glyph_prefix("") == 0)
+  0

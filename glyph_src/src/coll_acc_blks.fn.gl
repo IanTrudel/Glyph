@@ -1,0 +1,6 @@
+coll_acc_blks blocks bi la =
+  match bi >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      coll_acc_stmts(blocks[bi], 0, la)
+      coll_acc_blks(blocks, bi + 1, la)

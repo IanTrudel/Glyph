@@ -1,0 +1,18 @@
+cmd_stat argv argc =
+  match argc < 3
+    true ->
+      eprintln("Usage: glyph stat <db>")
+      1
+    _ ->
+      db_path = argv[2]
+      db = glyph_db_open(db_path)
+      kind_rows = glyph_db_query_rows(db, "SELECT kind, COUNT(*) FROM def GROUP BY kind ORDER BY COUNT(*) DESC")
+      total_row = glyph_db_query_one(db, "SELECT COUNT(*) FROM def")
+      token_row = glyph_db_query_one(db, "SELECT COALESCE(SUM(tokens),0) FROM def")
+      dirty_row = glyph_db_query_one(db, "SELECT COUNT(*) FROM def WHERE compiled = 0")
+      ext_row = glyph_db_query_one(db, "SELECT COUNT(*) FROM extern_")
+      glyph_db_close(db)
+      kinds_str = format_kind_counts(kind_rows, 0, glyph_array_len(kind_rows), "")
+      line = s7(total_row, " defs (", kinds_str, ")  ", ext_row, " extern  ", s4(token_row, "tok total  ", dirty_row, " dirty"))
+      println(line)
+      0

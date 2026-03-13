@@ -1,0 +1,11 @@
+test_json_array u =
+  src = "[1,2,3]"
+  pool = []
+  toks = json_tokenize(src)
+  pr = json_parse(src, toks, 0, pool)
+  assert_eq(pool[pr.node].tag, jn_array)
+  assert_eq(json_arr_len(pool, pr.node), 3)
+  first = json_arr_get(pool, pr.node, 0)
+  assert_eq(pool[first].nval, 1)
+  last = json_arr_get(pool, pr.node, 2)
+  assert_eq(pool[last].nval, 3)

@@ -1,0 +1,18 @@
+build_test_program fn_sources test_sources test_names externs output_path =
+  fn_mirs = compile_fns(fn_sources, 0)
+  test_mirs = compile_fns(test_sources, 0)
+  reg = build_type_reg(fn_mirs)
+  add_types_to_reg(test_mirs, reg)
+  fix_offs_mirs(fn_mirs, 0, reg)
+  fix_offs_mirs(test_mirs, 0, reg)
+  fix_extern_calls(fn_mirs, externs)
+  fix_extern_calls(test_mirs, externs)
+  tco_optimize(fn_mirs)
+  tco_optimize(test_mirs)
+  c_code = cg_test_program(fn_mirs, test_mirs, test_names)
+  wrappers = cg_extern_wrappers(externs, 0)
+  full_c = s6(cg_runtime_full(externs), "\n", wrappers, "\n", cg_test_runtime(0), c_code)
+  lib_flags = collect_libs(externs)
+  c_path = "/tmp/glyph_test.c"
+  glyph_write_file(c_path, full_c)
+  glyph_system(s7("cc -w -Wno-error -Wno-int-conversion -Wno-incompatible-pointer-types -O1 ", c_path, " -o ", output_path, " -no-pie", lib_flags, ""))

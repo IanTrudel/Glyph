@@ -1,0 +1,2 @@
+env_lookup eng name =
+  env_lookup_at(eng.env_names, eng.env_types, name, glyph_array_len(eng.env_names) - 1)

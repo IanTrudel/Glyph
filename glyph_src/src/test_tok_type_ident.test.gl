@@ -1,0 +1,6 @@
+test_tok_type_ident u =
+  toks = tokenize("Int x")
+  kinds = test_collect_kinds(toks, 0, [])
+  assert(has_kind(kinds, tk_type_ident()))
+  assert(has_kind(kinds, tk_ident()))
+  0

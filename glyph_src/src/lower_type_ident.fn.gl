@@ -1,0 +1,4 @@
+lower_type_ident st pool node =
+  dest = mir_alloc_local(st, "_nullvar")
+  mir_emit_aggregate(st, dest, ag_variant(), node.sval, [])
+  mk_op_local(dest)

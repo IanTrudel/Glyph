@@ -1,0 +1,12 @@
+tco_is_ret_blk blks terms tgt_bi ret_local =
+  tgt_stmts = blks[tgt_bi]
+  tgt_term = terms[tgt_bi]
+  match glyph_array_len(tgt_stmts) == 0
+    true -> match tgt_term.tkind == tm_return()
+      true -> match tgt_term.top.okind == ok_local()
+        true -> match tgt_term.top.oval == ret_local
+          true -> 1
+          _ -> 0
+        _ -> 0
+      _ -> 0
+    _ -> 0

@@ -1,0 +1,13 @@
+dispatch_cmd argv argc cmd =
+  match cmd
+    _ ? glyph_str_eq(cmd, "build") -> cmd_build(argv, argc)
+    _ ? glyph_str_eq(cmd, "run") -> cmd_run(argv, argc)
+    _ ? glyph_str_eq(cmd, "get") -> cmd_get(argv, argc)
+    _ ? glyph_str_eq(cmd, "put") -> cmd_put(argv, argc)
+    _ ? glyph_str_eq(cmd, "rm") -> cmd_rm(argv, argc)
+    _ ? glyph_str_eq(cmd, "ls") -> cmd_ls(argv, argc)
+    _ ? glyph_str_eq(cmd, "find") -> cmd_find(argv, argc)
+    _ ? glyph_str_eq(cmd, "stat") -> cmd_stat(argv, argc)
+    _ ? glyph_str_eq(cmd, "deps") -> cmd_deps(argv, argc)
+    _ ? glyph_str_eq(cmd, "rdeps") -> cmd_rdeps(argv, argc)
+    _ -> dispatch_cmd2(argv, argc, cmd)

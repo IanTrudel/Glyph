@@ -1,0 +1,11 @@
+test_cg_binop_str u =
+  assert_str_eq(cg_binop_str(mir_add()), " + ")
+  assert_str_eq(cg_binop_str(mir_sub()), " - ")
+  assert_str_eq(cg_binop_str(mir_mul()), " * ")
+  assert_str_eq(cg_binop_str(mir_div()), " / ")
+  assert_str_eq(cg_binop_str(mir_mod()), " % ")
+  assert_str_eq(cg_binop_str(mir_eq()), " == ")
+  assert_str_eq(cg_binop_str(mir_neq()), " != ")
+  assert_str_eq(cg_binop_str(mir_lt()), " < ")
+  assert_str_eq(cg_binop_str(mir_gt()), " > ")
+  0

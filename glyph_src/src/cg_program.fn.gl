@@ -1,0 +1,2 @@
+cg_program mirs =
+  s6(cg_preamble(), cg_forward_decls(mirs, 0), "\n", cg_functions(mirs, 0), "\n", cg_main_wrapper())

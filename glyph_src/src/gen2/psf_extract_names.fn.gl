@@ -1,0 +1,4 @@
+psf_extract_names inner =
+  result = []
+  psf_extract_loop(inner, 0, 0, result)
+  result

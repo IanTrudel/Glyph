@@ -1,0 +1,8 @@
+test_cg_escape_str u =
+  result = cg_escape_str("hello")
+  assert_str_eq(result, "hello")
+  r2 = cg_escape_str("a\\b")
+  assert_str_eq(r2, "a\\\\b")
+  r3 = cg_escape_str("")
+  assert_str_eq(r3, "")
+  0

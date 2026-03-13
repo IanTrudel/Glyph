@@ -1,0 +1,9 @@
+mcp_add_tools5 pool tools =
+  rn = jb_arr(pool)
+  jb_push(pool, rn, jb_str(pool, "name"))
+  p5 = jb_obj(pool)
+  jb_put(pool, p5, "name", mcp_str_prop(pool, "Definition name"))
+  jb_put(pool, p5, "kind", mcp_str_prop(pool, "Definition kind. Default: fn"))
+  jb_put(pool, p5, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
+  jb_push(pool, tools, mcp_tool_schema(pool, "remove_def", "Delete a definition", p5, rn))
+  mcp_add_tools6(pool, tools)

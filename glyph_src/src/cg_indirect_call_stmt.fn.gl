@@ -1,0 +1,9 @@
+cg_indirect_call_stmt stmt =
+  closure = cg_operand(stmt.sop1)
+  n_args = glyph_array_len(stmt.sops)
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  gv = gval_t()
+  sig = cg_indirect_sig(n_args + 1)
+  args = cg_indirect_args(closure, stmt.sops, 0)
+  s7("  ", lb, s4(" ", gv, " __fp = ((", gv), s2("*)", closure), s2(")[0]; ", cg_local(stmt.sdest)), s6(" = ((", sig, ")__fp)(", args, "); ", s2(rb, "\n")), "")

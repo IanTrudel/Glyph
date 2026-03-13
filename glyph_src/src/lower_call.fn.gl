@@ -1,0 +1,15 @@
+lower_call ctx ast node =
+  callee_node = ast[node.n1]
+  match callee_node.kind == ex_type_ident()
+    true ->
+      args = lower_call_args(ctx, ast, node.ns, 0)
+      dest = mir_alloc_local(ctx, "")
+      mir_emit_aggregate(ctx, dest, ag_variant(), callee_node.sval, args)
+      mk_op_local(dest)
+    _ ->
+      callee = lower_callee_expr(ctx, ast, node.n1)
+      args = lower_call_args(ctx, ast, node.ns, 0)
+      dest = mir_alloc_local(ctx, "")
+      mir_emit_call(ctx, dest, callee, args)
+      track_call_type(ctx, dest, callee)
+      mk_op_local(dest)

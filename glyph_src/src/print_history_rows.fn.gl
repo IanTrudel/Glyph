@@ -1,0 +1,7 @@
+print_history_rows rows i n =
+  match i >= n
+    true -> 0
+    _ ->
+      row = rows[i]
+      println(s7("  #", row[0], "  ", row[1], "  gen=", row[2], s5("  ", row[3], "  ", row[4], " bytes")))
+      print_history_rows(rows, i + 1, n)

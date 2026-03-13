@@ -1,0 +1,7 @@
+test_util_is_space u =
+  assert(is_space(32))
+  assert(is_space(9))
+  assert(is_space(10) == 0)
+  assert(is_space(65) == 0)
+  assert(is_space(0) == 0)
+  0

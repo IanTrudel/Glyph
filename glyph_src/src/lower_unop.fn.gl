@@ -1,0 +1,4 @@
+lower_unop op =
+  match op == op_neg()
+    true -> mir_neg()
+    _ -> mir_not()

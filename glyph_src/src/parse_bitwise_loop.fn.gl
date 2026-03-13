@@ -1,0 +1,18 @@
+parse_bitwise_loop src tokens pos pool left =
+  k = cur_kind(tokens, pos)
+  op = match k
+    _ ? k == tk_bitand() -> op_bitand()
+    _ ? k == tk_bitor() -> op_bitor()
+    _ ? k == tk_bitxor() -> op_bitxor()
+    _ ? k == tk_shl() -> op_shl()
+    _ ? k == tk_shr() -> op_shr()
+    _ -> 0 - 1
+  match op < 0
+    true -> mk_result(left, pos)
+    _ ->
+      right = parse_add(src, tokens, pos + 1, pool)
+      match is_err(right)
+        true -> right
+        _ ->
+          idx = pool_push(pool, mk_node(ex_binary(), op, "", left, right.node, 0 - 1, []))
+          parse_bitwise_loop(src, tokens, right.pos, pool, idx)

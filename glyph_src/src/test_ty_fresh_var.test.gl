@@ -1,0 +1,9 @@
+test_ty_fresh_var u =
+  eng = mk_engine()
+  t0 = subst_fresh(eng)
+  t1 = subst_fresh(eng)
+  assert_eq(eng.next_var[0], 2)
+  assert_eq((eng.ty_pool[t0]).tag, ty_var())
+  assert_eq((eng.ty_pool[t1]).tag, ty_var())
+  assert(t0 != t1)
+  0

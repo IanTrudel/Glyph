@@ -1,0 +1,5 @@
+test_esc_tab u =
+  result = process_escapes("\\t")
+  assert_eq(glyph_str_len(result), 1)
+  assert_eq(glyph_str_char_at(result, 0), 9)
+  0

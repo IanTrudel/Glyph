@@ -1,0 +1,17 @@
+parse_fn_def src tokens pos pool =
+  match cur_kind(tokens, pos) == tk_ident()
+    true ->
+      fname = cur_text(src, tokens, pos)
+      params = []
+      pr = parse_params_loop(src, tokens, pos + 1, pool, params)
+      p2 = expect_tok(tokens, pr.pos, tk_eq())
+      match p2 < 0
+        true -> mk_err_msg(pr.pos, "expected '=' after parameters")
+        _ ->
+          body_r = parse_body(src, tokens, p2, pool)
+          match is_err(body_r)
+            true -> body_r
+            _ ->
+              idx = pool_push(pool, mk_node(df_fn(), 0, fname, body_r.node, 0 - 1, 0 - 1, params))
+              mk_result(idx, body_r.pos)
+    _ -> mk_err_msg(pos, "expected function name")

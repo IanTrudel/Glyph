@@ -1,0 +1,6 @@
+cg_str_interp_stmt stmt =
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  gv = gval_t()
+  appends = cg_sb_appends(stmt.sops, 0)
+  s7("  ", lb, s2(" ", gv), " __sb = glyph_sb_new(); ", s2(appends, cg_local(stmt.sdest)), s3(" = (", gv, ")glyph_sb_build(__sb); "), s2(rb, "\n"))

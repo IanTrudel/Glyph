@@ -1,0 +1,7 @@
+test_cg_coverage u =
+  r = cg_runtime_coverage("test.cover", ["fn1", "fn2"])
+  assert(str_contains(r, "GLYPH_COVERAGE"))
+  assert(str_contains(r, "_glyph_cov_write"))
+  assert(str_contains(r, "fn1"))
+  0
+

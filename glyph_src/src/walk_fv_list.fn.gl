@@ -1,0 +1,7 @@
+walk_fv_list ctx ast ns i bound seen result =
+  match i >= glyph_array_len(ns)
+    true -> 0
+    _ ->
+      walk_free_vars(ctx, ast, ns[i], bound, seen, result)
+      walk_fv_list(ctx, ast, ns, i + 1, bound, seen, result)
+

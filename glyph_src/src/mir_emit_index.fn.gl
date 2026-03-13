@@ -1,0 +1,2 @@
+mir_emit_index ctx dest arr idx =
+  mir_emit(ctx, mk_stmt(dest, rv_index(), 0, "", arr, idx, []))

@@ -1,0 +1,1 @@
+mk_op k v s = {okind: k, oval: v, ostr: s}

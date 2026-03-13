@@ -1,0 +1,15 @@
+test_mir_emit_extra u =
+  mir1 = compile_fn("f x = \\y -> x", [])
+  stmts1 = mir1.fn_blocks_stmts[0]
+  found1 = test_find_stmt_kind(stmts1, rv_make_closure(), 0)
+  assert(found1 >= 0)
+  mir2 = compile_fn("f u = [1, 2, 3]", [])
+  stmts2 = mir2.fn_blocks_stmts[0]
+  found2 = test_find_stmt_kind(stmts2, rv_aggregate(), 0)
+  assert(found2 >= 0)
+  mir3 = compile_fn("f x = x + 1", [])
+  stmts3 = mir3.fn_blocks_stmts[0]
+  found3 = test_find_stmt_kind(stmts3, rv_binop(), 0)
+  assert(found3 >= 0)
+  0
+

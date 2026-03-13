@@ -1,0 +1,5 @@
+split_arrow s =
+  result = []
+  match glyph_str_len(s) == 0
+    true -> result
+    _ -> split_arrow_loop(s, 0, 0, result)

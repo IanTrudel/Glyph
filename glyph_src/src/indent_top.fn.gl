@@ -1,0 +1,1 @@
+indent_top stack = stack[glyph_array_len(stack) - 1]

@@ -1,0 +1,6 @@
+tmap_init_loop acc n i =
+  match i >= n
+    true -> acc
+    _ ->
+      glyph_array_push(acc, 0 - 1)
+      tmap_init_loop(acc, n, i + 1)

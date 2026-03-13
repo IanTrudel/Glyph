@@ -1,0 +1,6 @@
+mir_pp_blocks mir i =
+  n = glyph_array_len(mir.fn_blocks_terms)
+  match i >= n
+    true -> ""
+    _ -> s2(mir_pp_block(mir, i), mir_pp_blocks(mir, i + 1))
+

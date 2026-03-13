@@ -1,0 +1,2 @@
+needs_sqlite externs =
+  needs_sqlite_loop(externs, 0)

@@ -1,0 +1,6 @@
+fix_ext_mirs mirs externs i =
+  match i >= glyph_array_len(mirs)
+    true -> 0
+    _ ->
+      fix_ext_fn(mirs[i], externs)
+      fix_ext_mirs(mirs, externs, i + 1)

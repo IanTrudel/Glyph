@@ -1,0 +1,6 @@
+mcp_fmt_sql_cols rp row_arr row j ncols =
+  match j < ncols
+    true ->
+      jb_push(rp, row_arr, jb_str(rp, row[j]))
+      mcp_fmt_sql_cols(rp, row_arr, row, j + 1, ncols)
+    _ -> 0

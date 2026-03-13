@@ -1,0 +1,7 @@
+is_float_ctype t =
+  match glyph_str_eq(t, "float") == 1
+    true -> 1
+    _ -> match glyph_str_eq(t, "double") == 1
+      true -> 1
+      _ -> 0
+

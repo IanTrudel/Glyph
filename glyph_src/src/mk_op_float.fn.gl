@@ -1,0 +1,1 @@
+mk_op_float s = mk_op(ok_const_float(), 0, s)

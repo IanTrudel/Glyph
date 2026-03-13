@@ -1,0 +1,7 @@
+skip_blanks src pos line len =
+  match pos < len
+    true ->
+      match glyph_str_char_at(src, pos) == 10
+        true -> skip_blanks(src, pos + 1, line + 1, len)
+        _ -> pos * 1000000 + line
+    _ -> pos * 1000000 + line

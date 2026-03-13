@@ -1,0 +1,12 @@
+unify_ns eng ns1 ns2 i =
+  match i >= glyph_array_len(ns1)
+    true -> match i >= glyph_array_len(ns2)
+      true -> 0
+      _ -> 0 - 1
+    _ -> match i >= glyph_array_len(ns2)
+      true -> 0 - 1
+      _ ->
+        r = unify(eng, ns1[i], ns2[i])
+        match r < 0
+          true -> r
+          _ -> unify_ns(eng, ns1, ns2, i + 1)

@@ -1,0 +1,5 @@
+test_validate_ok u =
+  vr = validate_def("f x = x + 1")
+  assert_eq(vr.vr_ok, 1)
+  assert_str_eq(vr.vr_msg, "")
+  0

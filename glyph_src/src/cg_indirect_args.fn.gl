@@ -1,0 +1,6 @@
+cg_indirect_args closure ops i =
+  match i >= glyph_array_len(ops)
+    true -> closure
+    _ ->
+      s4(closure, ", ", cg_operand(ops[i]), cg_indirect_args_rest(ops, i + 1))
+

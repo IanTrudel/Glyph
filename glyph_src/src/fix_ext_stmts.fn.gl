@@ -1,0 +1,27 @@
+fix_ext_stmts stmts externs si =
+  match si >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[si]
+      match stmt.skind == rv_call()
+        true ->
+          callee = stmt.sop1
+          match callee.okind == ok_func_ref()
+            true ->
+              name = callee.ostr
+              match is_runtime_fn(name) == 0
+                true -> match has_glyph_prefix(name) == 0
+                  true ->
+                    ext = find_extern(externs, name)
+                    match glyph_array_len(ext) > 0
+                      true ->
+                        new_op = mk_op(ok_func_ref(), 0, s2("glyph_", name))
+                        new_stmt = mk_stmt(stmt.sdest, stmt.skind, stmt.sival, stmt.sstr, new_op, stmt.sop2, stmt.sops)
+                        glyph_array_set(stmts, si, new_stmt)
+                        0
+                      _ -> 0
+                  _ -> 0
+                _ -> 0
+            _ -> 0
+        _ -> 0
+      fix_ext_stmts(stmts, externs, si + 1)

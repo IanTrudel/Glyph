@@ -1,0 +1,4 @@
+mir_terminate ctx term =
+  bi = ctx.cur_block[0]
+  glyph_array_set(ctx.block_terms, bi, term)
+  0

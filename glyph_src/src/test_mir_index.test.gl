@@ -1,0 +1,6 @@
+test_mir_index u =
+  mir = compile_fn("f x = x[0]", [])
+  stmts = mir.fn_blocks_stmts[mir.fn_entry]
+  i = test_find_stmt_kind(stmts, rv_index(), 0)
+  assert(i >= 0)
+  0

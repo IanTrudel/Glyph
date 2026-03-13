@@ -1,0 +1,8 @@
+tco_emit_temps stmts args base_tmp i = match i >= glyph_array_len(args)
+  true -> 0
+  _ ->
+    tmp_id = base_tmp + i
+    arg = args[i]
+    s = mk_stmt(tmp_id, rv_use(), 0, "", arg, mk_op_nil(), [])
+    glyph_array_push(stmts, s)
+    tco_emit_temps(stmts, args, base_tmp, i + 1)

@@ -1,0 +1,9 @@
+strip_ext path =
+  len = glyph_str_len(path)
+  match len > 6
+    true ->
+      suffix = glyph_str_slice(path, len - 6, len)
+      match glyph_str_eq(suffix, ".glyph") == 1
+        true -> glyph_str_slice(path, 0, len - 6)
+        _ -> path
+    _ -> path

@@ -1,0 +1,23 @@
+register_builtins eng =
+  p = eng.ty_pool
+  i = mk_tint(p)
+  s = mk_tstr(p)
+  b = mk_tbool(p)
+  v = mk_tvoid(p)
+  env_insert(eng, "glyph_str_len", mk_tfn(s, i, p))
+  env_insert(eng, "glyph_str_char_at", mk_tfn(s, mk_tfn(i, i, p), p))
+  env_insert(eng, "glyph_str_slice", mk_tfn(s, mk_tfn(i, mk_tfn(i, s, p), p), p))
+  env_insert(eng, "glyph_str_eq", mk_tfn(s, mk_tfn(s, i, p), p))
+  env_insert(eng, "glyph_str_concat", mk_tfn(s, mk_tfn(s, s, p), p))
+  env_insert(eng, "glyph_int_to_str", mk_tfn(i, s, p))
+  env_insert(eng, "glyph_str_to_int", mk_tfn(s, i, p))
+  env_insert(eng, "println", mk_tfn(s, i, p))
+  env_insert(eng, "glyph_exit", mk_tfn(i, v, p))
+  alen_arr = subst_fresh(eng)
+  alen_ty = mk_tfn(alen_arr, i, p)
+  env_insert(eng, "glyph_array_len", generalize(eng, alen_ty))
+  aset_arr = subst_fresh(eng)
+  aset_ty = mk_tfn(aset_arr, mk_tfn(i, mk_tfn(i, v, p), p), p)
+  env_insert(eng, "glyph_array_set", generalize(eng, aset_ty))
+  0
+

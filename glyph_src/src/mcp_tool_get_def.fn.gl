@@ -1,0 +1,26 @@
+mcp_tool_get_def db_path id pool args =
+  name = json_get_str(pool, args, "name")
+  kind_idx = json_get(pool, args, "kind")
+  kind = match kind_idx >= 0
+    true ->
+      knode = pool[kind_idx]
+      _ = knode.tag
+      knode.sval
+    _ -> "fn"
+  db = glyph_db_open(db_path)
+  sql = s5("SELECT name, kind, body, gen, tokens FROM def WHERE name='", name, "' AND kind='", kind, "'")
+  rows = glyph_db_query_rows(db, sql)
+  glyph_db_close(db)
+  match glyph_array_len(rows) > 0
+    true ->
+      row = rows[0]
+      rp = []
+      r = jb_obj(rp)
+      jb_put(rp, r, "name", jb_str(rp, row[0]))
+      jb_put(rp, r, "kind", jb_str(rp, row[1]))
+      jb_put(rp, r, "body", jb_str(rp, row[2]))
+      jb_put(rp, r, "gen", jb_int(rp, str_to_int(row[3])))
+      jb_put(rp, r, "tokens", jb_int(rp, str_to_int(row[4])))
+      mcp_text_result(id, json_gen(rp, r))
+    _ -> mcp_text_result(id, s3("Definition '", name, "' not found"))
+

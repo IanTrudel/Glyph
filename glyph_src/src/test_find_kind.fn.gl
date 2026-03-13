@@ -1,0 +1,6 @@
+test_find_kind toks k i =
+  match i >= glyph_array_len(toks)
+    true -> 0 - 1
+    _ -> match (toks[i]).kind == k
+      true -> i
+      _ -> test_find_kind(toks, k, i + 1)

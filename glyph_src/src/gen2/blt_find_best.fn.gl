@@ -1,0 +1,14 @@
+blt_find_best accessed struct_map i best_name best_count =
+  match i >= glyph_array_len(struct_map)
+    true -> best_name
+    _ ->
+      entry = struct_map[i]
+      ename = entry[0]
+      efields = entry[1]
+      fcount = glyph_array_len(efields)
+      match blt_all_in(accessed, efields, 0)
+        true ->
+          match glyph_str_len(best_name) == 0
+            true -> blt_find_best(accessed, struct_map, i + 1, ename, fcount)
+            _ -> blt_find_best(accessed, struct_map, i + 1, "", 0)
+        _ -> blt_find_best(accessed, struct_map, i + 1, best_name, best_count)

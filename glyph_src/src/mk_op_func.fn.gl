@@ -1,0 +1,1 @@
+mk_op_func name = mk_op(ok_func_ref(), 0, name)

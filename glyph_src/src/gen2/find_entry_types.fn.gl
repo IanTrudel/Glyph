@@ -1,0 +1,2 @@
+find_entry_types name struct_map =
+  fet_loop(name, struct_map, 0)

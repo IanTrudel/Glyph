@@ -1,0 +1,5 @@
+test_mir_match_blocks u =
+  mir = compile_fn("f x = match x\n  1 -> 10\n  _ -> 20", [])
+  nblocks = glyph_array_len(mir.fn_blocks_terms)
+  assert(nblocks >= 3)
+  0

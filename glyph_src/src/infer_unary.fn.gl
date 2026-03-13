@@ -1,0 +1,7 @@
+infer_unary eng ast node =
+  operand = infer_expr(eng, ast, node.n1)
+  operand_r = subst_resolve(eng, operand)
+  r = unaryop_type(eng, node.ival, operand_r)
+  match r < 0
+    true -> operand
+    _ -> r

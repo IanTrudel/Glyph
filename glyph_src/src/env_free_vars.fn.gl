@@ -1,0 +1,2 @@
+env_free_vars eng =
+  efv_loop(eng, 0, [])

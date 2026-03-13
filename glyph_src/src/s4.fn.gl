@@ -1,0 +1,1 @@
+s4 a b c d = s2(s3(a, b, c), d)

@@ -1,0 +1,14 @@
+test_util_is_alpha u =
+  assert(is_alpha(65))
+  assert(is_alpha(90))
+  assert(is_alpha(97))
+  assert(is_alpha(122))
+  assert(is_alpha(95))
+  assert(is_alpha(0) == 0)
+  assert(is_alpha(48) == 0)
+  assert(is_alpha(57) == 0)
+  assert(is_alpha(64) == 0)
+  assert(is_alpha(91) == 0)
+  assert(is_alpha(96) == 0)
+  assert(is_alpha(123) == 0)
+  0

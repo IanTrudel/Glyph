@@ -1,0 +1,11 @@
+test_build_za u =
+  srcs = ["f = 42", "g = 7"]
+  parsed = parse_all_fns(srcs, 0)
+  za = build_za_fns(parsed, 0, [])
+  assert_eq(glyph_array_len(za), 2)
+  srcs2 = ["h x = x"]
+  parsed2 = parse_all_fns(srcs2, 0)
+  za2 = build_za_fns(parsed2, 0, [])
+  assert_eq(glyph_array_len(za2), 0)
+  0
+

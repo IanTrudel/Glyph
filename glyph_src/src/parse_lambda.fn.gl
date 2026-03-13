@@ -1,0 +1,3 @@
+parse_lambda src tokens pos pool =
+  params = []
+  parse_lambda_params(src, tokens, pos, pool, params)

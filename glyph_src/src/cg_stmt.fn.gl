@@ -1,0 +1,13 @@
+cg_stmt stmt =
+  k = stmt.skind
+  match k
+    _ ? k == rv_use() -> s4("  ", cg_local(stmt.sdest), " = ", s2(cg_operand(stmt.sop1), ";\n"))
+    _ ? k == rv_binop() -> s6("  ", cg_local(stmt.sdest), " = ", cg_operand(stmt.sop1), cg_binop_str(stmt.sival), s2(cg_operand(stmt.sop2), ";\n"))
+    _ ? k == rv_unop() -> s5("  ", cg_local(stmt.sdest), " = ", cg_unop_str(stmt.sival), s2(cg_operand(stmt.sop1), ";\n"))
+    _ ? k == rv_call() -> cg_call_stmt(stmt)
+    _ ? k == rv_field() -> cg_field_stmt(stmt)
+    _ ? k == rv_index() -> cg_index_stmt(stmt)
+    _ ? k == rv_aggregate() -> cg_aggregate_stmt(stmt)
+    _ ? k == rv_str_interp() -> cg_str_interp_stmt(stmt)
+    _ ? k == rv_make_closure() -> cg_closure_stmt(stmt)
+    _ -> s3("  /* unknown rvalue kind ", itos(k), " */\n")

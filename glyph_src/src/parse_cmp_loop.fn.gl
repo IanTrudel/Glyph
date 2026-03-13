@@ -1,0 +1,19 @@
+parse_cmp_loop src tokens pos pool left =
+  k = cur_kind(tokens, pos)
+  op = match k
+    _ ? k == tk_eq_eq() -> op_eq()
+    _ ? k == tk_bang_eq() -> op_neq()
+    _ ? k == tk_lt() -> op_lt()
+    _ ? k == tk_gt() -> op_gt()
+    _ ? k == tk_lt_eq() -> op_lt_eq()
+    _ ? k == tk_gt_eq() -> op_gt_eq()
+    _ -> 0 - 1
+  match op < 0
+    true -> mk_result(left, pos)
+    _ ->
+      right = parse_add(src, tokens, pos + 1, pool)
+      match is_err(right)
+        true -> right
+        _ ->
+          idx = pool_push(pool, mk_node(ex_binary(), op, "", left, right.node, 0 - 1, []))
+          parse_cmp_loop(src, tokens, right.pos, pool, idx)

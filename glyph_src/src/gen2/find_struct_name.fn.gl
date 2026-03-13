@@ -1,0 +1,4 @@
+find_struct_name sstr struct_map =
+  fields = split_comma(sstr)
+  sorted = sort_str_arr(fields)
+  fsn_loop(sorted, struct_map, 0)

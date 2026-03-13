@@ -1,0 +1,13 @@
+cg_record_aggregate2 stmt nops struct_map =
+  tname = find_struct_name(stmt.sstr, struct_map)
+  match glyph_str_len(tname) > 0
+    true ->
+      lb = cg_lbrace()
+      rb = cg_rbrace()
+      gv = gval_t()
+      gtype = s2("Glyph_", tname)
+      names = split_comma(stmt.sstr)
+      ctypes = find_entry_types(tname, struct_map)
+      stores = cg_struct_stores_typed(stmt.sops, names, ctypes, 0)
+      s7("  ", lb, s3(" ", gtype, "* __r = ("), s3(gtype, "*)glyph_alloc(sizeof(", gtype), s2(")); ", stores), s4(cg_local(stmt.sdest), " = (", gv, ")__r; "), s2(rb, "\n"))
+    _ -> cg_record_aggregate(stmt, nops)

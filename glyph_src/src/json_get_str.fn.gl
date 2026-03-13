@@ -1,0 +1,8 @@
+json_get_str pool node_idx key =
+  ci = json_get(pool, node_idx, key)
+  match ci >= 0
+    true ->
+      node = pool[ci]
+      _ = node.tag
+      node.sval
+    _ -> ""

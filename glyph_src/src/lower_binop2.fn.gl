@@ -1,0 +1,12 @@
+lower_binop2 op =
+  match op == op_bitand()
+    true -> mir_bitand()
+    _ -> match op == op_bitor()
+      true -> mir_bitor()
+      _ -> match op == op_bitxor()
+        true -> mir_bitxor()
+        _ -> match op == op_shl()
+          true -> mir_shl()
+          _ -> match op == op_shr()
+            true -> mir_shr()
+            _ -> mir_add()

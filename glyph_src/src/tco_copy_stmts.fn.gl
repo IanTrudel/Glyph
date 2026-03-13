@@ -1,0 +1,5 @@
+tco_copy_stmts acc old_stmts limit i = match i >= limit
+  true -> acc
+  _ ->
+    glyph_array_push(acc, old_stmts[i])
+    tco_copy_stmts(acc, old_stmts, limit, i + 1)

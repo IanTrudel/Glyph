@@ -1,0 +1,11 @@
+test_needs_sqlite u =
+  e1 = [["f1", "sym1", "I -> I", "sqlite3"]]
+  assert_eq(needs_sqlite(e1), 1)
+  e2 = [["f2", "sym2", "I -> I", ""]]
+  assert_eq(needs_sqlite(e2), 0)
+  e3 = []
+  assert_eq(needs_sqlite(e3), 0)
+  assert_eq(lib_seen(["a", "b", "c"], "b", 0), 1)
+  assert_eq(lib_seen(["a", "b", "c"], "d", 0), 0)
+  0
+

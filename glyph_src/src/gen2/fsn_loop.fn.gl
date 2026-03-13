@@ -1,0 +1,9 @@
+fsn_loop sorted struct_map i =
+  match i >= glyph_array_len(struct_map)
+    true -> ""
+    _ ->
+      entry = struct_map[i]
+      entry_fields = entry[1]
+      match fsn_fields_eq(sorted, entry_fields)
+        true -> entry[0]
+        _ -> fsn_loop(sorted, struct_map, i + 1)

@@ -1,0 +1,14 @@
+test_sort_str u =
+  arr = ["c", "a", "b"]
+  sorted = sort_str_arr(arr)
+  assert_str_eq(sorted[0], "a")
+  assert_str_eq(sorted[1], "b")
+  assert_str_eq(sorted[2], "c")
+  arr2 = ["z"]
+  sorted2 = sort_str_arr(arr2)
+  assert_str_eq(sorted2[0], "z")
+  arr3 = []
+  sorted3 = sort_str_arr(arr3)
+  assert_eq(glyph_array_len(sorted3), 0)
+  0
+

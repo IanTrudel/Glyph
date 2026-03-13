@@ -1,0 +1,3 @@
+json_get pool node_idx key =
+  node = pool[node_idx]
+  json_get_loop(node.keys, node.items, key, 0)

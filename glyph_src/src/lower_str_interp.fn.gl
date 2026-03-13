@@ -1,0 +1,5 @@
+lower_str_interp ctx ast node =
+  ops = lower_str_interp_parts(ctx, ast, node.ns, 0, [])
+  dest = mir_alloc_local(ctx, "")
+  mir_emit(ctx, mk_stmt(dest, rv_str_interp(), 0, "", mk_op_nil(), mk_op_nil(), ops))
+  mk_op_local(dest)

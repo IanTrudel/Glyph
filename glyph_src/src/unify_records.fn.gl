@@ -1,0 +1,8 @@
+unify_records eng na nb =
+  _ = na.tag
+  _ = nb.tag
+  r1 = unify_fields_against(eng, na.ns, nb.ns, nb.n1, 0)
+  match r1 < 0
+    true -> r1
+    _ -> unify_fields_against(eng, nb.ns, na.ns, na.n1, 0)
+

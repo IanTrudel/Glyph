@@ -1,0 +1,7 @@
+test_closure_multi_cap u =
+  a = 10
+  b = 20
+  f = \x -> a + b + x
+  result = f(3)
+  assert_eq(result, 33)
+

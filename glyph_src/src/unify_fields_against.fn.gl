@@ -1,0 +1,30 @@
+unify_fields_against eng fs1 fs2 rest_var i =
+  match i >= glyph_array_len(fs1)
+    true -> 0
+    _ ->
+      fi1 = fs1[i]
+      pool_len = glyph_array_len(eng.ty_pool)
+      match fi1 >= pool_len
+        true -> 0
+        _ -> match fi1 < 0
+          true -> 0
+          _ ->
+            f1 = pool_get(eng, fi1)
+            _ = f1.tag
+            found = find_field(eng, fs2, f1.sval, 0)
+            match found < 0
+              true ->
+                match rest_var < 0
+                  true -> 0 - 1
+                  _ -> unify_fields_against(eng, fs1, fs2, rest_var, i + 1)
+              _ ->
+                match found >= glyph_array_len(eng.ty_pool)
+                  true -> 0
+                  _ ->
+                    f2 = pool_get(eng, found)
+                    _ = f2.tag
+                    r = unify(eng, f1.n1, f2.n1)
+                    match r < 0
+                      true -> r
+                      _ -> unify_fields_against(eng, fs1, fs2, rest_var, i + 1)
+

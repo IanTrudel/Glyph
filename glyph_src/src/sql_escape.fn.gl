@@ -1,0 +1,2 @@
+sql_escape s =
+  sql_escape_loop(s, 0, str_len(s), sb_new())

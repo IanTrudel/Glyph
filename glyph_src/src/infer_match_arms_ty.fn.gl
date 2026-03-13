@@ -1,0 +1,18 @@
+infer_match_arms_ty eng ast arms scrutinee_ty result_ty i =
+  match i >= glyph_array_len(arms)
+    true -> 0
+    _ ->
+      env_push(eng)
+      pat_ty = infer_pattern(eng, ast, arms[i])
+      unify(eng, scrutinee_ty, pat_ty)
+      body_ty = infer_expr(eng, ast, arms[i + 1])
+      unify(eng, result_ty, body_ty)
+      guard_idx = arms[i + 2]
+      match guard_idx >= 0
+        true ->
+          guard_ty = infer_expr(eng, ast, guard_idx)
+          0
+        _ -> 0
+      env_pop(eng)
+      infer_match_arms_ty(eng, ast, arms, scrutinee_ty, result_ty, i + 3)
+

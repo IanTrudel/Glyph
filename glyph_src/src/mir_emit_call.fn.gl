@@ -1,0 +1,2 @@
+mir_emit_call ctx dest callee args =
+  mir_emit(ctx, mk_stmt(dest, rv_call(), 0, "", callee, mk_op_nil(), args))

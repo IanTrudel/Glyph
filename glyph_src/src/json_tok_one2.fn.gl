@@ -1,0 +1,26 @@
+json_tok_one2 src len pos tokens c =
+  match c == 45 || (c >= 48 && c <= 57)
+    true ->
+      start = pos
+      npos = match c == 45
+        true -> pos + 1
+        _ -> pos
+      end = json_scan_num(src, npos)
+      array_push(tokens, mk_token(jt_number, start, end, 0))
+      json_tok_loop(src, len, end, tokens)
+    _ ->
+      match c == 116
+        true ->
+          array_push(tokens, mk_token(jt_true, pos, pos + 4, 0))
+          json_tok_loop(src, len, pos + 4, tokens)
+        _ ->
+          match c == 102
+            true ->
+              array_push(tokens, mk_token(jt_false, pos, pos + 5, 0))
+              json_tok_loop(src, len, pos + 5, tokens)
+            _ ->
+              match c == 110
+                true ->
+                  array_push(tokens, mk_token(jt_null, pos, pos + 4, 0))
+                  json_tok_loop(src, len, pos + 4, tokens)
+                _ -> json_tok_loop(src, len, pos + 1, tokens)

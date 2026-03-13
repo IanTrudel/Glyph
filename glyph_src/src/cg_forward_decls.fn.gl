@@ -1,0 +1,4 @@
+cg_forward_decls mirs i =
+  match i >= glyph_array_len(mirs)
+    true -> ""
+    _ -> s2(cg_forward_decl(mirs[i]), cg_forward_decls(mirs, i + 1))

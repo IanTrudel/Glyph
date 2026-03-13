@@ -1,0 +1,10 @@
+test_util_is_alnum u =
+  assert(is_alnum(65))
+  assert(is_alnum(122))
+  assert(is_alnum(48))
+  assert(is_alnum(57))
+  assert(is_alnum(95))
+  assert(is_alnum(32) == 0)
+  assert(is_alnum(64) == 0)
+  assert(is_alnum(123) == 0)
+  0

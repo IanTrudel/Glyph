@@ -1,0 +1,6 @@
+json_gen_str s =
+  sb = sb_new()
+  sb_append(sb, "\"")
+  json_gen_str_loop(s, 0, str_len(s), sb)
+  sb_append(sb, "\"")
+  sb_build(sb)

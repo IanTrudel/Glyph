@@ -1,0 +1,7 @@
+json_get_loop keys items key i =
+  match i < array_len(keys)
+    true ->
+      match str_eq(keys[i], key)
+        true -> items[i]
+        _ -> json_get_loop(keys, items, key, i + 1)
+    _ -> 0 - 1

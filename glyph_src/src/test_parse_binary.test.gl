@@ -1,0 +1,15 @@
+test_parse_binary u =
+  src = "f x = x + 1"
+  toks = tokenize(src)
+  pool = []
+  r = parse_fn_def(src, toks, 0, pool)
+  assert(is_err(r) == 0)
+  fn_node = pool[r.node]
+  body = pool[fn_node.n1]
+  assert_eq(body.kind, ex_binary())
+  assert_eq(body.ival, op_add())
+  lhs = pool[body.n1]
+  rhs = pool[body.n2]
+  assert_eq(lhs.kind, ex_ident())
+  assert_eq(rhs.kind, ex_int_lit())
+  0

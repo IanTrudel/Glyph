@@ -1,0 +1,7 @@
+cg_term term =
+  k = term.tkind
+  match k
+    _ ? k == tm_goto() -> s3("  goto ", cg_label(term.tgt1), ";\n")
+    _ ? k == tm_return() -> s3("#ifdef GLYPH_DEBUG\n  _glyph_call_depth--;\n#endif\n  return ", cg_operand(term.top), ";\n")
+    _ ? k == tm_branch() -> s6("  if (", cg_operand(term.top), ") goto ", cg_label(term.tgt1), "; else goto ", s2(cg_label(term.tgt2), ";\n"))
+    _ -> "  __builtin_trap();\n"

@@ -1,0 +1,8 @@
+test_ty_unify_same u =
+  eng = mk_engine()
+  pool = eng.ty_pool
+  ti1 = mk_tint(pool)
+  ti2 = mk_tint(pool)
+  unify(eng, ti1, ti2)
+  assert_eq(glyph_array_len(eng.errors), 0)
+  0

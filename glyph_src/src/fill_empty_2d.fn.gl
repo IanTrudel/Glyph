@@ -1,0 +1,6 @@
+fill_empty_2d result n i =
+  match i >= n
+    true -> 0
+    _ ->
+      glyph_array_push(result, [])
+      fill_empty_2d(result, n, i + 1)

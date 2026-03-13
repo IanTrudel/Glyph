@@ -1,0 +1,5 @@
+split_comma s =
+  result = []
+  match glyph_str_len(s) == 0
+    true -> result
+    _ -> split_comma_loop(s, 0, 0, result)

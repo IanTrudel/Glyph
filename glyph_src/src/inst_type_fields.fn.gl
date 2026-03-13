@@ -1,0 +1,13 @@
+inst_type_fields eng ns i var_map =
+  match i >= glyph_array_len(ns)
+    true -> []
+    _ ->
+      fi = ns[i]
+      fnode = pool_get(eng, fi)
+      _ = fnode.tag
+      new_ty = inst_type(eng, fnode.n1, var_map)
+      new_fi = mk_tfield(fnode.sval, new_ty, eng.ty_pool)
+      rest = inst_type_fields(eng, ns, i + 1, var_map)
+      glyph_array_push(rest, new_fi)
+      rest
+

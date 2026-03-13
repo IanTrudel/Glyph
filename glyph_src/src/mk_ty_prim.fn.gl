@@ -1,0 +1,2 @@
+mk_ty_prim tag pool =
+  mk_ty(tag, 0 - 1, 0 - 1, pool)

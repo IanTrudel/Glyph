@@ -1,0 +1,3 @@
+ty_push pool node =
+  glyph_array_push(pool, node)
+  glyph_array_len(pool) - 1

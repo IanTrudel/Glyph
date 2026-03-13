@@ -1,0 +1,11 @@
+test_format_diag u =
+  src = "f x = x + 1"
+  toks = tokenize(src)
+  err = format_parse_err(src, toks, 0, "test error")
+  assert(str_contains(err, "test error"))
+  assert(str_contains(err, "^"))
+  diag = format_diagnostic("my_fn", src, 4, 1, "bad thing")
+  assert(str_contains(diag, "my_fn"))
+  assert(str_contains(diag, "bad thing"))
+  0
+

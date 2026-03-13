@@ -1,0 +1,11 @@
+test_float_coerce u =
+  x = 3.14 + 1
+  assert_eq(float_to_int(x), 4)
+  y = 2 + 1.5
+  assert_eq(float_to_int(y), 3)
+  z = 10.0 - 3
+  assert_eq(float_to_int(z), 7)
+  w = 2 * 3.5
+  assert_eq(float_to_int(w), 7)
+  0
+

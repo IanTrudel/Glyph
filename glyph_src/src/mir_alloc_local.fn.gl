@@ -1,0 +1,7 @@
+mir_alloc_local ctx name =
+  id = ctx.nxt_local[0]
+  glyph_array_push(ctx.local_names, name)
+  glyph_array_push(ctx.local_types, 0)
+  glyph_array_set(ctx.nxt_local, 0, id + 1)
+  id
+

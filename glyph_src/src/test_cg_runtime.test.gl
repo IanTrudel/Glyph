@@ -1,0 +1,22 @@
+test_cg_runtime u =
+  r1 = cg_runtime_raw()
+  assert(str_contains(r1, "glyph_raw_set"))
+  r2 = cg_runtime_extra()
+  assert(str_contains(r2, "glyph_print"))
+  assert(str_contains(r2, "glyph_array_new"))
+  r3 = cg_runtime_args()
+  assert(str_contains(r3, "glyph_set_args"))
+  r4 = cg_runtime_float()
+  assert(str_contains(r4, "_glyph_i2f"))
+  r5 = cg_runtime_sb()
+  assert(str_contains(r5, "glyph_sb_new"))
+  r6 = cg_runtime_result()
+  assert(str_contains(r6, "glyph_ok"))
+  r7 = cg_runtime_io()
+  assert(str_contains(r7, "glyph_read_file"))
+  r8 = cg_test_runtime()
+  assert(str_contains(r8, "_test_failed"))
+  r9 = cg_main_wrapper()
+  assert(str_contains(r9, "glyph_main"))
+  0
+

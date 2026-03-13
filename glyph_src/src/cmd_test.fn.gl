@@ -1,0 +1,27 @@
+cmd_test argv argc =
+  match argc >= 3
+    true ->
+      db_path = argv[2]
+      db = glyph_db_open(db_path)
+      test_names = read_test_names(db)
+      test_sources = read_test_defs(db)
+      n = glyph_array_len(test_names)
+      match n == 0
+        true ->
+          glyph_db_close(db)
+          println("0 tests found")
+          0
+        _ ->
+          fn_sources = read_fn_defs(db)
+          externs = read_externs(db)
+          glyph_db_close(db)
+          println(s3("Compiling ", itos(n), " tests..."))
+          bin_path = "/tmp/glyph_test_bin"
+          build_test_program(fn_sources, test_sources, test_names, externs, bin_path)
+          cmd = match argc >= 4
+            true -> s3(bin_path, " ", join_args(argv, 3, argc))
+            _ -> bin_path
+          glyph_system(cmd)
+    _ ->
+      eprintln("Usage: glyph test <db> [test_name...]")
+      1

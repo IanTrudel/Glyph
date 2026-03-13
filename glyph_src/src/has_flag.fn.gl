@@ -1,0 +1,8 @@
+has_flag argv flag start =
+  argc = glyph_array_len(argv)
+  match start < argc
+    true ->
+      match glyph_str_eq(argv[start], flag) == 1
+        true -> 1
+        _ -> has_flag(argv, flag, start + 1)
+    _ -> 0

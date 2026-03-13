@@ -1,0 +1,12 @@
+test_is_op_float u =
+  local_types = [0, 0, 3]
+  f = mk_op_float("3.14")
+  assert_eq(is_op_float(local_types, f), 1)
+  i = mk_op_int(42)
+  assert_eq(is_op_float(local_types, i), 0)
+  loc = mk_op_local(2)
+  assert_eq(is_op_float(local_types, loc), 1)
+  loc2 = mk_op_local(0)
+  assert_eq(is_op_float(local_types, loc2), 0)
+  0
+

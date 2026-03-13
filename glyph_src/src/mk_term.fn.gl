@@ -1,0 +1,1 @@
+mk_term kind op tgt1 tgt2 = {tkind: kind, top: op, tgt1: tgt1, tgt2: tgt2}

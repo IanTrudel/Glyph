@@ -1,0 +1,22 @@
+tc_infer_all_tc eng parsed i =
+  tc_infer_loop(eng, parsed, 0, [])
+
+tc_infer_loop eng parsed i acc =
+  match i >= glyph_array_len(parsed)
+    true -> acc
+    _ ->
+      pf = parsed[i]
+      result = match pf.pf_fn_idx >= 0
+        true ->
+          ast_len = glyph_array_len(pf.pf_ast)
+          eng_set_tmap(eng, ast_len)
+          ty = infer_fn_def(eng, pf.pf_ast, pf.pf_fn_idx)
+          tm = eng.tmap[0]
+          resolve_tmap(eng, tm)
+          resolved = match ty >= 0
+            true -> subst_resolve(eng, ty)
+            _ -> 0 - 1
+          {fn_ty: resolved, fn_tmap: tm}
+        _ -> {fn_ty: 0 - 1, fn_tmap: []}
+      glyph_array_push(acc, result)
+      tc_infer_loop(eng, parsed, i + 1, acc)

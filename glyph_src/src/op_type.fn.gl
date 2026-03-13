@@ -1,0 +1,9 @@
+op_type ctx op =
+  k = op.okind
+  match k
+    _ ? k == ok_const_float() -> 3
+    _ ? k == ok_const_str() -> 4
+    _ ? k == ok_const_int() -> 1
+    _ ? k == ok_const_bool() -> 5
+    _ ? k == ok_local() -> ctx.local_types[op.oval]
+    _ -> 0

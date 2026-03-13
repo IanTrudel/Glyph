@@ -1,0 +1,2 @@
+fix_ext_fn mir externs =
+  fix_ext_blks(mir.fn_blocks_stmts, externs, 0)

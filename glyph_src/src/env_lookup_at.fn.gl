@@ -1,0 +1,7 @@
+env_lookup_at names types name i =
+  match i < 0
+    true -> 0 - 1
+    _ ->
+      match glyph_str_eq(names[i], name) == 1
+        true -> types[i]
+        _ -> env_lookup_at(names, types, name, i - 1)

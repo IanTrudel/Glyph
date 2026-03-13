@@ -1,0 +1,6 @@
+has_kind_loop kinds k i =
+  match i >= glyph_array_len(kinds)
+    true -> 0
+    _ -> match kinds[i] == k
+      true -> 1
+      _ -> has_kind_loop(kinds, k, i + 1)

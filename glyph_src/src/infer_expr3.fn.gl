@@ -1,0 +1,8 @@
+infer_expr3 eng ast node k =
+  match k
+    _ ? k == ex_compose() -> infer_compose(eng, ast, node)
+    _ ? k == ex_propagate() -> infer_propagate(eng, ast, node)
+    _ ? k == ex_unwrap() -> infer_unwrap(eng, ast, node)
+    _ ? k == ex_type_ident() -> subst_fresh(eng)
+    _ ? k == ex_str_interp() -> mk_tstr(eng.ty_pool)
+    _ -> mk_terror(eng.ty_pool)

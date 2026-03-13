@@ -1,0 +1,12 @@
+test_mir_str_match u =
+  mir = compile_fn("f s = match s\n  \"a\" -> 1\n  _ -> 0", [])
+  bc = mir_block_count(mir)
+  assert(bc >= 2)
+  mir2 = compile_fn("f x = match x\n  y -> y", [])
+  bc2 = mir_block_count(mir2)
+  assert(bc2 >= 1)
+  mir3 = compile_fn("f x = match x\n  1 | 2 -> 10\n  _ -> 0", [])
+  bc3 = mir_block_count(mir3)
+  assert(bc3 >= 2)
+  0
+

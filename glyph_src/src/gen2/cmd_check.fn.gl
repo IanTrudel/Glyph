@@ -1,0 +1,22 @@
+cmd_check argv argc =
+  match argc >= 3
+    true ->
+      db_path = argv[2]
+      gen_flag = find_flag(argv, "--gen", 3)
+      gen_str = match glyph_str_len(gen_flag) > 0
+        true -> gen_flag
+        _ -> "1"
+      db = glyph_db_open(db_path)
+      sources = read_fn_defs_gen(db, gen_str)
+      glyph_db_close(db)
+      parsed = parse_all_fns(sources, 0)
+      n_errs = check_parse_errors(parsed)
+      eng = mk_engine()
+      register_builtins(eng)
+      tc_pre_register(eng, parsed, 0)
+      tc_infer_all_tc(eng, parsed, 0)
+      tc_report_errors(eng)
+      n_tc_errs = glyph_array_len(eng.errors)
+      println(s5("Checked ", itos(glyph_array_len(parsed)), " definitions: ", itos(n_errs), s2(" parse errors, ", s2(itos(n_tc_errs), " type warnings"))))
+    _ -> eprintln("Usage: glyph check <db.glyph> [--gen N]")
+

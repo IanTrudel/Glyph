@@ -1,0 +1,25 @@
+mcp_tool_coverage db_path id pool args_idx =
+  cover_path = s2(db_path, ".cover")
+  content = glyph_read_file(cover_path)
+  match glyph_str_len(content) == 0
+    true -> mcp_error(id, 0 - 32602, "No coverage data found. Run: glyph test <db> --cover")
+    _ ->
+      names = []
+      hits = []
+      parse_cover_lines(content, 0, names, hits)
+      total = glyph_array_len(names)
+      covered = count_covered(hits, 0, 0)
+      pct = match total > 0
+        true -> (covered * 1000) / total
+        _ -> 0
+      pct_whole = pct / 10
+      pct_frac = pct - (pct_whole * 10)
+      result = jb_obj(pool)
+      jb_put(pool, result, "total", jb_int(pool, total))
+      jb_put(pool, result, "covered", jb_int(pool, covered))
+      jb_put(pool, result, "percent", jb_str(pool, s3(itos(pct_whole), ".", itos(pct_frac))))
+      uncov_arr = jb_arr(pool)
+      mcp_cov_add_uncovered(pool, uncov_arr, names, hits, 0)
+      jb_put(pool, result, "uncovered", uncov_arr)
+      mcp_text_result(id, json_gen(pool, result))
+

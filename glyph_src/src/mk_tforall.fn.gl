@@ -1,0 +1,2 @@
+mk_tforall body_ty bound_vars pool =
+  ty_push(pool, {tag: ty_forall(), n1: body_ty, n2: 0 - 1, ns: bound_vars, sval: ""})

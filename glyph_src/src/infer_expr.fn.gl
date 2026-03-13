@@ -1,0 +1,8 @@
+infer_expr eng ast ni =
+  result = infer_expr_core(eng, ast, ni)
+  tm = eng.tmap[0]
+  match ni < glyph_array_len(tm)
+    true ->
+      glyph_array_set(tm, ni, result)
+      result
+    _ -> result

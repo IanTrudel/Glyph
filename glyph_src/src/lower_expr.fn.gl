@@ -1,0 +1,14 @@
+lower_expr ctx ast ni =
+  node = ast[ni]
+  k = node.kind
+  match k
+    _ ? k == ex_int_lit() -> mk_op_int(node.ival)
+    _ ? k == ex_str_lit() -> mk_op_str(node.sval)
+    _ ? k == ex_bool_lit() -> mk_op_bool(node.ival)
+    _ ? k == ex_ident() -> lower_ident(ctx, node)
+    _ ? k == ex_binary() -> lower_binary(ctx, ast, node)
+    _ ? k == ex_unary() -> lower_unary(ctx, ast, node)
+    _ ? k == ex_call() -> lower_call(ctx, ast, node)
+    _ ? k == ex_type_ident() -> lower_type_ident(ctx, ast, node)
+    _ ? k == ex_str_interp() -> lower_str_interp(ctx, ast, node)
+    _ -> lower_expr2(ctx, ast, node, k)

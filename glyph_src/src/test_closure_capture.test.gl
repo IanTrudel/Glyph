@@ -1,0 +1,6 @@
+test_closure_capture u =
+  base = 100
+  add_base = \x -> base + x
+  result = add_base(42)
+  assert_eq(result, 142)
+

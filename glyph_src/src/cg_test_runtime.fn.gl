@@ -1,0 +1,4 @@
+cg_test_runtime =
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  s2("static int _test_failed = 0;\nstatic const char* _test_name = \"\";\nGVal glyph_assert(GVal cond) ", s2(lb, s2(" if (!cond) ", s2(lb, s2(" fprintf(stderr, \"  FAIL %s: assertion failed\\n\", _test_name); _test_failed = 1; ", s2(rb, s2(" return 0;\n", s2(rb, s2("\nGVal glyph_assert_eq(GVal a, GVal b) ", s2(lb, s2(" if (a != b) ", s2(lb, s2(" fprintf(stderr, \"  FAIL %s: %lld != %lld\\n\", _test_name, (long long)a, (long long)b); _test_failed = 1; ", s2(rb, s2(" return 0;\n", s2(rb, s2("\nGVal glyph_assert_str_eq(GVal a, GVal b) ", s2(lb, s2(" if (!glyph_str_eq((long long)a, (long long)b)) ", s2(lb, s2(" fprintf(stderr, \"  FAIL %s: strings differ\\n\", _test_name); _test_failed = 1; ", s2(rb, s2(" return 0;\n", s2(rb, "\n"))))))))))))))))))))))))

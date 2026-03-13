@@ -1,0 +1,2 @@
+mk_tfield name type_idx pool =
+  ty_push(pool, {tag: ty_field(), n1: type_idx, n2: 0 - 1, ns: [], sval: name})

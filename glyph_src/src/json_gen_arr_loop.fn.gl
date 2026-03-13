@@ -1,0 +1,9 @@
+json_gen_arr_loop pool items i len sb =
+  match i < len
+    true ->
+      match i > 0
+        true -> sb_append(sb, ",")
+        _ -> 0
+      sb_append(sb, json_gen(pool, items[i]))
+      json_gen_arr_loop(pool, items, i + 1, len, sb)
+    _ -> 0

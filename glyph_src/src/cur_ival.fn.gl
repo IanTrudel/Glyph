@@ -1,0 +1,3 @@
+cur_ival src tokens pos =
+  t = tokens[pos]
+  glyph_str_to_int(glyph_str_slice(src, t.start, t.end))

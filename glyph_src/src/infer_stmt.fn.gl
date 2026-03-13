@@ -1,0 +1,17 @@
+infer_stmt eng ast si =
+  node = ast[si]
+  k = node.kind
+  match k
+    _ ? k == st_let() ->
+      val_ty = infer_expr(eng, ast, node.n1)
+      env_insert(eng, node.sval, val_ty)
+      val_ty
+    _ ? k == st_assign() ->
+      val_ty = infer_expr(eng, ast, node.n1)
+      existing = env_lookup(eng, node.sval)
+      match existing >= 0
+        true -> unify(eng, existing, val_ty)
+        _ -> 0
+      val_ty
+    _ ? k == st_expr() -> infer_expr(eng, ast, node.n1)
+    _ -> mk_tvoid(eng.ty_pool)

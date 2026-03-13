@@ -1,0 +1,8 @@
+pcl_find_nl content pos len =
+  match pos >= len
+    true -> len
+    _ ->
+      match glyph_str_char_at(content, pos) == 10
+        true -> pos
+        _ -> pcl_find_nl(content, pos + 1, len)
+

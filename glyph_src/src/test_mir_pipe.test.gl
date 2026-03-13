@@ -1,0 +1,9 @@
+test_mir_pipe u =
+  mir = compile_fn("f x = x |> foo", [])
+  stmts = mir.fn_blocks_stmts[0]
+  found = test_find_stmt_kind(stmts, rv_call(), 0)
+  assert(found >= 0)
+  s = stmts[found]
+  assert_str_eq(s.sop1.ostr, "foo")
+  0
+

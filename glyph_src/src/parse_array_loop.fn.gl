@@ -1,0 +1,22 @@
+parse_array_loop src tokens pos pool elems =
+  match cur_kind(tokens, pos) == tk_comma()
+    true ->
+      pos2 = pos + 1
+      match cur_kind(tokens, pos2) == tk_rbracket()
+        true ->
+          idx = pool_push(pool, mk_node(ex_array(), 0, "", 0 - 1, 0 - 1, 0 - 1, elems))
+          mk_result(idx, pos2 + 1)
+        _ ->
+          r = parse_expr(src, tokens, pos2, pool)
+          match is_err(r)
+            true -> r
+            _ ->
+              glyph_array_push(elems, r.node)
+              parse_array_loop(src, tokens, r.pos, pool, elems)
+    _ ->
+      p2 = expect_tok(tokens, pos, tk_rbracket())
+      match p2 < 0
+        true -> mk_err_msg(pos, "expected ']' or ','")
+        _ ->
+          idx = pool_push(pool, mk_node(ex_array(), 0, "", 0 - 1, 0 - 1, 0 - 1, elems))
+          mk_result(idx, p2)

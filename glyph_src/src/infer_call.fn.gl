@@ -1,0 +1,8 @@
+infer_call eng ast node =
+  callee_node = ast[node.n1]
+  match callee_node.kind == ex_type_ident()
+    true -> subst_fresh(eng)
+    _ ->
+      callee_ty = infer_expr(eng, ast, node.n1)
+      args = node.ns
+      apply_args(eng, ast, callee_ty, args, 0)

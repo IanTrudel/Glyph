@@ -1,0 +1,11 @@
+test_mir_pp_fns u =
+  mir1 = compile_fn("f x = x + 1", [])
+  mir2 = compile_fn("g x = x * 2", [])
+  mirs = [mir1, mir2]
+  mir_pp_fns(mirs, 0)
+  pp1 = mir_pp_fn(mir1)
+  assert(glyph_str_len(pp1) > 10)
+  pp2 = mir_pp_fn(mir2)
+  assert(glyph_str_len(pp2) > 10)
+  0
+

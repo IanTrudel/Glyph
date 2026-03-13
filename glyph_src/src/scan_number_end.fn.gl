@@ -1,0 +1,7 @@
+scan_number_end src pos =
+  match pos < glyph_str_len(src)
+    true ->
+      match is_digit(glyph_str_char_at(src, pos))
+        true -> scan_number_end(src, pos + 1)
+        _ -> pos
+    _ -> pos

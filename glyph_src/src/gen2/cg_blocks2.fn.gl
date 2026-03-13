@@ -1,0 +1,5 @@
+cg_blocks2 mir_fn i struct_map local_struct_types mir_local_types =
+  match i >= mir_block_count(mir_fn)
+    true -> ""
+    _ -> s2(cg_block2(mir_fn, i, struct_map, local_struct_types, mir_local_types), cg_blocks2(mir_fn, i + 1, struct_map, local_struct_types, mir_local_types))
+

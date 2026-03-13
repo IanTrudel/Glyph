@@ -1,0 +1,12 @@
+bind_ctor_fields ctx ast sub_pats scrutinee i =
+  match i >= glyph_array_len(sub_pats)
+    true -> 0
+    _ ->
+      sp = ast[sub_pats[i]]
+      match sp.kind == pat_ident()
+        true ->
+          field_local = mir_alloc_local(ctx, sp.sval)
+          mir_emit_field(ctx, field_local, scrutinee, i + 1, s2("__payload", itos(i)))
+          mir_bind_var(ctx, sp.sval, field_local)
+          bind_ctor_fields(ctx, ast, sub_pats, scrutinee, i + 1)
+        _ -> bind_ctor_fields(ctx, ast, sub_pats, scrutinee, i + 1)

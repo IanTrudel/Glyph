@@ -1,0 +1,7 @@
+extract_bodies_acc rows i acc =
+  match i >= glyph_array_len(rows)
+    true -> acc
+    _ ->
+      row = rows[i]
+      glyph_array_push(acc, row[0])
+      extract_bodies_acc(rows, i + 1, acc)

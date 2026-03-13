@@ -1,0 +1,3 @@
+lower_call_args ctx ast ns i =
+  acc = []
+  lower_call_args_acc(ctx, ast, ns, 0, acc)

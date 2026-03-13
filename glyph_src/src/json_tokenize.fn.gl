@@ -1,0 +1,3 @@
+json_tokenize src =
+  tokens = []
+  json_tok_loop(src, str_len(src), 0, tokens)

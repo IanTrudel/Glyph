@@ -1,0 +1,2 @@
+mk_trecord field_ns rest pool =
+  ty_push(pool, {tag: ty_record(), n1: rest, n2: 0 - 1, ns: field_ns, sval: ""})

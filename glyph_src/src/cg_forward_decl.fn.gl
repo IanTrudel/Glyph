@@ -1,0 +1,4 @@
+cg_forward_decl mir_fn =
+  fname = cg_fn_name(mir_fn.fn_name)
+  gt = s2(gval_t(), " ")
+  s5(gt, fname, "(", cg_params_list(mir_fn, 0), ");\n")

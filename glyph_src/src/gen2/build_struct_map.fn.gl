@@ -1,0 +1,4 @@
+build_struct_map type_rows =
+  result = []
+  bsm_loop(type_rows, 0, result)
+  result

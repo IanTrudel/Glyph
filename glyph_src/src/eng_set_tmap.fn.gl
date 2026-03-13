@@ -1,0 +1,4 @@
+eng_set_tmap eng ast_len =
+  tm = tmap_init(ast_len)
+  glyph_array_set(eng.tmap, 0, tm)
+  0

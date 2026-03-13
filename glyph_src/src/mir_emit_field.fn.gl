@@ -1,0 +1,2 @@
+mir_emit_field ctx dest base field_idx field_name =
+  mir_emit(ctx, mk_stmt(dest, rv_field(), field_idx, field_name, base, mk_op_nil(), []))

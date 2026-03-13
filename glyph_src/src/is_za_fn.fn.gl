@@ -1,0 +1,7 @@
+is_za_fn za_fns name i =
+  match i >= glyph_array_len(za_fns)
+    true -> 0
+    _ ->
+      match glyph_str_eq(za_fns[i], name) == 1
+        true -> 1
+        _ -> is_za_fn(za_fns, name, i + 1)

@@ -1,0 +1,11 @@
+ffc_idx fname fields ctypes j =
+  match j >= glyph_array_len(fields)
+    true -> ""
+    _ ->
+      match glyph_str_eq(fields[j], fname) == 1
+        true ->
+          match j < glyph_array_len(ctypes)
+            true -> ctypes[j]
+            _ -> ""
+        _ -> ffc_idx(fname, fields, ctypes, j + 1)
+

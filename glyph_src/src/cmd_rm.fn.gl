@@ -1,0 +1,33 @@
+cmd_rm argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph rm <db> <name> [--kind K] [--force]")
+      1
+    _ ->
+      db_path = argv[2]
+      name = argv[3]
+      db = glyph_db_open(db_path)
+      _m = migrate_history(db)
+      kind = find_flag(argv, "--kind", 4)
+      force = has_flag(argv, "--force", 4)
+      sql = match glyph_str_len(kind) > 0
+        true -> s7("SELECT id, kind FROM def WHERE name = '", sql_escape(name), "' AND kind = '", sql_escape(kind), "'", "", "")
+        _ -> s3("SELECT id, kind FROM def WHERE name = '", sql_escape(name), "'")
+      rows = glyph_db_query_rows(db, sql)
+      n = glyph_array_len(rows)
+      match n == 0
+        true ->
+          glyph_db_close(db)
+          eprintln(s3("error: '", name, "' not found"))
+          1
+        _ ->
+          match n > 1
+            true ->
+              glyph_db_close(db)
+              eprintln(s3("error: ambiguous '", name, "'. Use --kind"))
+              6
+            _ ->
+              row = rows[0]
+              def_id = row[0]
+              def_kind = row[1]
+              rm_check_rdeps(db, def_id, def_kind, name, force)

@@ -1,0 +1,12 @@
+mir_pp_binop_name n =
+  names = ["?", "add", "sub", "mul", "div", "mod", "eq", "neq", "lt", "gt", "lte", "gte", "and", "or"]
+  match n >= 0
+    true -> match n < glyph_array_len(names)
+      true -> names[n]
+      _ -> match n == 20
+        true -> "neg"
+        _ -> match n == 21
+          true -> "not"
+          _ -> s2("op", itos(n))
+    _ -> s2("op", itos(n))
+

@@ -1,0 +1,12 @@
+mcp_do_put db_path id pool name kind body gen =
+  db = glyph_db_open(db_path)
+  del_sql = s7("DELETE FROM def WHERE name='", sql_escape(name), "' AND kind='", sql_escape(kind), "' AND gen=", int_to_str(gen), "")
+  glyph_db_exec(db, del_sql)
+  ins_sql = mcp_put_insert(name, kind, body, gen)
+  glyph_db_exec(db, ins_sql)
+  glyph_db_close(db)
+  rp = []
+  r = jb_obj(rp)
+  jb_put(rp, r, "status", jb_str(rp, "ok"))
+  jb_put(rp, r, "name", jb_str(rp, name))
+  mcp_text_result(id, json_gen(rp, r))

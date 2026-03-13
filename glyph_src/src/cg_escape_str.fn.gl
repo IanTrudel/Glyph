@@ -1,0 +1,2 @@
+cg_escape_str s =
+  cg_escape_chars(s, 0, glyph_str_len(s), "")

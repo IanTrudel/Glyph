@@ -1,0 +1,4 @@
+make_spaces n acc =
+  match n <= 0
+    true -> s2(acc, "^")
+    _ -> make_spaces(n - 1, s2(acc, " "))

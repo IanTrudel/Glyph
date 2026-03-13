@@ -1,0 +1,3 @@
+compile_fn_to_c src =
+  mir = compile_fn(src, [])
+  cg_function(mir)

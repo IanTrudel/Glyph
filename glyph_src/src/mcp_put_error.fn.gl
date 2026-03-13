@@ -1,0 +1,11 @@
+mcp_put_error id pool body vr =
+  rp = []
+  r = jb_obj(rp)
+  jb_put(rp, r, "status", jb_str(rp, "error"))
+  msg = match glyph_str_len(vr.vr_msg) > 0
+    true -> vr.vr_msg
+    _ -> "parse error"
+  jb_put(rp, r, "message", jb_str(rp, msg))
+  detail = format_parse_err(body, vr.vr_tokens, vr.vr_pos, msg)
+  jb_put(rp, r, "detail", jb_str(rp, detail))
+  mcp_text_result(id, json_gen(rp, r))

@@ -1,0 +1,12 @@
+infer_expr_core eng ast ni =
+  node = ast[ni]
+  k = node.kind
+  match k
+    _ ? k == ex_int_lit() -> mk_tint(eng.ty_pool)
+    _ ? k == ex_str_lit() || k == ex_str_interp() -> mk_tstr(eng.ty_pool)
+    _ ? k == ex_bool_lit() -> mk_tbool(eng.ty_pool)
+    _ ? k == ex_ident() -> infer_ident(eng, node)
+    _ ? k == ex_binary() -> infer_binary(eng, ast, node)
+    _ ? k == ex_unary() -> infer_unary(eng, ast, node)
+    _ ? k == ex_call() -> infer_call(eng, ast, node)
+    _ -> infer_expr2(eng, ast, node, k)

@@ -1,0 +1,7 @@
+cg_store_ops_offset ops i ptr_name offset =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      op = ops[i]
+      store = s6(ptr_name, "[", itos(i + offset), "] = ", cg_operand(op), "; ")
+      s2(store, cg_store_ops_offset(ops, i + 1, ptr_name, offset))

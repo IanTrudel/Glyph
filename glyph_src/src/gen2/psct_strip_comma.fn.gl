@@ -1,0 +1,9 @@
+psct_strip_comma tok =
+  len = glyph_str_len(tok)
+  match len > 0
+    true ->
+      last = glyph_str_char_at(tok, len - 1)
+      match last == 44
+        true -> glyph_str_slice(tok, 0, len - 1)
+        _ -> tok
+    _ -> tok

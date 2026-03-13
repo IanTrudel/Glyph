@@ -1,0 +1,10 @@
+test_collect_libs u =
+  e1 = [["f1", "sym1", "I -> I", "m"], ["f2", "sym2", "I", "sqlite3"]]
+  r = collect_libs(e1)
+  assert(str_contains(r, "-lm"))
+  assert(str_contains(r, "-lsqlite3"))
+  e2 = []
+  r2 = collect_libs(e2)
+  assert_str_eq(r2, "")
+  0
+

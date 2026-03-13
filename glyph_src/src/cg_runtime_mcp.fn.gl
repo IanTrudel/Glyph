@@ -1,0 +1,3 @@
+cg_runtime_mcp =
+  s2("GVal glyph_read_line(GVal dummy) \{ char buf[65536]; if(!fgets(buf,sizeof(buf),stdin))\{ void* s=malloc(16); char* e=malloc(1); e[0]=0; *(const char**)s=e; *(long long*)((char*)s+8)=0; return (GVal)s; } long long len=strlen(buf); if(len>0 && buf[len-1]==10) len--; char* data=malloc(len+1); memcpy(data,buf,len); data[len]=0; void* s=malloc(16); *(const char**)s=data; *(long long*)((char*)s+8)=len; return (GVal)s; }\n",
+  "GVal glyph_flush(GVal dummy) \{ fflush(stdout); return 0; }\n")

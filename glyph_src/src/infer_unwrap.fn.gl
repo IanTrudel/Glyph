@@ -1,0 +1,5 @@
+infer_unwrap eng ast node =
+  inner = infer_expr(eng, ast, node.n1)
+  elem = subst_fresh(eng)
+  unify(eng, inner, mk_topt(elem, eng.ty_pool))
+  elem

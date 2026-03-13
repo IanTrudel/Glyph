@@ -1,0 +1,3 @@
+extract_name body =
+  len = glyph_str_len(body)
+  extract_name_loop(body, 0, len)

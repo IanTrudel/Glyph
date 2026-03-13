@@ -1,0 +1,7 @@
+resolve_fld_off reg fname local_fields =
+  match_type = find_matching_type(reg, fname, local_fields, 0)
+  match match_type >= 0
+    true ->
+      t = reg[match_type]
+      find_str_in(t, fname, 0)
+    _ -> 0 - 1

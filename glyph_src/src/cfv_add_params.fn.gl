@@ -1,0 +1,8 @@
+cfv_add_params bound ast params i =
+  match i >= glyph_array_len(params)
+    true -> 0
+    _ ->
+      pnode = ast[params[i]]
+      glyph_array_push(bound, pnode.sval)
+      cfv_add_params(bound, ast, params, i + 1)
+

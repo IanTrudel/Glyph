@@ -1,0 +1,27 @@
+json_unesc_loop src pos end sb =
+  match pos < end
+    true ->
+      c = str_char_at(src, pos)
+      match c == 92
+        true ->
+          match pos + 1 < end
+            true ->
+              c2 = str_char_at(src, pos + 1)
+              match c2
+                110 ->
+                  sb_append(sb, "\n")
+                  json_unesc_loop(src, pos + 2, end, sb)
+                116 ->
+                  sb_append(sb, "\t")
+                  json_unesc_loop(src, pos + 2, end, sb)
+                114 ->
+                  sb_append(sb, "\r")
+                  json_unesc_loop(src, pos + 2, end, sb)
+                _ ->
+                  sb_append(sb, str_slice(src, pos + 1, pos + 2))
+                  json_unesc_loop(src, pos + 2, end, sb)
+            _ -> sb_build(sb)
+        _ ->
+          sb_append(sb, str_slice(src, pos, pos + 1))
+          json_unesc_loop(src, pos + 1, end, sb)
+    _ -> sb_build(sb)

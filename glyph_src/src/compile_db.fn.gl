@@ -1,0 +1,9 @@
+compile_db db_path output_path =
+  db = glyph_db_open(db_path)
+  sources = read_fn_defs(db)
+  externs = read_externs(db)
+  glyph_db_close(db)
+  n = glyph_array_len(sources)
+  println(s3("Compiling ", itos(n), " definitions..."))
+  build_program(sources, externs, output_path)
+  println(s2("Built ", output_path))

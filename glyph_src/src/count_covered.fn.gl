@@ -1,0 +1,8 @@
+count_covered hits i acc =
+  match i >= glyph_array_len(hits)
+    true -> acc
+    _ ->
+      match hits[i] > 0
+        true -> count_covered(hits, i + 1, acc + 1)
+        _ -> count_covered(hits, i + 1, acc)
+

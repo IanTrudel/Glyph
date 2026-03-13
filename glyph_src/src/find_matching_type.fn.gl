@@ -1,0 +1,2 @@
+find_matching_type reg fname local_fields i =
+  find_best_type(reg, fname, local_fields, 0, 0 - 1, 0 - 1)

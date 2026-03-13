@@ -1,0 +1,5 @@
+mir_emit ctx stmt =
+  bi = ctx.cur_block[0]
+  stmts = ctx.block_stmts[bi]
+  glyph_array_push(stmts, stmt)
+  0

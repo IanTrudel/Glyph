@@ -1,0 +1,4 @@
+pool_get eng idx =
+  node = eng.ty_pool[idx]
+  _ = node.tag
+  node

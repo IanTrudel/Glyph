@@ -1,0 +1,8 @@
+lower_stmts ctx ast stmts i =
+  match i >= glyph_array_len(stmts)
+    true -> mk_op_unit()
+    _ ->
+      r = lower_stmt(ctx, ast, stmts[i])
+      match i == glyph_array_len(stmts) - 1
+        true -> r
+        _ -> lower_stmts(ctx, ast, stmts, i + 1)

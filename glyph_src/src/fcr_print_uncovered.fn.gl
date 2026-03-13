@@ -1,0 +1,9 @@
+fcr_print_uncovered names hits i =
+  match i >= glyph_array_len(names)
+    true -> 0
+    _ ->
+      match hits[i] == 0
+        true -> println(s2("  ", names[i]))
+        _ -> 0
+      fcr_print_uncovered(names, hits, i + 1)
+

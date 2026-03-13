@@ -1,0 +1,12 @@
+test_ty_env_scope u =
+  eng = mk_engine()
+  pool = eng.ty_pool
+  ti = mk_tint(pool)
+  env_push(eng)
+  env_insert(eng, "x", ti)
+  found = env_lookup(eng, "x")
+  assert(found >= 0)
+  env_pop(eng)
+  not_found = env_lookup(eng, "x")
+  assert(not_found < 0)
+  0

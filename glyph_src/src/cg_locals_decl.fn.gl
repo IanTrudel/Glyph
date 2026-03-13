@@ -1,0 +1,7 @@
+cg_locals_decl mir_fn i param_count =
+  match i >= mir_local_count(mir_fn)
+    true -> ""
+    _ ->
+      match i < param_count
+        true -> cg_locals_decl(mir_fn, i + 1, param_count)
+        _ -> s5("  ", gval_t(), s2(" ", cg_local(i)), " = 0;\n", cg_locals_decl(mir_fn, i + 1, param_count))

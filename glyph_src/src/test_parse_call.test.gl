@@ -1,0 +1,11 @@
+test_parse_call u =
+  src = "f x = foo(1, 2)"
+  toks = tokenize(src)
+  pool = []
+  r = parse_fn_def(src, toks, 0, pool)
+  assert(is_err(r) == 0)
+  fn_node = pool[r.node]
+  body = pool[fn_node.n1]
+  assert_eq(body.kind, ex_call())
+  assert_eq(glyph_array_len(body.ns), 2)
+  0

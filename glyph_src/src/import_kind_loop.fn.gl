@@ -1,0 +1,8 @@
+import_kind_loop base i blen =
+  match i < 0
+    true -> base
+    _ ->
+      ch = glyph_str_char_at(base, i)
+      match ch == 46
+        true -> glyph_str_slice(base, i+1, blen)
+        _ -> import_kind_loop(base, i-1, blen)

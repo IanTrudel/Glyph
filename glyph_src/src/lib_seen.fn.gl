@@ -1,0 +1,7 @@
+lib_seen seen lib i =
+  match i >= glyph_array_len(seen)
+    true -> 0
+    _ ->
+      match glyph_str_eq(seen[i], lib)
+        true -> 1
+        _ -> lib_seen(seen, lib, i + 1)

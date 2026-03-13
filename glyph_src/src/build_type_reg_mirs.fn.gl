@@ -1,0 +1,7 @@
+build_type_reg_mirs mirs i reg =
+  match i >= glyph_array_len(mirs)
+    true -> 0
+    _ ->
+      mir = mirs[i]
+      build_type_reg_blks(mir.fn_blocks_stmts, 0, reg)
+      build_type_reg_mirs(mirs, i + 1, reg)

@@ -1,0 +1,8 @@
+test_json_gen u =
+  pool = []
+  obj = jb_obj(pool)
+  jb_put(pool, obj, "x", jb_int(pool, 42))
+  jb_put(pool, obj, "s", jb_str(pool, "hi"))
+  r = json_gen(pool, obj)
+  src = r"""{"x":42,"s":"hi"}"""
+  assert_str_eq(r, src)

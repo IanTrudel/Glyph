@@ -1,0 +1,53 @@
+tok_one src len pos line bdepth tokens c =
+  match c
+    45 ->
+      c2 = peek(src, pos + 1, len)
+      match c2
+        45 -> tok_pack(skip_comment(src, pos), line, bdepth)
+        62 ->
+          glyph_array_push(tokens, mk_token(tk_arrow(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_minus(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    40 ->
+      glyph_array_push(tokens, mk_token(tk_lparen(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth + 1)
+    41 ->
+      glyph_array_push(tokens, mk_token(tk_rparen(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdec(bdepth))
+    91 ->
+      glyph_array_push(tokens, mk_token(tk_lbracket(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth + 1)
+    93 ->
+      glyph_array_push(tokens, mk_token(tk_rbracket(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdec(bdepth))
+    123 ->
+      glyph_array_push(tokens, mk_token(tk_lbrace(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth + 1)
+    125 ->
+      glyph_array_push(tokens, mk_token(tk_rbrace(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdec(bdepth))
+    44 ->
+      glyph_array_push(tokens, mk_token(tk_comma(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    92 ->
+      glyph_array_push(tokens, mk_token(tk_backslash(), pos, pos + 1, line))
+      tok_pack(pos + 1, line, bdepth)
+    58 ->
+      match peek(src, pos + 1, len) == 61
+        true ->
+          glyph_array_push(tokens, mk_token(tk_colon_eq(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_colon(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    46 ->
+      match peek(src, pos + 1, len) == 46
+        true ->
+          glyph_array_push(tokens, mk_token(tk_dot_dot(), pos, pos + 2, line))
+          tok_pack(pos + 2, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_dot(), pos, pos + 1, line))
+          tok_pack(pos + 1, line, bdepth)
+    _ -> tok_one2(src, len, pos, line, bdepth, tokens, c)

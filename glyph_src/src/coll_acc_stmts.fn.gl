@@ -1,0 +1,23 @@
+coll_acc_stmts stmts si la =
+  match si >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[si]
+      match stmt.skind == rv_field()
+        true ->
+          base_kind = stmt.sop1.okind
+          match base_kind == ok_local()
+            true ->
+              local_id = stmt.sop1.oval
+              match local_id >= 0
+                true -> match local_id < glyph_array_len(la)
+                  true ->
+                    field_list = la[local_id]
+                    match has_str_in(field_list, stmt.sstr)
+                      true -> 0
+                      _ -> glyph_array_push(field_list, stmt.sstr)
+                  _ -> 0
+                _ -> 0
+            _ -> 0
+        _ -> 0
+      coll_acc_stmts(stmts, si + 1, la)

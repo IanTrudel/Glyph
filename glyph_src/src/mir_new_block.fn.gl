@@ -1,0 +1,6 @@
+mir_new_block ctx =
+  id = ctx.nxt_block[0]
+  glyph_array_push(ctx.block_stmts, [])
+  glyph_array_push(ctx.block_terms, mk_term_unreachable())
+  glyph_array_set(ctx.nxt_block, 0, id + 1)
+  id

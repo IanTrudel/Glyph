@@ -1,0 +1,5 @@
+test_validate_err u =
+  vr = validate_def("f x = =")
+  assert_eq(vr.vr_ok, 0)
+  assert(glyph_str_len(vr.vr_msg) > 0)
+  0

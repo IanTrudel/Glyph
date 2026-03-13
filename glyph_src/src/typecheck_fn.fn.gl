@@ -1,0 +1,6 @@
+typecheck_fn ast fn_idx =
+  eng = mk_engine()
+  register_builtins(eng)
+  ty = infer_fn_def(eng, ast, fn_idx)
+  resolved = subst_resolve(eng, ty)
+  resolved

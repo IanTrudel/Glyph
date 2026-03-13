@@ -1,0 +1,14 @@
+lower_let ctx ast node =
+  val = lower_expr(ctx, ast, node.n1)
+  local_id = mir_alloc_local(ctx, node.sval)
+  mir_emit_use(ctx, local_id, val)
+  ot = op_type(ctx, val)
+  tt = tctx_query(ctx.tctx, node.n1)
+  ty = match ot > 0
+    true -> ot
+    _ -> match tt > 0
+      true -> tt
+      _ -> 0
+  mir_set_lt(ctx, local_id, ty)
+  mir_bind_var(ctx, node.sval, local_id)
+  mk_op_unit()

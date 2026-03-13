@@ -1,0 +1,6 @@
+fix_offs_blks blocks bi reg la =
+  match bi >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      fix_offs_stmts(blocks[bi], 0, reg, la)
+      fix_offs_blks(blocks, bi + 1, reg, la)

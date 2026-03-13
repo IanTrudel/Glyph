@@ -1,0 +1,23 @@
+cmd_ls argv argc =
+  match argc < 3
+    true ->
+      eprintln("Usage: glyph ls <db> [--kind K] [--sort S]")
+      1
+    _ ->
+      db_path = argv[2]
+      db = glyph_db_open(db_path)
+      kind = find_flag(argv, "--kind", 3)
+      sort = find_flag(argv, "--sort", 3)
+      base = match glyph_str_len(kind) > 0
+        true -> s3("SELECT kind, name, COALESCE(sig,'-'), tokens FROM def WHERE kind = '", sql_escape(kind), "'")
+        _ -> "SELECT kind, name, COALESCE(sig,'-'), tokens FROM def"
+      order = match glyph_str_eq(sort, "tokens") == 1
+        true -> " ORDER BY CAST(tokens AS INTEGER)"
+        _ ->
+          match glyph_str_eq(sort, "name") == 1
+            true -> " ORDER BY name"
+            _ -> " ORDER BY kind, name"
+      rows = glyph_db_query_rows(db, s2(base, order))
+      glyph_db_close(db)
+      print_ls_rows(rows, 0, glyph_array_len(rows))
+      0

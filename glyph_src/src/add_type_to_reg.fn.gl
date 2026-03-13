@@ -1,0 +1,11 @@
+add_type_to_reg reg names i =
+  match i >= glyph_array_len(reg)
+    true ->
+      sorted = sort_str_arr(names)
+      glyph_array_push(reg, sorted)
+      0
+    _ ->
+      existing = reg[i]
+      match types_equal(existing, names)
+        true -> 0
+        _ -> add_type_to_reg(reg, names, i + 1)

@@ -1,0 +1,6 @@
+test_float_interp u =
+  x = 3.14
+  s = float_to_str(x)
+  assert_str_eq(s, "3.14")
+  0
+

@@ -1,0 +1,5 @@
+json_get_int pool node_idx key =
+  ci = json_get(pool, node_idx, key)
+  match ci >= 0
+    true -> pool[ci].nval
+    _ -> 0 - 1

@@ -1,0 +1,9 @@
+is_str_op ctx left right =
+  lt = op_type(ctx, left)
+  rt = op_type(ctx, right)
+  match lt == 4
+    true -> 1
+    _ -> match rt == 4
+      true -> 1
+      _ -> 0
+

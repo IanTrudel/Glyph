@@ -1,0 +1,8 @@
+test_float_convert u =
+  x = int_to_float(42)
+  assert_eq(float_to_int(x), 42)
+  n = 0 - 7
+  y = int_to_float(n)
+  assert_eq(float_to_int(y), n)
+  0
+

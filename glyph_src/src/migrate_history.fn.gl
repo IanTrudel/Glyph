@@ -1,0 +1,6 @@
+migrate_history db =
+  rows = glyph_db_query_rows(db, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='def_history'")
+  cnt = rows[0]
+  match glyph_str_eq(cnt[0], "0") == 1
+    true -> glyph_db_exec(db, history_migration_sql)
+    _ -> 0

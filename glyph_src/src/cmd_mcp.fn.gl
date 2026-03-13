@@ -1,0 +1,8 @@
+cmd_mcp argv argc =
+  match argc < 3
+    true ->
+      eprintln("Usage: glyph mcp <db_path>")
+      1
+    _ ->
+      db_path = argv[2]
+      mcp_loop(db_path)

@@ -1,0 +1,2 @@
+cg_str_literal s =
+  s4("(", gval_t(), ")glyph_cstr_to_str(\"", s2(cg_escape_str(process_escapes(s)), "\")"))

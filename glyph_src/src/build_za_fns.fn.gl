@@ -1,0 +1,14 @@
+build_za_fns parsed i acc =
+  match i >= glyph_array_len(parsed)
+    true -> acc
+    _ ->
+      pf = parsed[i]
+      match pf.pf_fn_idx >= 0
+        true ->
+          node = (pf.pf_ast)[pf.pf_fn_idx]
+          match glyph_array_len(node.ns) == 0
+            true ->
+              glyph_array_push(acc, pf.pf_name)
+              build_za_fns(parsed, i + 1, acc)
+            _ -> build_za_fns(parsed, i + 1, acc)
+        _ -> build_za_fns(parsed, i + 1, acc)

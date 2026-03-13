@@ -1,0 +1,11 @@
+test_mcp_helpers u =
+  e1 = mcp_error(1, 0 - 32602, "bad param")
+  assert(str_contains(e1, "error"))
+  assert(str_contains(e1, "-32602"))
+  assert(str_contains(e1, "bad param"))
+  t1 = mcp_text_result(2, "hello world")
+  assert(str_contains(t1, "hello world"))
+  assert(str_contains(t1, "jsonrpc"))
+  assert(str_contains(t1, "result"))
+  0
+

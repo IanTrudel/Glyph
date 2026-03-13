@@ -1,0 +1,10 @@
+lld_loop ctx names i tmp =
+  match i >= glyph_array_len(names)
+    true -> 0
+    _ ->
+      name = names[i]
+      dest = mir_alloc_local(ctx, name)
+      mir_emit_field(ctx, dest, mk_op_local(tmp), 0, name)
+      mir_bind_var(ctx, name, dest)
+      lld_loop(ctx, names, i + 1, tmp)
+

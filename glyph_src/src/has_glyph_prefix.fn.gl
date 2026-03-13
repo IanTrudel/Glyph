@@ -1,0 +1,4 @@
+has_glyph_prefix name =
+  match glyph_str_len(name) >= 6
+    true -> glyph_str_eq(glyph_str_slice(name, 0, 6), "glyph_")
+    _ -> 0

@@ -1,0 +1,10 @@
+tc_collect_fv_fields eng ns i acc =
+  match i >= glyph_array_len(ns)
+    true -> acc
+    _ ->
+      fi = ns[i]
+      fnode = pool_get(eng, fi)
+      _ = fnode.tag
+      tc_collect_fv(eng, fnode.n1, acc)
+      tc_collect_fv_fields(eng, ns, i + 1, acc)
+

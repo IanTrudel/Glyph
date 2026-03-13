@@ -1,0 +1,12 @@
+dump_print_all rows i n sigs_only =
+  match i < n
+    true ->
+      row = rows[i]
+      match sigs_only == 1
+        true -> println(s5("-- ", row[0], " ", row[1], s2(" : ", row[2])))
+        _ ->
+          println(s4("-- ", row[0], " ", row[1]))
+          println(row[2])
+          println("")
+      dump_print_all(rows, i + 1, n, sigs_only)
+    _ -> 0

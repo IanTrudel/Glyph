@@ -1,0 +1,13 @@
+mcp_loop db_path =
+  line = read_line(0)
+  match str_len(line) == 0
+    true -> 0
+    _ ->
+      response = mcp_dispatch(db_path, line)
+      match str_len(response) > 0
+        true ->
+          print(response)
+          print("\n")
+          flush(0)
+        _ -> 0
+      mcp_loop(db_path)

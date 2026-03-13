@@ -1,0 +1,6 @@
+extract_type_after_colon token =
+  len = glyph_str_len(token)
+  colon = psf_find_char(token, 58, 0, len)
+  match colon > 0
+    true -> glyph_str_slice(token, colon + 1, len)
+    _ -> "I"

@@ -1,0 +1,15 @@
+cg_runtime_coverage cover_path cov_names =
+  n = glyph_array_len(cov_names)
+  ns = itos(n)
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  names_init = cg_cov_names_init(cov_names, 0)
+  s1 = s5("#ifdef GLYPH_COVERAGE\nstatic const char* _glyph_cov_names[", ns, "] = ", lb, names_init)
+  s2a = s5(rb, ";\nstatic long long _glyph_cov_hits[", ns, "] = ", lb)
+  s3a = s5("0", rb, ";\nstatic int _glyph_cov_count = ", ns, ";\n")
+  s4a = s5("static const char* _glyph_cov_path = \"", cg_escape_str(cover_path), "\";\n", "", "")
+  writer_head = s5("void _glyph_cov_write(void) ", lb, "\n  FILE* f = fopen(_glyph_cov_path, \"w\");\n", "  if (!f) return;\n", "  for (int i = 0; i < _glyph_cov_count; i++) ")
+  writer_body = s5(lb, "\n    fprintf(f, \"%s", "\\t%lld", "\\n\", _glyph_cov_names[i], _glyph_cov_hits[i]);\n  ", rb)
+  writer_tail = s3("\n  fclose(f);\n", rb, "\n#endif\n\n")
+  s7(s1, s2a, s3a, s4a, writer_head, writer_body, writer_tail)
+

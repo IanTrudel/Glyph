@@ -1,0 +1,29 @@
+cmd_get argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph get <db> <name> [--kind K]")
+      1
+    _ ->
+      db_path = argv[2]
+      name = argv[3]
+      db = glyph_db_open(db_path)
+      kind = find_flag(argv, "--kind", 4)
+      sql = match glyph_str_len(kind) > 0
+        true -> s7("SELECT body FROM def WHERE name = '", sql_escape(name), "' AND kind = '", sql_escape(kind), "'", "", "")
+        _ -> s3("SELECT body FROM def WHERE name = '", sql_escape(name), "'")
+      rows = glyph_db_query_rows(db, sql)
+      glyph_db_close(db)
+      n = glyph_array_len(rows)
+      match n == 0
+        true ->
+          eprintln(s3("error: '", name, "' not found"))
+          1
+        _ ->
+          match n > 1
+            true ->
+              eprintln(s5("error: ", itos(n), " defs named '", name, "'. Use --kind"))
+              6
+            _ ->
+              row = rows[0]
+              println(row[0])
+              0

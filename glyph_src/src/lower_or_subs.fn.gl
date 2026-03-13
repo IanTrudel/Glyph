@@ -1,0 +1,34 @@
+lower_or_subs ctx ast subs scrutinee body_block next_block i =
+  match i >= glyph_array_len(subs)
+    true -> mir_terminate(ctx, mk_term_goto(next_block))
+    _ ->
+      sub = ast[subs[i]]
+      is_last = i == glyph_array_len(subs) - 1
+      fail_target = match is_last
+        true -> next_block
+        _ -> mir_new_block(ctx)
+      pk = sub.kind
+      match pk == pat_int()
+        true ->
+          cmp = mir_alloc_local(ctx, "")
+          mir_emit_binop(ctx, cmp, mir_eq(), scrutinee, mk_op_int(sub.ival))
+          mir_terminate(ctx, mk_term_branch(mk_op_local(cmp), body_block, fail_target))
+        _ -> match pk == pat_str()
+          true ->
+            eq_result = mir_alloc_local(ctx, "")
+            mir_emit_call(ctx, eq_result, mk_op_func("glyph_str_eq"), [scrutinee, mk_op_str(sub.sval)])
+            cmp = mir_alloc_local(ctx, "")
+            mir_emit_binop(ctx, cmp, mir_neq(), mk_op_local(eq_result), mk_op_int(0))
+            mir_terminate(ctx, mk_term_branch(mk_op_local(cmp), body_block, fail_target))
+          _ -> match pk == pat_bool()
+            true ->
+              cmp = mir_alloc_local(ctx, "")
+              mir_emit_binop(ctx, cmp, mir_eq(), scrutinee, mk_op_bool(sub.ival))
+              mir_terminate(ctx, mk_term_branch(mk_op_local(cmp), body_block, fail_target))
+            _ -> mir_terminate(ctx, mk_term_goto(body_block))
+      match is_last
+        true -> 0
+        _ ->
+          mir_switch_block(ctx, fail_target)
+          lower_or_subs(ctx, ast, subs, scrutinee, body_block, next_block, i + 1)
+

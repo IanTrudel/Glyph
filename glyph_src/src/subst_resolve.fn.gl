@@ -1,0 +1,40 @@
+subst_resolve eng ti =
+  w = subst_walk(eng, ti)
+  pool_len = glyph_array_len(eng.ty_pool)
+  match w < 0
+    true -> mk_terror(eng.ty_pool)
+    _ ->
+      match w >= pool_len
+        true -> mk_terror(eng.ty_pool)
+        _ ->
+          node = pool_get(eng, w)
+          tag = node.tag
+          n1 = node.n1
+          n2 = node.n2
+          match tag == ty_fn()
+            true ->
+              p = subst_resolve(eng, n1)
+              r = subst_resolve(eng, n2)
+              mk_tfn(p, r, eng.ty_pool)
+            _ -> match tag == ty_array()
+              true ->
+                e = subst_resolve(eng, n1)
+                mk_tarray(e, eng.ty_pool)
+              _ -> match tag == ty_opt()
+                true ->
+                  inner = subst_resolve(eng, n1)
+                  mk_topt(inner, eng.ty_pool)
+                _ -> match tag == ty_record()
+                  true ->
+                    fns = node.ns
+                    resolve_record2(eng, fns, n1)
+                  _ -> match tag == ty_tuple()
+                    true ->
+                      resolved_elems = resolve_tuple_elems(eng, node.ns, 0)
+                      mk_ttuple(resolved_elems, eng.ty_pool)
+                    _ -> match tag == ty_forall()
+                      true ->
+                        resolved_body = subst_resolve(eng, n1)
+                        mk_tforall(resolved_body, node.ns, eng.ty_pool)
+                      _ -> w
+

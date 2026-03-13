@@ -1,0 +1,20 @@
+extract_name_loop body i len =
+  match i < len
+    true ->
+      c = glyph_str_char_at(body, i)
+      match c == 32
+        true -> glyph_str_slice(body, 0, i)
+        _ ->
+          match c == 10
+            true -> glyph_str_slice(body, 0, i)
+            _ ->
+              match c == 9
+                true -> glyph_str_slice(body, 0, i)
+                _ ->
+                  match c == 61
+                    true ->
+                      match i > 0
+                        true -> glyph_str_slice(body, 0, i)
+                        _ -> extract_name_loop(body, i + 1, len)
+                    _ -> extract_name_loop(body, i + 1, len)
+    _ -> body

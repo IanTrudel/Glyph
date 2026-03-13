@@ -1,0 +1,14 @@
+cg_operand op =
+  k = op.okind
+  gv = gval_t()
+  match k
+    _ ? k == ok_local() -> cg_local(op.oval)
+    _ ? k == ok_const_int() -> s3("(", gv, s2(")", itos(op.oval)))
+    _ ? k == ok_const_bool() -> match op.oval == 0
+      true -> "0"
+      _ -> "1"
+    _ ? k == ok_const_unit() -> "0"
+    _ ? k == ok_const_str() -> cg_str_literal(op.ostr)
+    _ ? k == ok_func_ref() -> s3("(", gv, s2(")&", op.ostr))
+    _ ? k == ok_const_float() -> s2("_glyph_f2i(", s2(op.ostr, ")"))
+    _ -> "0"

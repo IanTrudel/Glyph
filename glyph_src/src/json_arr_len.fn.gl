@@ -1,0 +1,3 @@
+json_arr_len pool node_idx =
+  node = pool[node_idx]
+  array_len(node.items)

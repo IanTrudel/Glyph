@@ -1,0 +1,5 @@
+infer_block eng ast node =
+  env_push(eng)
+  r = infer_stmts(eng, ast, node.ns, 0)
+  env_pop(eng)
+  r

@@ -1,0 +1,12 @@
+build_program sources externs output_path =
+  mirs = compile_fns(sources, 0)
+  fix_all_field_offsets(mirs)
+  fix_extern_calls(mirs, externs)
+  tco_optimize(mirs)
+  c_code = cg_program(mirs)
+  wrappers = cg_extern_wrappers(externs, 0)
+  full_c = s5(cg_runtime_full(externs), "\n", wrappers, "\n", c_code)
+  lib_flags = collect_libs(externs)
+  c_path = "/tmp/glyph_out.c"
+  glyph_write_file(c_path, full_c)
+  glyph_system(s7("cc -w -Wno-error -Wno-int-conversion -Wno-incompatible-pointer-types -O1 ", c_path, " -o ", output_path, " -no-pie", lib_flags, ""))

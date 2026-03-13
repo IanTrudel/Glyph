@@ -1,0 +1,6 @@
+all_fields_in type_fields local_fields i =
+  match i >= glyph_array_len(local_fields)
+    true -> 1
+    _ -> match has_str_in(type_fields, local_fields[i])
+      true -> all_fields_in(type_fields, local_fields, i + 1)
+      _ -> 0

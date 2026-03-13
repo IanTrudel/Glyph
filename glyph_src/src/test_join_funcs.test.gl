@@ -1,0 +1,16 @@
+test_join_funcs u =
+  argv = ["a", "b", "c"]
+  r1 = join_args(argv, 0, 3)
+  assert_str_eq(r1, "a b c")
+  r1b = join_args(argv, 1, 3)
+  assert_str_eq(r1b, "b c")
+  rows = [["alice"], ["bob"]]
+  r2 = join_names(rows, 0, 2, "")
+  assert(str_contains(r2, "alice"))
+  assert(str_contains(r2, "bob"))
+  row = ["x", "y", "z"]
+  r3 = join_cols(row, 0, 3, "")
+  assert(str_contains(r3, "x"))
+  assert(str_contains(r3, "z"))
+  0
+

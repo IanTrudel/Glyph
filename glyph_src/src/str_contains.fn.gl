@@ -1,0 +1,5 @@
+str_contains haystack needle =
+  hlen = glyph_str_len(haystack)
+  nlen = glyph_str_len(needle)
+  str_contains_loop(haystack, needle, hlen, nlen, 0)
+

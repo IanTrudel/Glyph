@@ -1,0 +1,4 @@
+fsn_fields_eq a b =
+  match glyph_array_len(a) == glyph_array_len(b)
+    true -> fsn_fields_eq_loop(a, b, 0)
+    _ -> 0

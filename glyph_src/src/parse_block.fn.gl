@@ -1,0 +1,3 @@
+parse_block src tokens pos pool =
+  stmts = []
+  parse_block_stmts(src, tokens, pos, pool, stmts)

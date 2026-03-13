@@ -1,0 +1,8 @@
+import_filename_loop path i len =
+  match i < 0
+    true -> path
+    _ ->
+      ch = glyph_str_char_at(path, i)
+      match ch == 47
+        true -> glyph_str_slice(path, i+1, len)
+        _ -> import_filename_loop(path, i-1, len)

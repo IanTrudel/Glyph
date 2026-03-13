@@ -1,0 +1,7 @@
+test_tok_indent_dedent u =
+  src = "x\n  y\nz"
+  toks = tokenize(src)
+  kinds = test_collect_kinds(toks, 0, [])
+  assert(has_kind(kinds, tk_indent()))
+  assert(has_kind(kinds, tk_dedent()))
+  0

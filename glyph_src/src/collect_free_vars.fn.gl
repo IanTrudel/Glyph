@@ -1,0 +1,8 @@
+collect_free_vars ctx ast body_idx params =
+  bound = []
+  cfv_add_params(bound, ast, params, 0)
+  seen = []
+  result = []
+  walk_free_vars(ctx, ast, body_idx, bound, seen, result)
+  result
+

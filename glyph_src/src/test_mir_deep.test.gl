@@ -1,0 +1,11 @@
+test_mir_deep u =
+  mir2 = compile_fn("f x = x := 5\n  x", [])
+  assert(mir_local_count(mir2) >= 1)
+  mir4 = compile_fn("f x = x |> foo", ["foo"])
+  stmts4 = mir4.fn_blocks_stmts[0]
+  found4 = test_find_stmt_kind(stmts4, rv_call(), 0)
+  assert(found4 >= 0)
+  mir5 = compile_fn("f x = match x\n  1 | 2 | 3 -> 10\n  _ -> 0", [])
+  assert(mir_block_count(mir5) >= 3)
+  0
+

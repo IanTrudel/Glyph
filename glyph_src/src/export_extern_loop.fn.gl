@@ -1,0 +1,5 @@
+export_extern_loop rows i n acc =
+  match i >= n
+    true -> acc
+    _ -> export_extern_loop(rows, i+1, n, s2(acc, export_extern_row(rows[i])))
+

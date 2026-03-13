@@ -1,0 +1,12 @@
+parse_match_expr src tokens pos pool =
+  scrut = parse_expr(src, tokens, pos, pool)
+  match is_err(scrut)
+    true -> scrut
+    _ ->
+      pos2 = skip_nl(tokens, scrut.pos)
+      p3 = expect_tok(tokens, pos2, tk_indent())
+      match p3 < 0
+        true -> mk_err_msg(pos2, "expected indented match arms")
+        _ ->
+          arms = []
+          parse_match_arms(src, tokens, p3, pool, scrut.node, arms)

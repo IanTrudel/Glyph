@@ -1,0 +1,1 @@
+s2 a b = glyph_str_concat(a, b)

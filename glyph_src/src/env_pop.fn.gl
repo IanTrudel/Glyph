@@ -1,0 +1,3 @@
+env_pop eng =
+  target = glyph_array_pop(eng.env_marks)
+  env_pop_to(eng.env_names, eng.env_types, target)

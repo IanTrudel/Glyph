@@ -1,0 +1,7 @@
+test_build_type_reg u =
+  mir = compile_fn("f x = x + 1", [])
+  mirs = [mir]
+  reg = build_type_reg(mirs)
+  assert(glyph_array_len(reg) >= 0)
+  0
+

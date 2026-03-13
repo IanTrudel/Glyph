@@ -1,0 +1,8 @@
+efv_loop eng i acc =
+  match i >= glyph_array_len(eng.env_types)
+    true -> acc
+    _ ->
+      ti = eng.env_types[i]
+      tc_collect_fv(eng, ti, acc)
+      efv_loop(eng, i + 1, acc)
+

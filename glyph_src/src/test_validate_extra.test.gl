@@ -1,0 +1,9 @@
+test_validate_extra u =
+  r1 = validate_def("f x = x + 1")
+  assert_eq(r1.vr_ok, 1)
+  assert_str_eq(r1.vr_msg, "")
+  r2 = validate_def("f = = =")
+  assert_eq(r2.vr_ok, 0)
+  assert(glyph_str_len(r2.vr_msg) > 0)
+  0
+

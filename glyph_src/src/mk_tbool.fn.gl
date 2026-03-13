@@ -1,0 +1,1 @@
+mk_tbool pool = mk_ty_prim(ty_bool(), pool)

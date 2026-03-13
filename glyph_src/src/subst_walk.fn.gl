@@ -1,0 +1,24 @@
+subst_walk eng ti =
+  pool_len = glyph_array_len(eng.ty_pool)
+  match ti < 0
+    true -> mk_terror(eng.ty_pool)
+    _ ->
+      match ti >= pool_len
+        true -> mk_terror(eng.ty_pool)
+        _ ->
+          node = pool_get(eng, ti)
+          match node.tag == ty_var()
+            true ->
+              root = subst_find(eng.parent, node.n1)
+              match root >= glyph_array_len(eng.bindings)
+                true -> mk_terror(eng.ty_pool)
+                _ ->
+                  b = eng.bindings[root]
+                  match b < 0
+                    true -> ti
+                    _ ->
+                      match b >= glyph_array_len(eng.ty_pool)
+                        true -> mk_terror(eng.ty_pool)
+                        _ -> b
+            _ -> ti
+

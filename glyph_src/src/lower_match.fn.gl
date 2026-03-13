@@ -1,0 +1,7 @@
+lower_match ctx ast node =
+  scrutinee = lower_expr(ctx, ast, node.n1)
+  result = mir_alloc_local(ctx, "")
+  merge = mir_new_block(ctx)
+  lower_match_arms(ctx, ast, node.ns, scrutinee, result, merge, 0)
+  mir_switch_block(ctx, merge)
+  mk_op_local(result)

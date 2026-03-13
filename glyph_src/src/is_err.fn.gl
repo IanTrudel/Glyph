@@ -1,0 +1,1 @@
+is_err r = r.node < 0

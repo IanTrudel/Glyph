@@ -1,0 +1,68 @@
+tok_one4 src len pos line bdepth tokens c =
+  match is_digit(c)
+    true ->
+      end = scan_number_end(src, pos)
+      match peek(src, end, len) == 46
+        true ->
+          match is_digit(peek(src, end + 1, len))
+            true ->
+              fend = scan_number_end(src, end + 1)
+              glyph_array_push(tokens, mk_token(tk_float(), pos, fend, line))
+              tok_pack(fend, line, bdepth)
+            _ ->
+              glyph_array_push(tokens, mk_token(tk_int(), pos, end, line))
+              tok_pack(end, line, bdepth)
+        _ ->
+          glyph_array_push(tokens, mk_token(tk_int(), pos, end, line))
+          tok_pack(end, line, bdepth)
+    _ ->
+      match c == 114
+        true ->
+          match peek(src, pos + 1, len) == 34
+            true ->
+              match peek(src, pos + 2, len) == 34
+                true ->
+                  match peek(src, pos + 3, len) == 34
+                    true ->
+                      end = scan_raw_triple_end(src, pos + 4)
+                      glyph_array_push(tokens, mk_token(tk_str(), pos + 4, end - 3, line))
+                      tok_pack(end, line, bdepth)
+                    _ ->
+                      end = scan_raw_string_end(src, pos + 2)
+                      glyph_array_push(tokens, mk_token(tk_str(), pos + 2, end - 1, line))
+                      tok_pack(end, line, bdepth)
+                _ ->
+                  end = scan_raw_string_end(src, pos + 2)
+                  glyph_array_push(tokens, mk_token(tk_str(), pos + 2, end - 1, line))
+                  tok_pack(end, line, bdepth)
+            _ ->
+              end = scan_ident_end(src, pos)
+              text = glyph_str_slice(src, pos, end)
+              kw = keyword_kind(text)
+              match kw > 0
+                true ->
+                  glyph_array_push(tokens, mk_token(kw, pos, end, line))
+                  tok_pack(end, line, bdepth)
+                _ ->
+                  glyph_array_push(tokens, mk_token(tk_ident(), pos, end, line))
+                  tok_pack(end, line, bdepth)
+        _ ->
+          match is_alpha(c) || c == 95
+            true ->
+              end = scan_ident_end(src, pos)
+              text = glyph_str_slice(src, pos, end)
+              kw = keyword_kind(text)
+              match kw > 0
+                true ->
+                  glyph_array_push(tokens, mk_token(kw, pos, end, line))
+                  tok_pack(end, line, bdepth)
+                _ ->
+                  match is_upper(c)
+                    true ->
+                      glyph_array_push(tokens, mk_token(tk_type_ident(), pos, end, line))
+                      tok_pack(end, line, bdepth)
+                    _ ->
+                      glyph_array_push(tokens, mk_token(tk_ident(), pos, end, line))
+                      tok_pack(end, line, bdepth)
+            _ -> tok_pack(pos + 1, line, bdepth)
+

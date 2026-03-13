@@ -1,0 +1,7 @@
+test_is_float_ctype u =
+  assert_eq(is_float_ctype("float"), 1)
+  assert_eq(is_float_ctype("double"), 1)
+  assert_eq(is_float_ctype("int"), 0)
+  assert_eq(is_float_ctype("GVal"), 0)
+  0
+

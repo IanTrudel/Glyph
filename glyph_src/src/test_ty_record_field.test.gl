@@ -1,0 +1,23 @@
+test_ty_record_field dummy =
+  eng = mk_engine()
+  register_builtins(eng)
+  int_ty = mk_tint(eng.ty_pool)
+  f1 = mk_tfield("pos", int_ty, eng.ty_pool)
+  f2 = mk_tfield("val", int_ty, eng.ty_pool)
+  fields = []
+  glyph_array_push(fields, f1)
+  glyph_array_push(fields, f2)
+  rec_ty = mk_trecord(fields, 0 - 1, eng.ty_pool)
+  result_ty = subst_fresh(eng)
+  rest_var = subst_fresh_var(eng)
+  access_field = mk_tfield("val", result_ty, eng.ty_pool)
+  access_fields = []
+  glyph_array_push(access_fields, access_field)
+  access_rec = mk_trecord(access_fields, rest_var, eng.ty_pool)
+  r = unify(eng, rec_ty, access_rec)
+  assert(r >= 0)
+  resolved = subst_resolve(eng, result_ty)
+  resolved_node = pool_get(eng, resolved)
+  _ = resolved_node.tag
+  assert_eq(resolved_node.tag, ty_int())
+

@@ -1,0 +1,1 @@
+ty_tag pool idx = pool[idx].tag

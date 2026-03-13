@@ -1,0 +1,12 @@
+cg_extern_wrappers externs i =
+  match i >= glyph_array_len(externs)
+    true -> ""
+    _ ->
+      row = externs[i]
+      name = row[0]
+      rest = cg_extern_wrappers(externs, i + 1)
+      match is_runtime_fn(name)
+        true -> rest
+        _ -> match has_glyph_prefix(name)
+          true -> rest
+          _ -> s2(cg_extern_wrapper(row), rest)

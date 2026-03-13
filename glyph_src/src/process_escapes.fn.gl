@@ -1,0 +1,2 @@
+process_escapes s =
+  process_esc_loop(s, 0, glyph_str_len(s), "")

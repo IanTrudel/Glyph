@@ -1,0 +1,18 @@
+is_runtime_fn name =
+  match name
+    _ ? glyph_str_eq(name, "println") -> 1
+    _ ? glyph_str_eq(name, "eprintln") -> 1
+    _ ? glyph_str_eq(name, "exit") -> 1
+    _ ? glyph_str_eq(name, "str_len") -> 1
+    _ ? glyph_str_eq(name, "str_char_at") -> 1
+    _ ? glyph_str_eq(name, "str_slice") -> 1
+    _ ? glyph_str_eq(name, "str_concat") -> 1
+    _ ? glyph_str_eq(name, "str_eq") -> 1
+    _ ? glyph_str_eq(name, "int_to_str") -> 1
+    _ ? glyph_str_eq(name, "str_to_int") -> 1
+    _ ? glyph_str_eq(name, "array_push") -> 1
+    _ ? glyph_str_eq(name, "array_len") -> 1
+    _ ? glyph_str_eq(name, "array_set") -> 1
+    _ ? glyph_str_eq(name, "array_pop") -> 1
+    _ ? glyph_str_eq(name, "read_file") -> 1
+    _ -> is_runtime_fn2(name)

@@ -1,0 +1,36 @@
+tc_collect_fv eng ti acc =
+  w = subst_walk(eng, ti)
+  pool_len = glyph_array_len(eng.ty_pool)
+  match w < 0
+    true -> acc
+    _ -> match w >= pool_len
+      true -> acc
+      _ ->
+        node = pool_get(eng, w)
+        tag = node.tag
+        match tag == ty_var()
+          true ->
+            root_var = subst_find(eng.parent, node.n1)
+            b = eng.bindings[root_var]
+            match b < 0
+              true ->
+                match var_in_list(root_var, acc, 0) == 0
+                  true ->
+                    glyph_array_push(acc, root_var)
+                    acc
+                  _ -> acc
+              _ -> tc_collect_fv(eng, b, acc)
+          _ -> match tag == ty_fn()
+            true ->
+              tc_collect_fv(eng, node.n1, acc)
+              tc_collect_fv(eng, node.n2, acc)
+            _ -> match tag == ty_array()
+              true -> tc_collect_fv(eng, node.n1, acc)
+              _ -> match tag == ty_opt()
+                true -> tc_collect_fv(eng, node.n1, acc)
+                _ -> match tag == ty_record()
+                  true -> tc_collect_fv_fields(eng, node.ns, 0, acc)
+                  _ -> match tag == ty_tuple()
+                    true -> tc_collect_fv_ns(eng, node.ns, 0, acc)
+                    _ -> acc
+

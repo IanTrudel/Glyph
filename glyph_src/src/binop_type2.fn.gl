@@ -1,0 +1,12 @@
+binop_type2 eng op =
+  match op == op_bitand()
+    true -> mk_tint(eng.ty_pool)
+    _ -> match op == op_bitor()
+      true -> mk_tint(eng.ty_pool)
+      _ -> match op == op_bitxor()
+        true -> mk_tint(eng.ty_pool)
+        _ -> match op == op_shl()
+          true -> mk_tint(eng.ty_pool)
+          _ -> match op == op_shr()
+            true -> mk_tint(eng.ty_pool)
+            _ -> 0 - 1

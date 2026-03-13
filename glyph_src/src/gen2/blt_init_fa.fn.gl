@@ -1,0 +1,7 @@
+blt_init_fa n i =
+  match i >= n
+    true -> []
+    _ ->
+      rest = blt_init_fa(n, i + 1)
+      glyph_array_push(rest, [])
+      rest

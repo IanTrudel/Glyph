@@ -1,0 +1,4 @@
+extract_source_line src offset =
+  ls = find_line_start(src, offset)
+  le = find_line_end(src, offset)
+  glyph_str_slice(src, ls, le)

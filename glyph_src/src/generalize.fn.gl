@@ -1,0 +1,12 @@
+generalize eng ty =
+  free = tc_collect_fv(eng, ty, [])
+  efv = env_free_vars(eng)
+  to_bind = subtract_vars(free, efv, 0)
+  match glyph_array_len(to_bind) == 0
+    true -> ty
+    _ ->
+      var_map = make_inst_map(eng, to_bind, 0)
+      new_body = inst_type(eng, ty, var_map)
+      new_bound_ids = extract_new_var_ids(eng, var_map, 0)
+      mk_tforall(new_body, new_bound_ids, eng.ty_pool)
+

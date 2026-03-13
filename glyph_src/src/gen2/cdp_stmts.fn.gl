@@ -1,0 +1,9 @@
+cdp_stmts stmts si fn_name pairs =
+  match si >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[si]
+      cdp_check_op(stmt.sop1, fn_name, pairs)
+      cdp_check_op(stmt.sop2, fn_name, pairs)
+      cdp_ops(stmt.sops, 0, fn_name, pairs)
+      cdp_stmts(stmts, si + 1, fn_name, pairs)

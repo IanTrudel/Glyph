@@ -1,0 +1,11 @@
+test_tok_negative u =
+  toks = tokenize("0 - 7")
+  kinds = test_collect_kinds(toks, 0, [])
+  assert(has_kind(kinds, tk_int()))
+  assert(has_kind(kinds, tk_minus()))
+  i1 = test_find_kind(toks, tk_int(), 0)
+  i2 = test_find_kind(toks, tk_int(), i1 + 1)
+  assert(i1 >= 0)
+  assert(i2 >= 0)
+  assert(i2 > i1)
+  0

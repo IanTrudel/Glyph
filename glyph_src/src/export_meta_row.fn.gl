@@ -1,0 +1,3 @@
+export_meta_row row =
+  s5("INSERT OR IGNORE INTO meta (key,value) VALUES ('", sql_escape(row[0]), "','", sql_escape(row[1]), "');\n")
+

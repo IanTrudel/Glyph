@@ -1,0 +1,6 @@
+cdp_blks blocks bi fn_name pairs =
+  match bi >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      cdp_stmts(blocks[bi], 0, fn_name, pairs)
+      cdp_blks(blocks, bi + 1, fn_name, pairs)

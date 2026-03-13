@@ -1,0 +1,11 @@
+json_scan_str src pos =
+  len = str_len(src)
+  match pos < len
+    true ->
+      c = str_char_at(src, pos)
+      match c == 34
+        true -> pos + 1
+        _ -> match c == 92
+          true -> json_scan_str(src, pos + 2)
+          _ -> json_scan_str(src, pos + 1)
+    _ -> pos

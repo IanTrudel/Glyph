@@ -1,0 +1,18 @@
+bsm_loop rows i result =
+  match i >= glyph_array_len(rows)
+    true -> 0
+    _ ->
+      row = rows[i]
+      name = row[0]
+      body = row[1]
+      fields = parse_struct_fields(body)
+      match glyph_array_len(fields) > 0
+        true ->
+          ctypes = parse_struct_ctypes(body)
+          entry = []
+          glyph_array_push(entry, name)
+          glyph_array_push(entry, fields)
+          glyph_array_push(entry, ctypes)
+          glyph_array_push(result, entry)
+          bsm_loop(rows, i + 1, result)
+        _ -> bsm_loop(rows, i + 1, result)

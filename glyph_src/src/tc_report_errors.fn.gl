@@ -1,0 +1,10 @@
+tc_report_errors eng =
+  nerrs = glyph_array_len(eng.errors)
+  match nerrs > 0
+    true ->
+      tc_report_loop(eng.errors, 0)
+      suffix = match nerrs > 1
+        true -> "s"
+        _ -> ""
+      eprintln(s3(itos(nerrs), " type warning", suffix))
+    _ -> 0

@@ -1,0 +1,8 @@
+parse_params_loop src tokens pos pool params =
+  match cur_kind(tokens, pos) == tk_ident()
+    true ->
+      pname = cur_text(src, tokens, pos)
+      pidx = push_simple(pool, nd_param(), 0, pname)
+      glyph_array_push(params, pidx)
+      parse_params_loop(src, tokens, pos + 1, pool, params)
+    _ -> mk_result(0 - 1, pos)

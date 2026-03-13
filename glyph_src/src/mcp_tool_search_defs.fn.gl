@@ -1,0 +1,23 @@
+mcp_tool_search_defs db_path id pool args =
+  pattern = json_get_str(pool, args, "pattern")
+  kind_idx = json_get(pool, args, "kind")
+  sb = sb_new()
+  sb_append(sb, "SELECT name, kind, gen FROM def WHERE body LIKE '%")
+  sb_append(sb, sql_escape(pattern))
+  sb_append(sb, "%'")
+  match kind_idx >= 0
+    true ->
+      knode = pool[kind_idx]
+      _ = knode.tag
+      sb_append(sb, s3(" AND kind='", knode.sval, "'"))
+    _ -> 0
+  sb_append(sb, " ORDER BY name LIMIT 50")
+  sql = sb_build(sb)
+  db = glyph_db_open(db_path)
+  rows = glyph_db_query_rows(db, sql)
+  glyph_db_close(db)
+  rp = []
+  arr = jb_arr(rp)
+  mcp_fmt_search_loop(rp, arr, rows, 0, glyph_array_len(rows))
+  mcp_text_result(id, json_gen(rp, arr))
+

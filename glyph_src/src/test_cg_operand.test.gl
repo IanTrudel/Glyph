@@ -1,0 +1,10 @@
+test_cg_operand u =
+  r1 = cg_operand(mk_op_int(42))
+  assert_str_eq(r1, "(GVal)42")
+  r2 = cg_operand(mk_op_bool(0))
+  assert_str_eq(r2, "0")
+  r3 = cg_operand(mk_op_bool(1))
+  assert_str_eq(r3, "1")
+  r4 = cg_operand(mk_op_unit())
+  assert_str_eq(r4, "0")
+  0

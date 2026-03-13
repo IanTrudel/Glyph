@@ -1,0 +1,9 @@
+mcp_add_tools pool tools =
+  rn = jb_arr(pool)
+  jb_push(pool, rn, jb_str(pool, "name"))
+  p1 = jb_obj(pool)
+  jb_put(pool, p1, "name", mcp_str_prop(pool, "Definition name"))
+  jb_put(pool, p1, "kind", mcp_str_prop(pool, "Definition kind (fn, type, test). Default: fn"))
+  jb_put(pool, p1, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
+  jb_push(pool, tools, mcp_tool_schema(pool, "get_def", "Read a definition from the database", p1, rn))
+  mcp_add_tools2(pool, tools)

@@ -1,0 +1,13 @@
+parse_args src tokens pos pool =
+  match cur_kind(tokens, pos) == tk_rparen()
+    true ->
+      idx = pool_push(pool, mk_node(0, 0, "", 0 - 1, 0 - 1, 0 - 1, []))
+      mk_result(idx, pos)
+    _ ->
+      args = []
+      r = parse_expr(src, tokens, pos, pool)
+      match is_err(r)
+        true -> r
+        _ ->
+          glyph_array_push(args, r.node)
+          parse_args_loop(src, tokens, r.pos, pool, args)

@@ -1,0 +1,24 @@
+cg_stmt2 stmt struct_map local_struct_types mir_local_types =
+  k = stmt.skind
+  match k
+    _ ? k == rv_field() -> cg_field_stmt2(stmt, local_struct_types, struct_map, mir_local_types)
+    _ ? k == rv_aggregate() -> cg_aggregate_stmt2(stmt, struct_map)
+    _ ? k == rv_binop() ->
+      match mir_local_types[stmt.sdest] == 3
+        true -> cg_float_binop(stmt)
+        _ ->
+          f1 = is_op_float(mir_local_types, stmt.sop1)
+          f2 = is_op_float(mir_local_types, stmt.sop2)
+          match f1 == 1 || f2 == 1
+            true ->
+              match is_arith_op(stmt.sival) == 1
+                true ->
+                  _ = glyph_array_set(mir_local_types, stmt.sdest, 3)
+                  cg_float_binop(stmt)
+                _ -> cg_float_cmp(stmt)
+            _ -> cg_stmt(stmt)
+    _ ? k == rv_unop() ->
+      match mir_local_types[stmt.sdest] == 3
+        true -> cg_float_unop(stmt)
+        _ -> cg_stmt(stmt)
+    _ -> cg_stmt(stmt)

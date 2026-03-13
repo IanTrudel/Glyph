@@ -1,0 +1,7 @@
+json_parse_arr src tokens pos pool =
+  items = []
+  match tokens[pos].kind == jt_rbracket
+    true ->
+      idx = json_pool_push(pool, mk_jnode(jn_array, 0, "", items, []))
+      {node: idx, pos: pos + 1}
+    _ -> json_parse_arr_loop(src, tokens, pos, pool, items)

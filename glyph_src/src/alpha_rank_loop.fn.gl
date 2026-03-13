@@ -1,0 +1,7 @@
+alpha_rank_loop names target i acc =
+  match i >= glyph_array_len(names)
+    true -> acc
+    _ ->
+      match str_lt(names[i], target)
+        true -> alpha_rank_loop(names, target, i + 1, acc + 1)
+        _ -> alpha_rank_loop(names, target, i + 1, acc)

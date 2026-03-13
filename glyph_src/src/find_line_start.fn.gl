@@ -1,0 +1,7 @@
+find_line_start src offset =
+  match offset <= 0
+    true -> 0
+    _ ->
+      match glyph_str_char_at(src, offset - 1) == 10
+        true -> offset
+        _ -> find_line_start(src, offset - 1)

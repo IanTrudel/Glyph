@@ -1,0 +1,5 @@
+cg_functions2_cover mirs i struct_map cov_names =
+  match i >= glyph_array_len(mirs)
+    true -> ""
+    _ -> s2(cg_function2_cover(mirs[i], struct_map, cov_names), cg_functions2_cover(mirs, i + 1, struct_map, cov_names))
+

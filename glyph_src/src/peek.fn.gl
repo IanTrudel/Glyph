@@ -1,0 +1,4 @@
+peek src pos len =
+  match pos < len
+    true -> glyph_str_char_at(src, pos)
+    _ -> 0

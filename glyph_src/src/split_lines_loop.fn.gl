@@ -1,0 +1,17 @@
+split_lines_loop s start i result =
+  len = glyph_str_len(s)
+  match i >= len
+    true ->
+      match i > start
+        true -> glyph_array_push(result, glyph_str_slice(s, start, i))
+        _ -> 0
+      result
+    _ ->
+      ch = glyph_str_char_at(s, i)
+      match ch == 10
+        true ->
+          match i > start
+            true -> glyph_array_push(result, glyph_str_slice(s, start, i))
+            _ -> 0
+          split_lines_loop(s, i+1, i+1, result)
+        _ -> split_lines_loop(s, start, i+1, result)

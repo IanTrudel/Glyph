@@ -1,0 +1,15 @@
+cg_struct_stores_typed ops names types i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      ftype = match glyph_array_len(types) > i
+        true -> types[i]
+        _ -> gval_t()
+      val = cg_operand(ops[i])
+      store = match glyph_str_eq(ftype, gval_t())
+        true -> s4("__r->", names[i], " = ", s2(val, "; "))
+        _ -> match is_float_ctype(ftype) == 1
+          true -> s4("__r->", names[i], s3(" = (", ftype, ")_glyph_i2f("), s2(val, "); "))
+          _ -> s4("__r->", names[i], s3(" = (", ftype, ")"), s2(val, "; "))
+      s2(store, cg_struct_stores_typed(ops, names, types, i + 1))
+

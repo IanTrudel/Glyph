@@ -1,0 +1,2 @@
+apply_fn f x = f(x)
+

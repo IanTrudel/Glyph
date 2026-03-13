@@ -1,0 +1,9 @@
+infer_array eng ast node =
+  match glyph_array_len(node.ns) == 0
+    true ->
+      elem = subst_fresh(eng)
+      mk_tarray(elem, eng.ty_pool)
+    _ ->
+      first = infer_expr(eng, ast, node.ns[0])
+      unify_array_elems(eng, ast, node.ns, first, 1)
+      mk_tarray(first, eng.ty_pool)

@@ -1,0 +1,31 @@
+test_ty_deep u =
+  eng1 = mk_engine()
+  src1 = "f x = y = x + 1\n  y * 2"
+  toks1 = tokenize(src1)
+  ast1 = []
+  r1 = parse_fn_def(src1, toks1, 0, ast1)
+  ty1 = infer_fn_def(eng1, ast1, r1.node)
+  res1 = subst_resolve(eng1, ty1)
+  n1 = pool_get(eng1, res1)
+  assert_eq(n1.tag, ty_fn())
+  eng2 = mk_engine()
+  src2 = "f x = 0 - x"
+  toks2 = tokenize(src2)
+  ast2 = []
+  r2 = parse_fn_def(src2, toks2, 0, ast2)
+  ty2 = infer_fn_def(eng2, ast2, r2.node)
+  res2 = subst_resolve(eng2, ty2)
+  n2 = pool_get(eng2, res2)
+  assert_eq(n2.tag, ty_fn())
+  ret2 = pool_get(eng2, n2.n2)
+  assert_eq(ret2.tag, ty_int())
+  eng3 = mk_engine()
+  src3 = "f x = foo(x)"
+  toks3 = tokenize(src3)
+  ast3 = []
+  r3 = parse_fn_def(src3, toks3, 0, ast3)
+  ty3 = infer_fn_def(eng3, ast3, r3.node)
+  n3 = pool_get(eng3, ty3)
+  assert_eq(n3.tag, ty_fn())
+  0
+

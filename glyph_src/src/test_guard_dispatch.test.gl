@@ -1,0 +1,14 @@
+test_guard_dispatch u =
+  x = 10
+  r1 = match x
+    _ ? x == 1 -> 100
+    _ ? x == 10 -> 200
+    _ ? x == 20 -> 300
+    _ -> 0
+  assert_eq(r1, 200)
+  y = 99
+  r2 = match y
+    _ ? y == 1 -> 100
+    _ ? y == 2 -> 200
+    _ -> 999
+  assert_eq(r2, 999)

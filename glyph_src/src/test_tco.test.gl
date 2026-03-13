@@ -1,0 +1,8 @@
+test_tco u =
+  mir = compile_fn("f x = match x\n  0 -> 1\n  _ -> f(x - 1)", ["f"])
+  mirs = [mir]
+  tco_optimize(mirs)
+  bc = mir_block_count(mirs[0])
+  assert(bc >= 1)
+  0
+

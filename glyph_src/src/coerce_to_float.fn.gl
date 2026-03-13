@@ -1,0 +1,10 @@
+coerce_to_float ctx op =
+  ot = op_type(ctx, op)
+  match ot == 3
+    true -> op
+    _ ->
+      dest = mir_alloc_local(ctx, "")
+      mir_set_lt(ctx, dest, 3)
+      mir_emit_call(ctx, dest, mk_op_func("glyph_int_to_float"), [op])
+      mk_op_local(dest)
+

@@ -1,0 +1,7 @@
+psf_find_char s ch start limit =
+  match start >= limit
+    true -> 0 - 1
+    _ ->
+      match glyph_str_char_at(s, start) == ch
+        true -> start
+        _ -> psf_find_char(s, ch, start + 1, limit)

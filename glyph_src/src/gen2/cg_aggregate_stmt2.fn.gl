@@ -1,0 +1,7 @@
+cg_aggregate_stmt2 stmt struct_map =
+  nops = glyph_array_len(stmt.sops)
+  match stmt.sival == ag_array()
+    true -> cg_array_aggregate(stmt, nops)
+    _ -> match stmt.sival == ag_variant()
+      true -> cg_variant_aggregate(stmt, nops)
+      _ -> cg_record_aggregate2(stmt, nops, struct_map)

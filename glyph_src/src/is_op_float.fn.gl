@@ -1,0 +1,9 @@
+is_op_float mir_local_types op =
+  match op.okind == ok_local()
+    true -> match mir_local_types[op.oval] == 3
+      true -> 1
+      _ -> 0
+    _ -> match op.okind == ok_const_float()
+      true -> 1
+      _ -> 0
+

@@ -1,0 +1,9 @@
+mcp_tool_sql db_path id pool args =
+  query = json_get_str(pool, args, "query")
+  db = glyph_db_open(db_path)
+  rows = glyph_db_query_rows(db, query)
+  glyph_db_close(db)
+  rp = []
+  arr = jb_arr(rp)
+  mcp_fmt_sql_loop(rp, arr, rows, 0, glyph_array_len(rows))
+  mcp_text_result(id, json_gen(rp, arr))

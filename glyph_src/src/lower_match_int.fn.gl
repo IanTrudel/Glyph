@@ -1,0 +1,11 @@
+lower_match_int ctx ast arms scrutinee result merge i pat_node =
+  match_block = mir_new_block(ctx)
+  next_block = mir_new_block(ctx)
+  cmp = mir_alloc_local(ctx, "")
+  mir_emit_binop(ctx, cmp, mir_eq(), scrutinee, mk_op_int(pat_node.ival))
+  mir_terminate(ctx, mk_term_branch(mk_op_local(cmp), match_block, next_block))
+  mir_switch_block(ctx, match_block)
+  lower_guard_body(ctx, ast, arms, result, merge, i, next_block)
+  mir_switch_block(ctx, next_block)
+  lower_match_arms(ctx, ast, arms, scrutinee, result, merge, i + 3)
+

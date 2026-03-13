@@ -1,0 +1,6 @@
+mir_pp_stmts stmts i =
+  n = glyph_array_len(stmts)
+  match i >= n
+    true -> ""
+    _ -> s3(mir_pp_stmt(stmts[i]), "\n", mir_pp_stmts(stmts, i + 1))
+

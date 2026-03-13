@@ -1,0 +1,8 @@
+fv_is_seen name seen i =
+  match i >= glyph_array_len(seen)
+    true -> 0
+    _ ->
+      match glyph_str_eq(seen[i], name) == 1
+        true -> 1
+        _ -> fv_is_seen(name, seen, i + 1)
+

@@ -1,0 +1,6 @@
+lower_pipe ctx ast node =
+  left = lower_expr(ctx, ast, node.n1)
+  right = lower_callee_expr(ctx, ast, node.n2)
+  dest = mir_alloc_local(ctx, "")
+  mir_emit_call(ctx, dest, right, [left])
+  mk_op_local(dest)

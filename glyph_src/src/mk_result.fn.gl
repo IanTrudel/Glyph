@@ -1,0 +1,1 @@
+mk_result node pos = {node: node, pos: pos, pr_err: ""}

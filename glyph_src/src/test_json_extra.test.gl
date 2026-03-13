@@ -1,0 +1,29 @@
+test_json_extra u =
+  pool = []
+  toks = json_tokenize(r"""{"a":1,"b":"hi","c":null,"d":false}""")
+  pr = json_parse(r"""{"a":1,"b":"hi","c":null,"d":false}""", toks, 0, pool)
+  assert_eq(pool[pr.node].tag, jn_object())
+  val_a = json_get(pool, pr.node, "a")
+  assert_eq(pool[val_a].tag, jn_int())
+  assert_eq(pool[val_a].nval, 1)
+  val_b = json_get(pool, pr.node, "b")
+  assert_eq(pool[val_b].tag, jn_str())
+  val_c = json_get(pool, pr.node, "c")
+  assert_eq(pool[val_c].tag, jn_null())
+  pool2 = []
+  toks2 = json_tokenize("[1,2,3]")
+  pr2 = json_parse("[1,2,3]", toks2, 0, pool2)
+  alen = json_arr_len(pool2, pr2.node)
+  assert_eq(alen, 3)
+  e0 = json_arr_get(pool2, pr2.node, 0)
+  assert_eq(pool2[e0].nval, 1)
+  pool3 = []
+  gen_arr = jb_arr(pool3)
+  jb_push(pool3, gen_arr, jb_str(pool3, "x"))
+  jb_push(pool3, gen_arr, jb_null(pool3))
+  jb_push(pool3, gen_arr, jb_bool(pool3, 0))
+  r3 = json_gen(pool3, gen_arr)
+  assert(str_contains(r3, "null"))
+  assert(str_contains(r3, "false"))
+  0
+

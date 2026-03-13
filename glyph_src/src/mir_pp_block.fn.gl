@@ -1,0 +1,5 @@
+mir_pp_block mir bi =
+  stmts = mir_pp_stmts(mir.fn_blocks_stmts[bi], 0)
+  term = mir_pp_term(mir.fn_blocks_terms[bi])
+  s4("  bb", itos(bi), ":\n", s2(stmts, term))
+
