@@ -11,6 +11,7 @@
 glyph0
 glyph1
 /glyph
+examples/hello/hello
 examples/calculator/calc
 examples/life/life
 examples/glint/glint
