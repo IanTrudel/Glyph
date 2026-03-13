@@ -18,12 +18,19 @@ rule cargo_build
 
 build glyph0: cargo_build | Cargo.toml Cargo.lock
 
-# Stage 1: glyph0 compiles all gen=2 definitions via Cranelift → glyph1
+# Stage 0.5: reconstruct glyph.glyph from src/ (explicit: ninja reconstruct)
+rule db_import
+  command = ./glyph0 import src glyph.glyph
+  description = glyph0 importing src/ → glyph.glyph
+
+build reconstruct: db_import | glyph0
+
+# Stage 1: glyph0 compiles glyph.glyph (auto-importing from src/ if missing)
 rule db_refresh
-  command = ./glyph0 build glyph.glyph --full --gen=2 2>&1 && mv glyph glyph1
+  command = ([ -f glyph.glyph ] || ./glyph0 import src glyph.glyph) && ./glyph0 build glyph.glyph --full --gen=2 2>&1 && mv glyph glyph1
   description = glyph0 compiling glyph.glyph (gen=2) → glyph1
 
-build glyph1: db_refresh | glyph0 glyph.glyph
+build glyph1: db_refresh | glyph0
 
 # Stage 2: glyph1 rebuilds itself via C codegen → final 'glyph' binary
 rule self_build

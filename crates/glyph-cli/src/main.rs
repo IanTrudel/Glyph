@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 mod build;
+mod import;
 
 #[derive(Parser)]
 #[command(name = "glyph", version, about = "The Glyph compiler")]
@@ -47,6 +48,13 @@ enum Command {
         #[arg(long = "gen", default_value = "1")]
         target_gen: i64,
     },
+    /// Import definitions from a split source directory into a .glyph database
+    Import {
+        /// Path to the source directory (containing src/ and schema.sql)
+        src_dir: PathBuf,
+        /// Path to the .glyph file to create
+        db_path: PathBuf,
+    },
     /// Run all test definitions
     Test {
         /// Path to the .glyph file
@@ -65,6 +73,7 @@ fn main() -> miette::Result<()> {
         Command::Build { path, full, emit_mir, target_gen } => build::cmd_build(&path, full, emit_mir, target_gen),
         Command::Run { path, target_gen } => cmd_run(&path, target_gen),
         Command::Check { path, target_gen } => build::cmd_check(&path, target_gen),
+        Command::Import { src_dir, db_path } => import::cmd_import(&src_dir, &db_path),
         Command::Test { path, target_gen } => cmd_test(&path, target_gen),
     }
 }
