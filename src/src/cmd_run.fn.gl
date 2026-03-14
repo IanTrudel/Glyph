@@ -2,8 +2,12 @@ cmd_run argv argc =
   match argc >= 3
     true ->
       output = "/tmp/glyph_run_tmp"
-      compile_db(argv[2], output)
+      gen_flag = find_flag(argv, "--gen", 3)
+      gen_str = match glyph_str_len(gen_flag) > 0
+        true -> gen_flag
+        _ -> "1"
+      compile_db(argv[2], output, 0, gen_str)
       glyph_system(output)
     _ ->
-      eprintln("Usage: glyph run <db>")
+      eprintln("Usage: glyph run <db> [--gen N]")
       1

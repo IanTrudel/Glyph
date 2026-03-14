@@ -2,9 +2,13 @@ cmd_test argv argc =
   match argc >= 3
     true ->
       db_path = argv[2]
+      gen_flag = find_flag(argv, "--gen", 3)
+      gen_str = match glyph_str_len(gen_flag) > 0
+        true -> gen_flag
+        _ -> "1"
       db = glyph_db_open(db_path)
-      test_names = read_test_names(db)
-      test_sources = read_test_defs(db)
+      test_names = read_test_names_gen(db, gen_str)
+      test_sources = read_test_defs_gen(db, gen_str)
       n = glyph_array_len(test_names)
       match n == 0
         true ->
@@ -12,16 +16,33 @@ cmd_test argv argc =
           println("0 tests found")
           0
         _ ->
-          fn_sources = read_fn_defs(db)
+          fn_sources = read_fn_defs_gen(db, gen_str)
           externs = read_externs(db)
+          type_rows = read_type_defs_gen(db, gen_str)
           glyph_db_close(db)
+          struct_map = build_struct_map(type_rows)
           println(s3("Compiling ", itos(n), " tests..."))
           bin_path = "/tmp/glyph_test_bin"
-          build_test_program(fn_sources, test_sources, test_names, externs, bin_path)
-          cmd = match argc >= 4
-            true -> s3(bin_path, " ", join_args(argv, 3, argc))
+          mode = match has_flag(argv, "--debug", 3) == 1
+            true -> 1
+            _ -> match has_flag(argv, "--release", 3) == 1
+              true -> 2
+              _ -> 0
+          cover_flag = has_flag(argv, "--cover", 3)
+          cover_path = match cover_flag == 1
+            true -> s2(db_path, ".cover")
+            _ -> ""
+          build_test_program(fn_sources, test_sources, test_names, externs, bin_path, struct_map, mode, cover_path)
+          test_args = filter_test_args(argv, 3, argc)
+          cmd = match glyph_array_len(test_args) > 0
+            true -> s3(bin_path, " ", join_str_arr(test_args, 0))
             _ -> bin_path
-          glyph_system(cmd)
+          result = glyph_system(cmd)
+          match cover_flag == 1
+            true ->
+              println(s2("Coverage data written to ", cover_path))
+              result
+            _ -> result
     _ ->
-      eprintln("Usage: glyph test <db> [test_name...]")
+      eprintln("Usage: glyph test <db> [test_name...] [--debug|--release] [--gen N] [--cover]")
       1

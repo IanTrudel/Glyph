@@ -1,0 +1,1 @@
+FPoint32 = {fx: f32, fy: f32}

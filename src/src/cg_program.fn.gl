@@ -1,2 +1,4 @@
-cg_program mirs =
-  s6(cg_preamble(), cg_forward_decls(mirs, 0), "\n", cg_functions(mirs, 0), "\n", cg_main_wrapper())
+cg_program mirs struct_map =
+  s7(cg_preamble(), cg_all_typedefs(struct_map), cg_forward_decls(mirs, 0), "
+", cg_functions2(mirs, 0, struct_map), "
+", cg_main_wrapper())

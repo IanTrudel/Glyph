@@ -1,0 +1,11 @@
+is_runtime_fn4 name =
+  match name
+    _ ? glyph_str_eq(name, "sin") -> 1
+    _ ? glyph_str_eq(name, "cos") -> 1
+    _ ? glyph_str_eq(name, "sqrt") -> 1
+    _ ? glyph_str_eq(name, "atan2") -> 1
+    _ ? glyph_str_eq(name, "fabs") -> 1
+    _ ? glyph_str_eq(name, "pow") -> 1
+    _ ? glyph_str_eq(name, "floor") -> 1
+    _ ? glyph_str_eq(name, "ceil") -> 1
+    _ -> 0

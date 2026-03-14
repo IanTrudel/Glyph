@@ -14,4 +14,4 @@ is_runtime_fn3 name =
     _ ? glyph_str_eq(name, "str_to_float") -> 1
     _ ? glyph_str_eq(name, "int_to_float") -> 1
     _ ? glyph_str_eq(name, "float_to_int") -> 1
-    _ -> 0
+    _ -> is_runtime_fn4(name)
