@@ -62,7 +62,6 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 glyph0 init program.glyph                     # create a new .glyph database
 glyph0 build program.glyph                    # compile dirty definitions
 glyph0 build program.glyph --full             # recompile everything
-glyph0 build program.glyph --full --gen=2     # build with gen=2 overrides
 glyph0 build program.glyph --emit-mir         # show MIR for debugging
 glyph0 run program.glyph                      # build + execute main
 glyph0 check program.glyph                    # type-check only
@@ -117,7 +116,7 @@ Incremental compilation: content-hash (BLAKE3) each definition, recompile only d
 
 ```
 Stage 0: glyph0 (Rust compiler, cargo build --release)
-    │  Compiles glyph.glyph via Cranelift with --gen=2
+    │  Compiles glyph.glyph via Cranelift
     ▼
 Stage 1: glyph (self-hosted, C codegen, ~307k binary)
     │  Compiles user .glyph programs to C → native
@@ -125,7 +124,7 @@ Stage 1: glyph (self-hosted, C codegen, ~307k binary)
 Programs: user applications
 ```
 
-Build with `ninja` (or manually: `cargo build --release && cp target/release/glyph glyph0 && ./glyph0 build glyph.glyph --full --gen=2`).
+Build with `ninja` (or manually: `cargo build --release && cp target/release/glyph glyph0 && ./glyph0 build glyph.glyph --full`).
 
 ## Core Database Schema
 
@@ -149,7 +148,6 @@ Key views: `v_dirty` (dirty + transitive dependents), `v_context` (defs sorted b
 ./glyph put program.glyph fn -f /tmp/complex_fn.gl          # from file
 ./glyph put program.glyph type -b 'Point = {x: I, y: I}'    # type definition
 ./glyph put program.glyph test -b 'test_add u = assert_eq(1+1, 2)'
-./glyph put program.glyph fn -b 'helper x = x * 2' --gen 2  # gen=2 override
 ```
 
 **Via SQL** (raw interface). Hash and tokens must be provided on INSERT:
@@ -164,11 +162,7 @@ When using the glyph-db Rust API, `insert_def()` computes hash and tokens automa
 
 ## Generational Versioning
 
-The `def` table has a `gen` column (default 1) for generational overrides:
-- `--gen=N` flag selects the highest `gen <= N` per (name, kind) pair
-- Gen=2 definitions override gen=1 when building with `--gen=2`
-- Used internally for compiler evolution (gen=2 adds struct codegen, type system enhancements)
-- Application programs typically use gen=1 only (the default)
+The `def` table has a `gen` column (default 1). The `--gen=N` flag selects the highest `gen <= N` per (name, kind) pair, allowing multiple versions of a definition to coexist. All compiler definitions are gen=1. Application programs use gen=1 (the default).
 
 ## Language Key Conventions
 

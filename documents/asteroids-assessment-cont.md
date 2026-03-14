@@ -63,15 +63,17 @@ Several other features have been added that improve the Asteroids picture:
 
 ## Remaining Gaps
 
-### Gap 4: Raw Memory / Sub-Word Writes — PARTIALLY ADDRESSED
+### Gap 4: Raw Memory / Sub-Word Writes — COMPLETE
 
 **Status**: C-layout structs handle the struct packing problem for *defined types*. A `Vertex = {x: f32, y: f32, r: f32, g: f32, b: f32}` now generates a proper 20-byte C struct.
 
-**Remaining issue**: `cg_struct_stores_typed` currently emits `(float)val` for f32 fields, where `val` is a GVal (intptr_t holding bitcast double). This casts the raw integer bits to float, not the double value. The correct emit would be `(float)_glyph_i2f(val)` — unwrap the bitcast double first, then narrow to float. **This is a bug that must be fixed before f32/f64 struct fields work correctly with float values.**
+**Both codegen bugs are fixed**:
+- Store: `__r->field = (float)_glyph_i2f(val);` ✓  (unwraps GVal bitcast before narrowing to float)
+- Load: `_glyph_f2i((double)((Glyph_X*)ptr)->field)` ✓  (widens float→double, then bitcasts to GVal)
 
-**Fix estimate**: ~1 modified definition (`cg_struct_stores_typed` — detect float field types and emit `_glyph_i2f` unwrap before the cast). Reads also need a corresponding fix to bitcast float fields back to GVal via `_glyph_f2i`.
+**Verified by `test_c_layout_f32` (gen=2)**: Creates `FPoint32 = {fx: f32, fy: f32}`, round-trips values `1.5` and `2.5`, checks addition and subtraction. All pass alongside `test_c_layout_float` (f64) and `test_c_layout_struct`.
 
-**After fix**: Vertex buffers could be defined and populated directly from Glyph:
+**Ready**: Vertex buffers can be defined and populated directly from Glyph:
 ```
 Vertex = {x: f32, y: f32, r: f32, g: f32, b: f32}
 
@@ -79,26 +81,26 @@ make_vertex px py cr cg cb =
   {x: px, y: py, r: cr, g: cg, b: cb}
 ```
 
-### Gap 5: Math Functions — STILL MISSING (now easy to add)
+### Gap 5: Math Functions — COMPLETE
 
-**Status**: No `sin`, `cos`, `sqrt`, `atan2`, `fabs`, `pow` in the runtime. No `<math.h>` include.
+**Functions added**: `sin`, `cos`, `sqrt`, `atan2`, `fabs`, `pow`, `floor`, `ceil` — all available as first-class Glyph runtime functions.
 
-**Changed situation**: With float support working, adding math functions is now straightforward. The bitcast infrastructure (`_glyph_i2f`/`_glyph_f2i`) is already emitted by `cg_runtime_float`. Math wrappers follow the same pattern:
+**Implementation** (9 definitions, 165/165 tests passing):
+- `cg_runtime_math` — new fn: emits `extern double` declarations + `glyph_sin/cos/sqrt/atan2/fabs/pow/floor/ceil` C wrappers using `_glyph_i2f`/`_glyph_f2i` bitcasting
+- `cg_runtime_full` — modified: includes `cg_runtime_math()` in the emitted runtime
+- `is_runtime_fn3` → chains to `is_runtime_fn4`; new `is_runtime_fn4` recognises all 8 names (so codegen prefixes them with `glyph_`)
+- All 4 `build_program`/`build_test_program` variants — add `-lm` linker flag
+- `test_math` (gen=2 test): verifies sin(0)=0, cos(0)=1, sqrt(4)=2, pow(2,10)=1024, fabs(-5)=5, floor(3.9)=3, ceil(3.1)=4, atan2(0,1)=0
 
-```c
-GVal glyph_sin(GVal v) { return _glyph_f2i(sin(_glyph_i2f(v))); }
-GVal glyph_cos(GVal v) { return _glyph_f2i(cos(_glyph_i2f(v))); }
-GVal glyph_sqrt(GVal v) { return _glyph_f2i(sqrt(_glyph_i2f(v))); }
-GVal glyph_atan2(GVal y, GVal x) { return _glyph_f2i(atan2(_glyph_i2f(y), _glyph_i2f(x))); }
-GVal glyph_fabs(GVal v) { return _glyph_f2i(fabs(_glyph_i2f(v))); }
-GVal glyph_pow(GVal b, GVal e) { return _glyph_f2i(pow(_glyph_i2f(b), _glyph_i2f(e))); }
-GVal glyph_floor(GVal v) { return _glyph_f2i(floor(_glyph_i2f(v))); }
-GVal glyph_ceil(GVal v) { return _glyph_f2i(ceil(_glyph_i2f(v))); }
+**Usage in Glyph**:
+```
+angle = atan2(vy, vx)
+speed = sqrt(vx * vx + vy * vy)
+nx = cos(angle)
+ny = sin(angle)
 ```
 
-**Fix estimate**: 1 new definition (`cg_runtime_math`), 1 modified (`cg_runtime_full` to include it), 1 modified (`is_runtime_fn` chain — add `is_runtime_fn10` for math names), add `-lm` linker flag. ~3 definitions total.
-
-**Workaround (available now)**: Write a C wrapper file with the above functions and link it manually. This works today since float bitcasting is functional.
+**Key discovery**: MCP `put_def` tool encodes `\\n` in parameters as two backslashes + n (literal `\\n` stored in DB), while Glyph string literals need single `\n` (one backslash + n) to produce real newlines via `process_escapes`. Always use `\n` (not `\\n`) in MCP put_def bodies for runtime C code newlines.
 
 ### Gap 6: C Callback Interop — STILL REQUIRES TRAMPOLINES
 

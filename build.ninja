@@ -1,7 +1,7 @@
 # Glyph build system
 #
 # Bootstrap chain (3-stage):
-#   glyph0       (Rust/Cranelift)  compiles gen=2 definitions → glyph1
+#   glyph0       (Rust/Cranelift)  compiles glyph.glyph → glyph1
 #   glyph1       (Cranelift)       self-builds via C codegen → glyph
 #   glyph        (self-hosted/C)   final binary, can rebuild itself
 #
@@ -31,14 +31,14 @@ build reconstruct: db_import | glyph0
 
 # Stage 1: glyph0 compiles glyph.glyph (auto-importing from src/ if missing)
 rule db_refresh
-  command = ([ -f glyph.glyph ] || ./glyph0 import src glyph.glyph) && ./glyph0 build glyph.glyph --full --gen=2 2>&1 && mv glyph glyph1
-  description = glyph0 compiling glyph.glyph (gen=2) → glyph1
+  command = ([ -f glyph.glyph ] || ./glyph0 import src glyph.glyph) && ./glyph0 build glyph.glyph --full 2>&1 && mv glyph glyph1
+  description = glyph0 compiling glyph.glyph → glyph1
 
 build glyph1: db_refresh | glyph0
 
 # Stage 2: glyph1 rebuilds itself via C codegen → final 'glyph' binary
 rule self_build
-  command = ./glyph1 build glyph.glyph glyph --gen 2 2>&1
+  command = ./glyph1 build glyph.glyph glyph 2>&1
   description = glyph1 self-building → glyph (C codegen)
 
 build glyph: self_build | glyph1
@@ -58,7 +58,7 @@ build rust_tests: cargo_test | glyph0
 
 # Run self-hosted test suite
 rule self_test
-  command = ./glyph test glyph.glyph --gen 2 2>&1
+  command = ./glyph test glyph.glyph 2>&1
   description = Running self-hosted tests
 
 build self_tests: self_test | glyph
@@ -68,7 +68,7 @@ build test: phony rust_tests self_tests
 
 # Run self-hosted compiler tests with coverage instrumentation
 rule cover_test
-  command = ./glyph test glyph.glyph --gen 2 --cover 2>&1
+  command = ./glyph test glyph.glyph --cover 2>&1
   description = Running self-hosted tests with coverage
 
 build glyph.glyph.cover: cover_test | glyph
