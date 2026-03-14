@@ -234,7 +234,7 @@ cargo clean                # remove Rust build artifacts (target/)
 
 ## Contributing
 
-### GitHub issues
+### GitHub issues (RECOMMENDED)
 
 - **Feature requests** — describe new language features, standard library additions, or tooling improvements
 - **Specifications** — provide formal or informal specs for features you'd like implemented; Claude will implement them
