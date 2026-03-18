@@ -82,19 +82,87 @@ use case because:
 2. SQL queries give "module" grouping for free: `SELECT * FROM def WHERE name LIKE 'cg_%'`.
 3. No runtime or compile-time overhead.
 
+## Structural enforcement at scale
+
+The naming convention already handles discovery reasonably well today. But as a
+database grows past ~1,000–2,000 definitions, two gaps emerge:
+
+1. **Context window efficiency**: an LLM needs to include exactly the right
+   subset of definitions in its prompt — "give me the public surface of the
+   codegen subsystem" should be a single query, not pattern knowledge.
+2. **Visibility**: there is no machine-readable distinction between an entry
+   point (`cmd_build`) and an internal helper (`cg_block2`). Both are `kind='fn'`,
+   both are equally visible to queries.
+
+The `module` / `module_member` design addresses (2) via `exported`, but at the
+cost of a join table and the unsolved name-collision problem. For an LLM-native
+system, a relational design fits better than a syntactic one.
+
+### Option A — `ns` column on `def` (recommended)
+
+Add `ns TEXT` to the `def` table, populated from the name prefix (`cg`, `mcp`,
+`tc`, etc.). This can be set automatically on insert (split on first `_`) or
+explicitly overridden.
+
+```sql
+-- Public surface of the codegen subsystem
+SELECT name FROM def WHERE ns = 'cg' AND visibility = 'public'
+
+-- List all subsystems
+SELECT DISTINCT ns FROM def ORDER BY ns
+
+-- Everything an LLM needs to bootstrap a task in a given subsystem
+SELECT name, body FROM def WHERE ns = 'cg'
+```
+
+Combined with a `visibility TEXT NOT NULL DEFAULT 'public'` column (marking
+internal helpers as `'private'`), this gives a full module-equivalent picture:
+
+| Module concept | Relational equivalent |
+|---|---|
+| Module name | `def.ns` |
+| Public API | `WHERE visibility = 'public'` |
+| Internal helper | `WHERE visibility = 'private'` |
+| "Import module X" | `SELECT ... WHERE ns = 'X'` |
+| Cross-module dep check | dep table + cross-ns filter |
+
+**Why this fits LLMs better than the `module` table:**
+
+- No join required — every definition carries its own namespace.
+- SQL-as-import already works; this makes the grouping *queryable without
+  knowing the naming convention*.
+- `glyph dump --budget` can use `ns` + `visibility` to prioritise which
+  definitions to include in a token-budgeted export.
+- A linter pass (`glyph check`) can warn on calls from a `public` function in
+  one namespace into a `private` function in another.
+- No language syntax changes needed — call sites stay as bare names.
+
+### Option B — Sub-databases (federation)
+
+A `glyph link <src.glyph> <dst.glyph>` command copies exported definitions
+from `src` into `dst`, erroring on name collisions. Each logical subsystem
+lives in its own `.glyph` file. Strongest isolation, highest friction. Worth
+revisiting if subsystems need independent authorship or versioning, but
+premature for a single growing database.
+
+### Option C — SQL views as packages
+
+Define named views (`CREATE VIEW v_codegen AS SELECT * FROM def WHERE name
+LIKE 'cg_%'`). No schema changes; LLMs query views instead of `def`. Downside:
+views don't carry visibility metadata and are invisible to `glyph dump`.
+
 ## Conclusion
 
-The `module` / `module_member` tables are schema scaffolding for a grouping
-and export-visibility system that was never built. They solve the *API surface
-declaration* problem (which definitions are public?) but not the *name
-collision* problem (what happens when two libraries define the same name?).
+The `module` / `module_member` tables should be **removed**. They add schema
+confusion without providing value, and the `export_module_row` /
+`export_module_loop` compiler code that round-trips them can go with them.
 
-For Glyph's actual use case — LLMs as the sole authors and consumers,
-SQL-as-import — naming conventions are likely sufficient. A formal module
-system would add schema complexity and potentially require language changes
-(namespace syntax) without clear benefit over the current prefix convention.
+The current naming-convention approach is correct for Glyph's LLM-native use
+case, but it will need formalisation as the database grows. The recommended
+path is **Option A**: add `ns` and `visibility` columns to `def`. This promotes
+the *idea* of modules — grouping, public API, internal helpers — while keeping
+the implementation relational and SQL-queryable, which is exactly what LLMs
+work with natively.
 
-If a module system were to be added, the minimal useful increment would be:
-a `glyph link <src.glyph> <dst.glyph>` command that copies exported
-definitions from `src` into `dst`, erroring on name collisions and asking the
-caller to resolve them. No language syntax changes required.
+If cross-database composition becomes a need, the `glyph link` command
+(Option B) can be layered on top without requiring any language changes.

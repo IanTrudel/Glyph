@@ -3,7 +3,7 @@ cg_all_typedefs_loop struct_map i =
     true -> "\n"
     _ ->
       entry = struct_map[i]
-      name = entry[0]
+      name = glyph_arr_get_str(entry, 0)
       fields = entry[1]
       types = entry[2]
       body = cg_struct_fields(fields, types, 0)
@@ -11,3 +11,4 @@ cg_all_typedefs_loop struct_map i =
       rb = cg_rbrace()
       td = s7("typedef struct ", lb, " ", body, s2(rb, " Glyph_"), name, ";\n")
       s2(td, cg_all_typedefs_loop(struct_map, i + 1))
+

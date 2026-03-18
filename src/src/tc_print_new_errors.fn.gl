@@ -1,0 +1,7 @@
+tc_print_new_errors errs from =
+  match from >= glyph_array_len(errs)
+    true -> 0
+    _ ->
+      eprintln(s2("  -> ", errs[from]))
+      tc_print_new_errors(errs, from + 1)
+

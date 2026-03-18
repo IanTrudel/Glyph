@@ -1,0 +1,10 @@
+count_rv_calls stmts i =
+  match i >= glyph_array_len(stmts)
+    true -> 0
+    _ ->
+      stmt = stmts[i]
+      rest = count_rv_calls(stmts, i + 1)
+      match stmt.skind == rv_call()
+        true -> rest + 1
+        _ -> rest
+

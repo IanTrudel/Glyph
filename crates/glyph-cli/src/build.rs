@@ -605,6 +605,13 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     array_len_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern(runtime::RT_ARRAY_LEN, runtime::RT_ARRAY_LEN, &array_len_sig);
 
+    // glyph_arr_get_str(header: *void, index: i64) -> i64
+    let mut arr_get_str_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    arr_get_str_sig.params.push(AbiParam::new(types::I64));
+    arr_get_str_sig.params.push(AbiParam::new(types::I64));
+    arr_get_str_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern(runtime::RT_ARR_GET_STR, runtime::RT_ARR_GET_STR, &arr_get_str_sig);
+
     // glyph_str_to_int(str: *void) -> i64
     let mut str_to_int_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
     str_to_int_sig.params.push(AbiParam::new(types::I64));

@@ -13,6 +13,13 @@ compile_fns_parsed parsed i za_fns tc_results verbose =
         true -> compile_fn_parsed(pf, za_fns, tctx)
         _ -> compile_fn(pf.pf_src, za_fns)
       rest = compile_fns_parsed(parsed, i + 1, za_fns, tc_results, verbose)
+      match verbose
+        true -> eprintln(s2("  collect: ", pf.pf_name))
+        _ -> 0
       collect_nested_lifted(rest, mir.fn_subs, 0)
+      match verbose
+        true -> eprintln(s2("  push: ", pf.pf_name))
+        _ -> 0
       glyph_array_push(rest, mir)
       rest
+

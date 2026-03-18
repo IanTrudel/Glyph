@@ -1,0 +1,10 @@
+test_str_interp_str_type u =
+  src = r"""f u =
+  s = "world"
+  "hello {s}""""
+  mir = compile_fn(src, [])
+  stmts = mir.fn_blocks_stmts[0]
+  ncalls = count_rv_calls(stmts, 0)
+  assert_eq(ncalls, 0)
+  0
+

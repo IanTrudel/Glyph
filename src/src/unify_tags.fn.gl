@@ -18,4 +18,25 @@ unify_tags eng na nb a1 b1 =
                 _ -> match na.tag == ty_tuple()
                   true -> unify_ns(eng, na.ns, nb.ns, 0)
                   _ -> 0
-    _ -> 0 - 1
+    _ ->
+      int_like_a = match na.tag == ty_int()
+        true -> 1
+        _ -> match na.tag == ty_bool()
+          true -> 1
+          _ -> match na.tag == ty_void()
+            true -> 1
+            _ -> 0
+      int_like_b = match nb.tag == ty_int()
+        true -> 1
+        _ -> match nb.tag == ty_bool()
+          true -> 1
+          _ -> match nb.tag == ty_void()
+            true -> 1
+            _ -> 0
+      match int_like_a && int_like_b
+        true -> 0
+        _ ->
+          err = s2("type mismatch: ", s2(tc_tag_name(na.tag), s2(" vs ", tc_tag_name(nb.tag))))
+          glyph_array_push(eng.errors, err)
+          0 - 1
+

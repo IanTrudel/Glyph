@@ -1,0 +1,3 @@
+cg_runtime_arr_util =
+  s2("GVal glyph_arr_get_str(GVal arr, GVal idx) \{\n  GVal* data = (GVal*)((long long*)arr)[0];\n  return data[(long long)idx];\n}\n", "")
+

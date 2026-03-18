@@ -32,6 +32,7 @@ pub const RT_ARRAY_SET: &str = "glyph_array_set";
 pub const RT_ARRAY_POP: &str = "glyph_array_pop";
 pub const RT_STR_TO_INT: &str = "glyph_str_to_int";
 pub const RT_ARRAY_LEN: &str = "glyph_array_len";
+pub const RT_ARR_GET_STR: &str = "glyph_arr_get_str";
 pub const RT_SYSTEM: &str = "glyph_system";
 pub const RT_SB_NEW: &str = "glyph_sb_new";
 pub const RT_SB_APPEND: &str = "glyph_sb_append";
@@ -389,6 +390,13 @@ long long glyph_array_pop(void* header_ptr) {
 long long glyph_array_len(void* header_ptr) {
     long long* header = (long long*)header_ptr;
     return header[1];
+}
+
+/* Get array element as a raw GVal (for heterogeneous arrays). */
+long long glyph_arr_get_str(void* header_ptr, long long index) {
+    long long* header = (long long*)header_ptr;
+    long long* data = (long long*)header[0];
+    return data[index];
 }
 
 /* Convert string to integer. Returns the parsed integer or 0 on failure. */

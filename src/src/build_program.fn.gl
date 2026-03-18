@@ -6,23 +6,26 @@ build_program sources externs output_path struct_map mode =
       eprintln(s2(itos(n_errs), " parse error(s), aborting"))
       glyph_exit(1)
     _ -> 0
-  n_defs = glyph_array_len(parsed)
   verbose = mode == 1
-  tc_results = match n_defs < 200
-    true ->
-      eng = mk_engine()
-      register_builtins(eng)
-      tc_pre_register(eng, parsed, 0)
-      tcr = tc_infer_loop(eng, parsed, 0, [])
-      tc_report_errors(eng)
-      tcr
-    _ -> []
+  eng = mk_engine()
+  register_builtins(eng)
+  tc_pre_register(eng, parsed, 0)
+  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  tc_report_errors(eng)
+  match glyph_array_len(eng.errors) > 0
+    true -> glyph_exit(1)
+    _ -> 0
   za_fns = build_za_fns(parsed, 0, [])
   mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose)
   fix_all_field_offsets(mirs)
   fix_extern_calls(mirs, externs)
   tco_optimize(mirs)
-  c_code = cg_program(mirs, struct_map)
+  preamble = cg_preamble()
+  typedefs = cg_all_typedefs(struct_map)
+  fwds = cg_forward_decls(mirs, 0)
+  fns2 = cg_functions2(mirs, 0, struct_map)
+  main_w = cg_main_wrapper()
+  c_code = s7(preamble, typedefs, fwds, "\n", fns2, "\n", main_w)
   wrappers = cg_extern_wrappers(externs, 0)
   full_c = s5(cg_runtime_full(externs), "\n", wrappers, "\n", c_code)
   lib_flags = collect_libs(externs)

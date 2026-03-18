@@ -3,6 +3,7 @@ ffc_search tname fname struct_map i n =
     true -> ""
     _ ->
       entry = struct_map[i]
-      match glyph_str_eq(entry[0], tname) == 1
+      match glyph_str_eq(glyph_arr_get_str(entry, 0), tname) == 1
         true -> ffc_idx(fname, entry[1], entry[2], 0)
         _ -> ffc_search(tname, fname, struct_map, i + 1, n)
+

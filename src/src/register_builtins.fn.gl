@@ -16,7 +16,13 @@ register_builtins eng =
   alen_arr = subst_fresh(eng)
   alen_ty = mk_tfn(alen_arr, i, p)
   env_insert(eng, "glyph_array_len", generalize(eng, alen_ty))
-  aset_arr = subst_fresh(eng)
-  aset_ty = mk_tfn(aset_arr, mk_tfn(i, mk_tfn(i, v, p), p), p)
+  aset_elem = subst_fresh(eng)
+  aset_arr = mk_tarray(aset_elem, p)
+  aset_ty = mk_tfn(aset_arr, mk_tfn(i, mk_tfn(aset_elem, v, p), p), p)
   env_insert(eng, "glyph_array_set", generalize(eng, aset_ty))
+  ags_elem = subst_fresh(eng)
+  ags_arr = mk_tarray(ags_elem, p)
+  ags_ty = mk_tfn(ags_arr, mk_tfn(i, s, p), p)
+  env_insert(eng, "glyph_arr_get_str", generalize(eng, ags_ty))
   0
+

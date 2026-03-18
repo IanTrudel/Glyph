@@ -3,9 +3,10 @@ emit_capture_loads lam_ctx free_vars env_local i =
   match i >= n_caps
     true -> 0
     _ ->
-      cap_name = free_vars[i * 2 + 1]
+      cap_name = glyph_arr_get_str(free_vars, i * 2 + 1)
       cap_local = mir_alloc_local(lam_ctx, cap_name)
       field_name = s2("__cap", itos(i))
       mir_emit(lam_ctx, mk_stmt(cap_local, rv_field(), i + 1, field_name, mk_op_local(env_local), mk_op_nil(), []))
       mir_bind_var(lam_ctx, cap_name, cap_local)
       emit_capture_loads(lam_ctx, free_vars, env_local, i + 1)
+

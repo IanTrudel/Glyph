@@ -9,11 +9,16 @@ lower_str_interp_parts ctx ast parts i acc =
           lower_str_interp_parts(ctx, ast, parts, i + 1, acc)
         _ ->
           val = lower_expr(ctx, ast, parts[i])
-          conv = mir_alloc_local(ctx, "")
           vt = op_type(ctx, val)
-          conv_fn = match vt == 3
-            true -> "glyph_float_to_str"
-            _ -> "glyph_int_to_str"
-          mir_emit_call(ctx, conv, mk_op_func(conv_fn), [val])
-          glyph_array_push(acc, mk_op_local(conv))
+          match vt == 4
+            true ->
+              glyph_array_push(acc, val)
+            _ ->
+              conv = mir_alloc_local(ctx, "")
+              conv_fn = match vt == 3
+                true -> "glyph_float_to_str"
+                _ -> "glyph_int_to_str"
+              mir_emit_call(ctx, conv, mk_op_func(conv_fn), [val])
+              glyph_array_push(acc, mk_op_local(conv))
           lower_str_interp_parts(ctx, ast, parts, i + 1, acc)
+

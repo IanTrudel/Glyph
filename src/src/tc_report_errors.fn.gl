@@ -6,5 +6,6 @@ tc_report_errors eng =
       suffix = match nerrs > 1
         true -> "s"
         _ -> ""
-      eprintln(s3(itos(nerrs), " type warning", suffix))
+      eprintln(s3(itos(nerrs), " type error", suffix))
     _ -> 0
+
