@@ -629,15 +629,125 @@ fields. Gives an LLM the full observe-act cycle within a single MCP session.
 `tc_infer_loop` on the definition and return type errors in the same envelope. This gives LLMs
 type feedback without a full build.
 
-### Package / library system (P3, M, needs module system first)
+### Package / library system (P3, M) ✓ Prerequisite met
 
-`glyph link <lib.glyph> <app.glyph>` — copies exported definitions from `lib` into `app`,
-erroring on name collisions. New `cmd_link` definition. Requires the `ns` column (§2) to be
-in place first, so the tool knows which definitions to copy.
+The prerequisite (`ns` column) is now in place. The rest of this section is unimplemented
+design.
 
-This is the correct composition mechanism for LLMs: copy definitions by SQL query, not by
-import syntax. The LLM can then call `search_defs` or `sql` on the merged database to verify
-what was brought in.
+#### The model: a package is a `.glyph` database
+
+There is no separate manifest file, no `package.json`, no lock file. A Glyph library is
+just a `.glyph` database whose definitions happen to be useful to other programs. The
+`ns` column (§2) provides the natural unit of composition: a library exposes one or more
+namespaces; an application links in the ones it needs.
+
+Everything is public. Glyph has no `private`/`pub` distinction — LLMs don't need access
+control, they need discoverability. All definitions are visible; `ns` is for organization,
+not encapsulation.
+
+#### `glyph link <lib.glyph> <app.glyph> [--ns=NAME]`
+
+Copies definitions from `lib` into `app`. Semantics:
+
+1. Query `lib.glyph` for defs to copy. With `--ns=NAME`, filter to `ns='NAME'`; without the
+   flag, copy all non-test definitions (`kind IN ('fn','type','const')`).
+2. For each def: check whether `(name, kind)` already exists in `app.glyph`. If yes, **error
+   and abort** — the LLM must explicitly resolve the collision rather than getting a silent
+   override. This is the right default: an LLM can read the error message, inspect both defs
+   via `get_def`, and decide whether to rename or skip.
+3. Also copy `extern_` entries from `lib` (name-deduped): a library that uses SQLite carries
+   its sqlite3 extern declarations along, so the app doesn't need to re-declare them.
+4. Do NOT copy `kind='test'` definitions — tests are internal to the library.
+5. Do NOT copy `migration`, `migration_log`, or the dep table — the app rebuilds its own dep
+   graph on next `glyph build`.
+
+After linking, `glyph build app.glyph` compiles everything together. The linked defs are
+treated identically to defs written directly in the app.
+
+#### Why copy rather than import
+
+Traditional import syntax (`import lib.sort`) requires the library to be present at compile
+time at a known path, either on a search path or via a lock file. This is a significant
+operational burden: the compiler must resolve paths, check versions, handle missing deps.
+
+Copy-on-link sidesteps all of this. After `glyph link`, the app is self-contained — it has
+everything it needs in one database. `glyph build app.glyph` requires only `app.glyph`. No
+library path, no network, no lock file. The LLM can then use `search_defs` or raw `sql` to
+inspect exactly what was brought in.
+
+The tradeoff: updates to the library don't propagate automatically. Re-link to pick up
+changes. For LLM-authored programs, this is the correct tradeoff: determinism over
+auto-update.
+
+#### Transitive dependencies
+
+If `lib.glyph` has `ns='mathlib'` that calls into its own `ns='util'` helpers, linking
+`--ns=mathlib` without also pulling in `util` would produce a broken app. Two options:
+
+**Option A (simple)**: Copy all non-test defs regardless of `--ns`. The flag filters what
+the LLM *intends* to use, not what actually gets copied. Excess defs don't hurt — they're
+just additional rows.
+
+**Option B (dep-aware)**: After collecting the target `--ns` defs, walk the `dep` table
+in `lib.glyph` (which is populated because the library was built) to find all transitively
+required defs, and copy those too. Precise, but requires the library to have been built at
+least once.
+
+Option A is the right starting point. Option B can be added later when the dep table is
+reliably populated for distributed libraries.
+
+#### Namespace-filtered linking enables composability
+
+Because `ns` is now a first-class column, an LLM can assemble an application from multiple
+libraries with surgical precision:
+
+```bash
+glyph link json-lib.glyph app.glyph --ns=json
+glyph link math-lib.glyph app.glyph --ns=mathlib
+glyph link http-lib.glyph app.glyph --ns=http
+```
+
+After each link, `glyph sql app.glyph "SELECT ns, COUNT(*) FROM def GROUP BY ns"` confirms
+exactly what was brought in. This is the observable, queryable composition model that makes
+Glyph's database-as-program design concrete.
+
+#### No registry, no versioning (by design)
+
+A package registry (npm/crates.io equivalent) and semantic versioning are human toolchain
+concerns. An LLM doesn't browse a registry — it receives library paths from context or
+generates them. The `gen` column could serve as a simple library version number (the app
+links `gen=1` defs from the library; the library ships a `gen=2` update; `--gen=2` on link
+picks it up), but this is optional layering, not a prerequisite.
+
+#### Implementation: `cmd_link` (~30 defs)
+
+Core logic:
+
+```glyph
+cmd_link argv argc =
+  lib_path = argv[2]
+  app_path = argv[3]
+  ns_arg = find_flag_value(argv, "--ns", 4)
+  lib = glyph_db_open(lib_path)
+  app = glyph_db_open(app_path)
+  _ = migrate_ns_col(app)
+  rows = link_query_defs(lib, ns_arg)
+  n = glyph_array_len(rows)
+  errs = link_check_collisions(rows, app, 0, n, [])
+  match glyph_array_len(errs) > 0
+    true -> link_report_errors(errs)
+    _ ->
+      _ = link_insert_defs(rows, app, 0, n)
+      _ = link_copy_externs(lib, app)
+      println(s3("Linked ", itos(n), " definitions"))
+```
+
+`link_query_defs` issues `SELECT name,kind,body,gen,ns FROM def WHERE kind IN ('fn','type','const') [AND ns=?]`.
+`link_check_collisions` SELECTs each (name,kind) in the app, accumulates conflicts.
+`link_insert_defs` does bulk INSERT OR IGNORE (after the collision check guarantees none).
+`link_copy_externs` merges `extern_` rows by (name) uniqueness.
+
+**Effort: M. Bootstrap impact: none.**
 
 ---
 
@@ -1201,7 +1311,7 @@ These are small, high-impact changes that fix silent correctness failures:
 | Richer check_def (type errors as JSON) | **Done** | M | P2 | No |
 | Map type `{K:V}` + hash map runtime | Not implemented | M | P3 | No |
 | Windows support | Multiple blockers | M | P3 | Yes (abi.rs) |
-| `glyph link` | Missing | M | P3 | No |
+| `glyph link` (ns prereq now met) | Not implemented | M | P3 | No |
 | Generic array_sort / map / filter | Missing | M | P3 | No |
 | Lift 200-def type-check threshold | **Fixed** | L | P2 | No |
 | LLVM IR backend (`--emit=llvm`, self-compilation verified) | **Done** | L | P4 | No |
