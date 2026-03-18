@@ -645,24 +645,83 @@ Everything is public. Glyph has no `private`/`pub` distinction — LLMs don't ne
 control, they need discoverability. All definitions are visible; `ns` is for organization,
 not encapsulation.
 
+#### The naming convention IS the collision prevention mechanism
+
+This is the key insight. In Glyph's naming convention, every exported symbol is
+`namespace_localname` — `math_sort`, `util_sort`, `gui_init`, `tui_init`. These are
+**different names**. There is no collision between `math_sort` and `util_sort` because
+they are distinct strings in the `name` column.
+
+The collision problem only arises when libraries use **bare names** with no namespace
+prefix: a function literally named `sort`, `init`, `len`, `new`. Such names are forbidden
+in linkable libraries. `glyph link` rejects any library that exports defs with empty `ns`
+(i.e., names with no `_` prefix), because bare names from one library WILL collide with
+bare names from another.
+
+A library that wants to be linkable must have a chosen namespace prefix, and all its
+exported functions must begin with it: `math_`, `gui_`, `tui_`, etc. This is enforced by
+`glyph link`, not just recommended. Internal helper functions (used only within the
+library, never called across the link boundary) may be bare if they're not exported — but
+in practice they should also follow the convention.
+
+**What `glyph link` actually does for collisions**: detect `(name, kind)` duplicates. Given
+the naming convention, a `(name, kind)` collision means two libraries both exported a
+function with the *same fully-qualified name* — e.g., two different "math" libraries both
+define `math_sort`. That is a genuine conflict (same identity, different bodies), not a
+naming-convention problem. The right response is still to error: the LLM must choose one.
+
 #### `glyph link <lib.glyph> <app.glyph> [--ns=NAME]`
 
 Copies definitions from `lib` into `app`. Semantics:
 
 1. Query `lib.glyph` for defs to copy. With `--ns=NAME`, filter to `ns='NAME'`; without the
    flag, copy all non-test definitions (`kind IN ('fn','type','const')`).
-2. For each def: check whether `(name, kind)` already exists in `app.glyph`. If yes, **error
-   and abort** — the LLM must explicitly resolve the collision rather than getting a silent
-   override. This is the right default: an LLM can read the error message, inspect both defs
-   via `get_def`, and decide whether to rename or skip.
-3. Also copy `extern_` entries from `lib` (name-deduped): a library that uses SQLite carries
+2. **Reject defs with empty `ns`**: if any def to be copied has `ns=''` or `ns IS NULL`,
+   abort with "library exports bare names — add namespace prefixes before linking". This
+   enforces the convention at the gate.
+3. For each def: check whether `(name, kind)` already exists in `app.glyph`. If yes, **error
+   and abort** with the list of conflicts. At this point the names are fully qualified, so a
+   collision is a genuine semantic conflict (two definitions of the same thing), not a
+   namespace clash.
+4. Also copy `extern_` entries from `lib` (name-deduped): a library that uses SQLite carries
    its sqlite3 extern declarations along, so the app doesn't need to re-declare them.
-4. Do NOT copy `kind='test'` definitions — tests are internal to the library.
-5. Do NOT copy `migration`, `migration_log`, or the dep table — the app rebuilds its own dep
+5. Do NOT copy `kind='test'` definitions — tests are internal to the library.
+6. Do NOT copy `migration`, `migration_log`, or the dep table — the app rebuilds its own dep
    graph on next `glyph build`.
 
 After linking, `glyph build app.glyph` compiles everything together. The linked defs are
 treated identically to defs written directly in the app.
+
+#### The one remaining collision case: two libraries claiming the same prefix
+
+If lib A and lib B both chose `util` as their namespace, linking both produces
+`(name='util_sort', kind='fn')` appearing twice — a genuine `(name, kind)` collision
+despite both following the convention.
+
+The fix is `--prefix=ALIAS_`:
+
+```bash
+glyph link util-extra.glyph app.glyph --ns=util --prefix=ux_
+```
+
+This copies defs from the `util` namespace of `util-extra.glyph` and **renames them** by
+replacing their `ns_` prefix with `ALIAS_`. `util_sort` becomes `ux_sort`, `util_find`
+becomes `ux_find`, etc. The `ns` column is updated to `'ux'`.
+
+Crucially, `--prefix` also rewrites all **internal call sites** in the copied bodies via
+text substitution: any occurrence of the old prefix in a call position is replaced with
+the new one. This is feasible because Glyph bodies are stored as source text and the
+prefix is a distinctive string (`util_` with underscore). The rewrite is not parsing —
+it is string replacement of `"util_"` → `"ux_"` — which is correct as long as library
+functions don't use their own prefix as data (a reasonable constraint).
+
+```
+glyph link math-a.glyph app.glyph --ns=math          # math_sort, math_sqrt → no conflict
+glyph link math-b.glyph app.glyph --ns=math --prefix=mb_   # math_sort → mb_sort
+```
+
+This gives the LLM full control with no silent overrides: the default errors on conflict,
+and `--prefix` is the explicit escape hatch when two libraries genuinely clash.
 
 #### Why copy rather than import
 
