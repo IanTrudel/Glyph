@@ -7,4 +7,6 @@ mcp_tools_call3 db_path id pool args_idx tool_name =
         true -> mcp_tool_build(db_path, id, pool, args_idx)
         _ -> match str_eq(tool_name, "run")
           true -> mcp_tool_run(db_path, id, pool, args_idx)
-          _ -> mcp_error(id, 0 - 32602, s2("Unknown tool: ", tool_name))
+          _ -> match str_eq(tool_name, "link")
+            true -> mcp_tool_link(db_path, id, pool, args_idx)
+            _ -> mcp_error(id, 0 - 32602, s2("Unknown tool: ", tool_name))

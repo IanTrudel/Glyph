@@ -38,4 +38,10 @@ inst_type eng ti var_map =
                     true ->
                       new_ns = inst_type_ns(eng, node.ns, 0, var_map)
                       mk_ttuple(new_ns, eng.ty_pool)
-                    _ -> ti
+                    _ -> match tag == ty_map()
+                      true ->
+                        k = inst_type(eng, node.n1, var_map)
+                        v = inst_type(eng, node.n2, var_map)
+                        mk_tmap(k, v, eng.ty_pool)
+                      _ -> ti
+

@@ -1,0 +1,7 @@
+lower_map ctx ast node =
+  dest = mir_alloc_local(ctx, "")
+  mir_set_lt(ctx, dest, 6)
+  mir_emit_call(ctx, dest, mk_op_func("hm_new"), [])
+  lower_map_loop(ctx, ast, node.ns, 0, mk_op_local(dest))
+  mk_op_local(dest)
+

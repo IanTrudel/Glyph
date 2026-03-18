@@ -1,0 +1,7 @@
+link_rename_row row old_pfx new_pfx ns_new =
+  name = row[0]
+  body = row[2]
+  old_pfx_len = glyph_str_len(old_pfx)
+  new_name = s2(new_pfx, glyph_str_slice(name, old_pfx_len, glyph_str_len(name)))
+  new_body = str_replace_all(body, old_pfx, new_pfx)
+  [new_name, row[1], new_body, row[3], ns_new]

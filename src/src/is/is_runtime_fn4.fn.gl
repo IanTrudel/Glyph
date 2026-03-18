@@ -8,4 +8,5 @@ is_runtime_fn4 name =
     _ ? glyph_str_eq(name, "pow") -> 1
     _ ? glyph_str_eq(name, "floor") -> 1
     _ ? glyph_str_eq(name, "ceil") -> 1
-    _ -> 0
+    _ -> is_runtime_fn5(name)
+

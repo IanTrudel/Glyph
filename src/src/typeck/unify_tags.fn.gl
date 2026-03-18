@@ -17,7 +17,13 @@ unify_tags eng na nb a1 b1 =
                 true -> unify_records(eng, na, nb)
                 _ -> match na.tag == ty_tuple()
                   true -> unify_ns(eng, na.ns, nb.ns, 0)
-                  _ -> 0
+                  _ -> match na.tag == ty_map()
+                    true ->
+                      r1 = unify(eng, na.n1, nb.n1)
+                      match r1 < 0
+                        true -> r1
+                        _ -> unify(eng, na.n2, nb.n2)
+                    _ -> 0
     _ ->
       int_like_a = match na.tag == ty_int()
         true -> 1

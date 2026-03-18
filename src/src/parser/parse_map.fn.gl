@@ -1,0 +1,13 @@
+parse_map src tokens pos pool =
+  match cur_kind(tokens, pos) == tk_rbrace()
+    true ->
+      p2 = expect_tok(tokens, pos + 1, tk_rbrace())
+      match p2 < 0
+        true -> mk_err_msg(pos + 1, "expected '}' to close map literal")
+        _ ->
+          idx = pool_push(pool, mk_node(ex_map(), 0, "", 0 - 1, 0 - 1, 0 - 1, []))
+          mk_result(idx, p2)
+    _ ->
+      pairs = []
+      parse_map_loop(src, tokens, pos, pool, pairs)
+

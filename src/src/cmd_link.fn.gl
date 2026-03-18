@@ -1,0 +1,17 @@
+cmd_link argv argc =
+  match argc < 4
+    true ->
+      _ = eprintln("Usage: glyph link <lib.glyph> <app.glyph> [--ns=NAME] [--prefix=NEWNAME]")
+      1
+    _ ->
+      lib_path = argv[2]
+      app_path = argv[3]
+      ns_filter = find_flag(argv, "--ns", 4)
+      prefix_new = find_flag(argv, "--prefix", 4)
+      match glyph_str_len(prefix_new) > 0
+        true -> match glyph_str_len(ns_filter) == 0
+          true ->
+            _ = eprintln("error: --prefix requires --ns")
+            1
+          _ -> cmd_link_do(lib_path, app_path, ns_filter, prefix_new)
+        _ -> cmd_link_do(lib_path, app_path, ns_filter, "")

@@ -1,0 +1,5 @@
+str_replace_all s from to =
+  flen = glyph_str_len(from)
+  match flen == 0
+    true -> s
+    _ -> str_replace_loop(s, from, to, 0, glyph_str_len(s), flen, sb_new())

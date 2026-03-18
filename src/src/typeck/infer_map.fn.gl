@@ -1,0 +1,6 @@
+infer_map eng ast node =
+  k_ty = subst_fresh(eng)
+  v_ty = subst_fresh(eng)
+  infer_map_pairs(eng, ast, node.ns, k_ty, v_ty, 0)
+  mk_tmap(k_ty, v_ty, eng.ty_pool)
+

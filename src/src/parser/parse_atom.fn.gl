@@ -36,7 +36,10 @@ parse_atom src tokens pos pool =
             true -> mk_err_msg(r.pos, "expected ')'")
             _ -> mk_result(r.node, p2)
     _ ? k == tk_lbracket() -> parse_array(src, tokens, pos + 1, pool)
-    _ ? k == tk_lbrace() -> parse_record(src, tokens, pos + 1, pool)
+    _ ? k == tk_lbrace() ->
+      match cur_kind(tokens, pos + 1) == tk_lbrace()
+        true -> parse_map(src, tokens, pos + 2, pool)
+        _ -> parse_record(src, tokens, pos + 1, pool)
     _ ? k == tk_minus() ->
       inner = parse_unary(src, tokens, pos + 1, pool)
       match is_err(inner)
@@ -65,3 +68,4 @@ parse_atom src tokens pos pool =
       idx = push_simple(pool, ex_float_lit(), 0, s)
       mk_result(idx, pos + 1)
     _ -> mk_err_msg(pos, "expected expression")
+

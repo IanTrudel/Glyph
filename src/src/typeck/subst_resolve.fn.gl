@@ -36,4 +36,10 @@ subst_resolve eng ti =
                       true ->
                         resolved_body = subst_resolve(eng, n1)
                         mk_tforall(resolved_body, node.ns, eng.ty_pool)
-                      _ -> w
+                      _ -> match tag == ty_map()
+                        true ->
+                          k = subst_resolve(eng, n1)
+                          v = subst_resolve(eng, n2)
+                          mk_tmap(k, v, eng.ty_pool)
+                        _ -> w
+

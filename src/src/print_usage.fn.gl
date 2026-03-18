@@ -21,6 +21,7 @@ print_usage =
   eprintln("  extern <db> <n> <sym> <sig>   Add extern declaration")
   eprintln("  undo <db> <name> [--kind K]   Undo last change")
   eprintln("  history <db> <name> [--kind K] Show change history")
+  eprintln("  link <lib.glyph> <app.glyph> [--ns=N] [--prefix=N]  link definitions from library")
   eprintln("  migrate <target.glyph>        Apply pending migrations")
   eprintln("  mcp <db>                      Start MCP tool server")
   1

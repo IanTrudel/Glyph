@@ -12,5 +12,6 @@ tc_tag_name tag =
     _ ? tag == ty_opt() -> "?T"
     _ ? tag == ty_res() -> "!T"
     _ ? tag == ty_record() -> "\{..}"
+    _ ? tag == ty_map() -> "\{K:V}"
     _ -> "?"
 
