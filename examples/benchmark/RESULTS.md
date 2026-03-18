@@ -1,17 +1,19 @@
 # Glyph Benchmark Results
 
-Compiled with `-O2`. Glyph uses the self-hosted compiler (gen=1 C codegen). Glyph benchmarks require `ulimit -s unlimited` due to recursive implementation (no loop constructs).
+Compiled with `-O2`. Glyph/C uses gen=2 C codegen compiled by GCC. Glyph/LLVM uses the LLVM IR backend compiled by clang with LTO (`-flto`). Glyph benchmarks require `ulimit -s unlimited` due to recursive implementation (no loop constructs).
 
 ## Results
 
-| Benchmark | Glyph | C | Ratio |
-|-----------|-------|---|-------|
-| fib(35) | 61.6 ms | 19.6 ms | 3.1x |
-| sieve(1M) | 61.2 ms | 7.4 ms | 8.3x |
-| array_push(1M) | 16.4 ms | 4.2 ms | 3.9x |
-| array_sum(1M) | 9.9 ms | 0.5 ms | 21x |
-| str_concat(10k) | 17.0 ms | 1.8 ms | 9.4x |
-| str_builder(100k) | 4.3 ms | 0.05 ms | 92x |
+| Benchmark | Glyph/C | Glyph/LLVM | Pure C | C ratio | LLVM ratio |
+|-----------|---------|------------|--------|---------|------------|
+| fib(35) | 15.7 ms | 24 ms | 22 ms | **0.71x** | 1.09x |
+| sieve(1M) | 9.3 ms | 7.4 ms | 7.9 ms | 1.18x | **0.94x** |
+| array_push(1M) | 4.0 ms | 2.7 ms | 3.6 ms | 1.11x | **0.75x** |
+| array_sum(1M) | 0.75 ms | 0.52 ms | 0.63 ms | 1.19x | **0.83x** |
+| str_concat(10k) | 15 ms | 16 ms | 1.9 ms | 7.9x | 8.4x |
+| str_builder(100k) | 3.0 ms | 1.9 ms | 0.04 ms | 75x | **48x** |
+
+*Ratios relative to pure C. Values below 1.0x mean Glyph beats pure C.*
 
 ## What Each Benchmark Measures
 
@@ -24,17 +26,20 @@ Compiled with `-O2`. Glyph uses the self-hosted compiler (gen=1 C codegen). Glyp
 
 ## Analysis
 
-**Function call overhead (fib, 3.1x):** The main cost is per-call bookkeeping — updating `_glyph_current_fn`, push/pop call stack for crash reporting, and no tail-call optimization. Pure computation within a function is close to C speed.
+**Function calls (fib):** The C backend is fastest here — gen=2 TCO emits goto loops that GCC optimizes below pure C's recursive version (0.71x). The LLVM backend is 1.09x vs pure C; the `alloca`-based frame layout is less aggressively collapsed by LLVM than GCC collapses the equivalent C.
 
-**Array operations (sieve 8.3x, push 3.9x, sum 21x):** Every array access goes through a runtime function call (`glyph_array_set`, `glyph_array_len`, bounds check). C uses direct pointer arithmetic. The sum benchmark shows the worst case: a tight loop of bounds-checked reads vs raw pointer iteration.
+**Array operations (sieve, push, sum):** LLVM+LTO wins. LTO enables clang to inline `glyph_array_bounds_check`, `glyph_array_set`, and the data-pointer GEP across the runtime boundary. Without LTO these are external calls in a tight loop; with LTO they vanish. The C backend compiles runtime + user code as a single translation unit (concatenated via `cat`), so GCC already has full visibility — but LLVM's optimizer finds more vectorization opportunities once the calls are inlined.
 
-**String operations (concat 9.4x, builder 92x):** String concat allocates a new heap string per operation — the 9.4x ratio reflects malloc overhead vs C's in-place buffer. StringBuilder's 92x gap is because Glyph calls `glyph_sb_append` (a C function) per character, while the C version inlines the buffer write to a single instruction.
+**String operations (concat, builder):** Both are dominated by malloc/call overhead rather than IR quality. `str_concat` is O(n²) malloc for both backends, giving ~8x vs pure C's in-place buffer. `str_builder` is better (O(n)), but still calls `glyph_sb_append` per character — LLVM+LTO inlines this better than GCC does from C (48x vs 75x ratio).
+
+**LTO is required for the LLVM backend.** Without LTO, runtime functions remain external calls; array_sum degrades to 3ms (4x worse than pure C). With LTO, LLVM+clang inlines and vectorizes the runtime, matching or beating the C backend on array-heavy code.
 
 ## Reproduction
 
 ```bash
 cd examples/benchmark
 bash build.sh
-ulimit -s unlimited && ./benchmark    # Glyph
-./benchmark_c                         # C
+ulimit -s unlimited && ./benchmark         # Glyph/C backend
+ulimit -s unlimited && ./benchmark_llvm    # Glyph/LLVM backend (with LTO)
+./benchmark_c                              # pure C
 ```

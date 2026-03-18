@@ -1,0 +1,8 @@
+migrate_ns_col db =
+  rows = glyph_db_query_rows(db, "SELECT COUNT(*) FROM pragma_table_info('def') WHERE name='ns'")
+  cnt = rows[0]
+  match glyph_str_eq(cnt[0], "0") == 1
+    true ->
+      _ = glyph_db_exec(db, "ALTER TABLE def ADD COLUMN ns TEXT")
+      glyph_db_exec(db, "CREATE INDEX IF NOT EXISTS idx_def_ns ON def(ns)")
+    _ -> 0

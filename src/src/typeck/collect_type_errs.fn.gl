@@ -1,0 +1,6 @@
+collect_type_errs rp arr errs i =
+  match i >= glyph_array_len(errs)
+    true -> 0
+    _ ->
+      jb_push(rp, arr, jb_str(rp, errs[i]))
+      collect_type_errs(rp, arr, errs, i + 1)

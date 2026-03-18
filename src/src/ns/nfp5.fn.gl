@@ -1,0 +1,14 @@
+nfp5 p =
+  match glyph_str_eq(p, "mir") == 1
+    true -> "mir"
+    _ -> match glyph_str_eq(p, "ag") == 1
+      true -> "mir"
+      _ -> match glyph_str_eq(p, "rv") == 1
+        true -> "mir"
+        _ -> match glyph_str_eq(p, "tm") == 1
+          true -> "mir"
+          _ -> match glyph_str_eq(p, "ok") == 1
+            true -> "mir"
+            _ -> match glyph_str_eq(p, "st") == 1
+              true -> "mir"
+              _ -> nfp6(p)

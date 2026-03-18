@@ -1,0 +1,6 @@
+ll_emit_block_stmts stmts i block_id struct_map local_struct_types mir_local_types strs fn_name =
+  match i >= glyph_array_len(stmts)
+    true -> ""
+    _ ->
+      bid = block_id * 10000 + i
+      s2(ll_emit_stmt(stmts[i], bid, struct_map, local_struct_types, mir_local_types, strs, fn_name), ll_emit_block_stmts(stmts, i + 1, block_id, struct_map, local_struct_types, mir_local_types, strs, fn_name))

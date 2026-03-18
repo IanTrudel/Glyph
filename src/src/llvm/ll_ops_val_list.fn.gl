@@ -1,0 +1,10 @@
+ll_ops_val_list ops dest strs fn_name i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      pair = ll_load_operand(ops[i], dest, i + 2, strs, fn_name)
+      val = pair[1]
+      rest = ll_ops_val_list(ops, dest, strs, fn_name, i + 1)
+      match i < glyph_array_len(ops) - 1
+        true -> s3(s2("i64 ", val), ", ", rest)
+        _ -> s2("i64 ", val)

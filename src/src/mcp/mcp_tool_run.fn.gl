@@ -1,0 +1,25 @@
+mcp_tool_run db_path id pool args =
+  target_db = match str_len(json_get_str(pool, args, "db")) > 0
+    true -> json_get_str(pool, args, "db")
+    _ -> db_path
+  flags = json_get_str(pool, args, "flags")
+  flags_str = match str_len(flags) > 0
+    true -> s2(" ", flags)
+    _ -> ""
+  stdin_str = json_get_str(pool, args, "stdin")
+  self = glyph_args()[0]
+  bin_path = "/tmp/glyph_mcp_run_bin"
+  log_path = "/tmp/glyph_mcp_run.txt"
+  build_cmd = s7(self, " build ", target_db, " ", bin_path, flags_str, s3(" > ", log_path, " 2>&1"))
+  build_exit = glyph_system(build_cmd)
+  match build_exit == 0
+    true ->
+      stdin_redir = match str_len(stdin_str) > 0
+        true ->
+          _ = glyph_write_file("/tmp/glyph_mcp_stdin.txt", stdin_str)
+          " < /tmp/glyph_mcp_stdin.txt"
+        _ -> ""
+      run_cmd = s5(bin_path, stdin_redir, " >> ", log_path, " 2>&1")
+      _ = glyph_system(run_cmd)
+      mcp_text_result(id, glyph_read_file(log_path))
+    _ -> mcp_text_result(id, s2("BUILD FAILED\n", glyph_read_file(log_path)))

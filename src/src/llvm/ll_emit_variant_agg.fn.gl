@@ -1,0 +1,14 @@
+ll_emit_variant_agg stmt bid strs fn_name nops =
+  d = stmt.sdest
+  total = (nops + 1) * 8
+  disc = variant_discriminant(stmt.sstr)
+  alloc_res = s2("%valloc_", itos(bid))
+  v_ptr = s2("%vptr_", itos(bid))
+  a1 = s5("  ", alloc_res, " = call i64 @glyph_alloc(i64 ", itos(total), ")\n")
+  a2 = s5("  ", v_ptr, " = inttoptr i64 ", alloc_res, " to ptr\n")
+  dslot = s2("%dslot_", itos(bid))
+  g0 = s5("  ", dslot, " = getelementptr i64, ptr ", v_ptr, ", i64 0\n")
+  s0 = s5("  store i64 ", itos(disc), ", ptr ", dslot, "\n")
+  pay_stores = ll_variant_pay_stores(stmt.sops, bid, strs, fn_name, v_ptr, 0)
+  store = s5("  store i64 ", alloc_res, ", ptr ", ll_local(d), "\n")
+  s5(a1, a2, s2(g0, s0), pay_stores, store)

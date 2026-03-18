@@ -21,7 +21,7 @@ CREATE TABLE def (
   gen       INTEGER NOT NULL DEFAULT 1,
   created   TEXT    NOT NULL DEFAULT (datetime('now')),
   modified  TEXT    NOT NULL DEFAULT (datetime('now'))
-);
+, ns TEXT);
 
 CREATE TABLE def_history (
   id         INTEGER PRIMARY KEY,
@@ -55,17 +55,14 @@ CREATE TABLE extern_ (
   UNIQUE(name)
 );
 
+CREATE TABLE migration (id INTEGER PRIMARY KEY, name TEXT NOT NULL, sql TEXT NOT NULL);
+
+CREATE TABLE migration_log (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')));
+
 CREATE TABLE module (
   id        INTEGER PRIMARY KEY,
   name      TEXT    NOT NULL UNIQUE,
   doc       TEXT
-);
-
-CREATE TABLE module_member (
-  module_id INTEGER NOT NULL REFERENCES module(id) ON DELETE CASCADE,
-  def_id    INTEGER NOT NULL REFERENCES def(id) ON DELETE CASCADE,
-  exported  INTEGER NOT NULL DEFAULT 1,
-  PRIMARY KEY (module_id, def_id)
 );
 
 CREATE TABLE tag (
@@ -82,6 +79,8 @@ CREATE INDEX idx_def_gen ON def(gen);
 CREATE INDEX idx_def_kind ON def(kind);
 
 CREATE UNIQUE INDEX idx_def_name_kind_gen ON def(name, kind, gen);
+
+CREATE INDEX idx_def_ns ON def(ns);
 
 CREATE INDEX idx_dep_to ON dep(to_id);
 
@@ -126,7 +125,5 @@ INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('glyph_system','glyp
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('glyph_write_file','glyph_write_file',NULL,'S -> S -> I');
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('println','glyph_println',NULL,'S -> I');
 INSERT OR IGNORE INTO extern_ (name,symbol,lib,sig) VALUES ('raw_set','glyph_raw_set',NULL,'I -> I -> I -> I');
-
--- module declarations
 
 -- meta

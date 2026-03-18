@@ -1,0 +1,9 @@
+export_schema db out_dir =
+  ddl_q = "SELECT sql FROM sqlite_master WHERE type IN ('table','index','trigger') AND sql IS NOT NULL ORDER BY CASE type WHEN 'table' THEN 1 WHEN 'index' THEN 2 ELSE 3 END, name"
+  ddl_rows = glyph_db_query_rows(db, ddl_q)
+  ddl = export_ddl_loop(ddl_rows, 0, glyph_array_len(ddl_rows), "-- Glyph database schema\n\n")
+  ext_rows = glyph_db_query_rows(db, "SELECT name,symbol,lib,sig FROM extern_ ORDER BY name")
+  ext = export_extern_loop(ext_rows, 0, glyph_array_len(ext_rows), "\n-- extern declarations\n")
+  meta_rows = glyph_db_query_rows(db, "SELECT key,value FROM meta ORDER BY key")
+  meta = export_meta_loop(meta_rows, 0, glyph_array_len(meta_rows), "\n-- meta\n")
+  glyph_write_file(s2(out_dir, "/schema.sql"), s3(ddl, ext, meta))

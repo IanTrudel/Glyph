@@ -1,0 +1,7 @@
+mcp_add_tools12 pool tools =
+  p12 = jb_obj(pool)
+  jb_put(pool, p12, "db", mcp_str_prop(pool, "Path to .glyph database. Default: CLI arg"))
+  jb_put(pool, p12, "flags", mcp_str_prop(pool, "Extra build flags (e.g. '--release')"))
+  jb_put(pool, p12, "stdin", mcp_str_prop(pool, "Input to pipe to the program's stdin"))
+  jb_push(pool, tools, mcp_tool_schema(pool, "run", "Build and run a .glyph program, returning its output", p12, jb_arr(pool)))
+  0

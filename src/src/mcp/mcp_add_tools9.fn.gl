@@ -1,0 +1,7 @@
+mcp_add_tools9 pool tools =
+  rp = jb_arr(pool)
+  jb_push(pool, rp, jb_str(pool, "db"))
+  p9 = jb_obj(pool)
+  jb_put(pool, p9, "db", mcp_str_prop(pool, "Path for the new .glyph database to create"))
+  jb_push(pool, tools, mcp_tool_schema(pool, "init", "Create a new empty .glyph database", p9, rp))
+  mcp_add_tools10(pool, tools)

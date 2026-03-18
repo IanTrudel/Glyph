@@ -1,0 +1,13 @@
+ll_emit_stmt stmt bid struct_map local_struct_types mir_local_types strs fn_name =
+  k = stmt.skind
+  match k
+    _ ? k == rv_use() -> ll_emit_use(stmt, bid, strs, fn_name)
+    _ ? k == rv_binop() -> ll_emit_binop(stmt, bid, mir_local_types, strs, fn_name)
+    _ ? k == rv_unop() -> ll_emit_unop(stmt, bid, mir_local_types, strs, fn_name)
+    _ ? k == rv_call() -> ll_emit_call(stmt, bid, strs, fn_name)
+    _ ? k == rv_field() -> ll_emit_field(stmt, bid, local_struct_types, struct_map, mir_local_types, strs, fn_name)
+    _ ? k == rv_index() -> ll_emit_index(stmt, bid, strs, fn_name)
+    _ ? k == rv_aggregate() -> ll_emit_aggregate(stmt, bid, struct_map, strs, fn_name)
+    _ ? k == rv_str_interp() -> ll_emit_str_interp(stmt, bid, strs, fn_name)
+    _ ? k == rv_make_closure() -> ll_emit_closure(stmt, bid, strs, fn_name)
+    _ -> s3("  ; unknown rvalue kind ", itos(k), "\n")

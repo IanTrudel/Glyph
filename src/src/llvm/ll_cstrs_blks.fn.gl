@@ -1,0 +1,6 @@
+ll_cstrs_blks blocks i strs =
+  match i >= glyph_array_len(blocks)
+    true -> 0
+    _ ->
+      ll_collect_strs_stmts(blocks[i], 0, strs)
+      ll_cstrs_blks(blocks, i + 1, strs)

@@ -1,0 +1,6 @@
+ns_find_under name i =
+  match i >= glyph_str_len(name)
+    true -> -1
+    _ -> match glyph_str_char_at(name, i) == 95
+      true -> i
+      _ -> ns_find_under(name, i + 1)

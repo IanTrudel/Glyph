@@ -1,0 +1,39 @@
+build_program_llvm sources externs output_path struct_map mode =
+  parsed = parse_all_fns(sources, 0)
+  n_errs = check_parse_errors(parsed)
+  match n_errs > 0
+    true ->
+      eprintln(s2(itos(n_errs), " parse error(s), aborting"))
+      glyph_exit(1)
+    _ -> 0
+  verbose = mode == 11
+  eng = mk_engine()
+  register_builtins(eng)
+  tc_pre_register(eng, parsed, 0)
+  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  tc_report_errors(eng)
+  match glyph_array_len(eng.errors) > 0
+    true -> glyph_exit(1)
+    _ -> 0
+  za_fns = build_za_fns(parsed, 0, [])
+  mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose)
+  fix_all_field_offsets(mirs)
+  fix_extern_calls(mirs, externs)
+  tco_optimize(mirs)
+  ll_code = cg_llvm_program(mirs, struct_map, externs)
+  ll_path = "/tmp/glyph_out.ll"
+  glyph_write_file(ll_path, ll_code)
+  wrappers = cg_extern_wrappers(externs, 0)
+  runtime_c = s3(cg_runtime_full(externs), "\n", wrappers)
+  rt_path = "/tmp/glyph_runtime.c"
+  glyph_write_file(rt_path, runtime_c)
+  lib_flags = collect_libs(externs)
+  clang_base = "clang -w -Wno-int-conversion -Wno-incompatible-pointer-types"
+  opt_flags = match mode == 11
+    true -> "-O0 -g"
+    _ -> match mode == 12
+      true -> "-O2 -flto"
+      _ -> "-O1 -flto"
+  link_flags = s3(" -lm", lib_flags, s2(" ", opt_flags))
+  glyph_system(s7(clang_base, " ", rt_path, " ", ll_path, s3(" -o ", output_path, " -no-pie"), link_flags))
+  mirs

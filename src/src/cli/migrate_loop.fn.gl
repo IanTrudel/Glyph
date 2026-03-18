@@ -1,0 +1,20 @@
+migrate_loop tgt_db rows i applied skipped =
+  match i >= glyph_array_len(rows)
+    true ->
+      result = []
+      _ = glyph_array_push(result, applied)
+      _ = glyph_array_push(result, skipped)
+      result
+    _ ->
+      row = rows[i]
+      id_str = glyph_arr_get_str(row, 0)
+      name = glyph_arr_get_str(row, 1)
+      sql = glyph_arr_get_str(row, 2)
+      check = glyph_db_query_one(tgt_db, s3("SELECT id FROM migration_log WHERE id = ", id_str, ""))
+      match glyph_str_len(check) > 0
+        true -> migrate_loop(tgt_db, rows, i + 1, applied, skipped + 1)
+        _ ->
+          _ = glyph_db_exec(tgt_db, sql)
+          _ = glyph_db_exec(tgt_db, s5("INSERT INTO migration_log (id, name) VALUES (", id_str, ", '", name, "')"))
+          println(s4("  Applied migration ", id_str, ": ", name))
+          migrate_loop(tgt_db, rows, i + 1, applied + 1, skipped)

@@ -1,0 +1,7 @@
+import_slash_idx path i =
+  match i < 0
+    true -> -1
+    _ ->
+      match glyph_str_char_at(path, i) == 47
+        true -> i
+        _ -> import_slash_idx(path, i-1)

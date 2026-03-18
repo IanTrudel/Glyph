@@ -1,0 +1,8 @@
+nfp7 p =
+  match glyph_str_eq(p, "ty") == 1
+    true -> "typeck"
+    _ -> match glyph_str_eq(p, "jt") == 1
+      true -> "json"
+      _ -> match glyph_str_eq(p, "jn") == 1
+        true -> "json"
+        _ -> p

@@ -1,0 +1,9 @@
+ll_alloca_locals mir_fn i param_count =
+  match i >= mir_local_count(mir_fn)
+    true -> ""
+    _ ->
+      alloca = s5("  ", ll_local(i), " = alloca i64, align 8\n", "", "")
+      init = match i < param_count
+        true -> s5("  store i64 %p", itos(i), ", ptr ", ll_local(i), "\n")
+        _ -> ""
+      s3(alloca, init, ll_alloca_locals(mir_fn, i + 1, param_count))

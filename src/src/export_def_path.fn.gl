@@ -1,5 +1,0 @@
-export_def_path out_dir name knd gen =
-  prefix = match gen == 2
-    true -> "/src/gen2/"
-    _ -> "/src/"
-  s5(out_dir, prefix, name, ".", s2(knd, ".gl"))

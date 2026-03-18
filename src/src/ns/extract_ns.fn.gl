@@ -1,0 +1,5 @@
+extract_ns name =
+  idx = ns_find_under(name, 0)
+  match idx > 0
+    true -> ns_from_prefix(glyph_str_slice(name, 0, idx))
+    _ -> ""

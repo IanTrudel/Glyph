@@ -1,0 +1,11 @@
+ll_str_globals strs fn_name i =
+  match i >= glyph_array_len(strs)
+    true -> ""
+    _ ->
+      s = strs[i]
+      p = process_escapes(s)
+      n = glyph_str_len(p) + 1
+      esc = ll_escape_str(s)
+      gname = s4("@str_", fn_name, "_", itos(i))
+      decl = s7(gname, " = private unnamed_addr constant [", itos(n), " x i8] c\"", esc, "\\00\"\n", ll_str_globals(strs, fn_name, i + 1))
+      decl

@@ -1,0 +1,33 @@
+ll_load_operand op dest idx strs fn_name =
+  k = op.okind
+  load_nm = ll_load_name(dest, idx)
+  raw_nm = s4("%craw_", itos(dest), "_", itos(idx))
+  local_instrs = match k == ok_local()
+    true -> s5("  ", load_nm, " = load i64, ptr ", ll_local(op.oval), "\n")
+    _ -> ""
+  str_instrs = match k == ok_const_str()
+    true ->
+      si = ll_find_str_idx(strs, op.ostr, 0)
+      p = process_escapes(op.ostr)
+      n = glyph_str_len(p) + 1
+      gep_i = s7("  ", raw_nm, " = getelementptr [", itos(n), " x i8], ptr @str_", fn_name, s3("_", itos(si), ", i64 0, i64 0\n"))
+      call_i = s5("  ", load_nm, " = call i64 @glyph_cstr_to_str(ptr ", raw_nm, ")\n")
+      s2(gep_i, call_i)
+    _ -> ""
+  instrs = s2(local_instrs, str_instrs)
+  val = match k
+    _ ? k == ok_local() -> load_nm
+    _ ? k == ok_const_int() -> itos(op.oval)
+    _ ? k == ok_const_bool() ->
+      match op.oval == 0
+        true -> "0"
+        _ -> "1"
+    _ ? k == ok_const_unit() -> "0"
+    _ ? k == ok_const_float() -> s3("bitcast (double ", op.ostr, " to i64)")
+    _ ? k == ok_const_str() -> load_nm
+    _ ? k == ok_func_ref() -> s3("ptrtoint (ptr @", op.ostr, " to i64)")
+    _ -> "0"
+  result = []
+  _ = glyph_array_push(result, instrs)
+  _ = glyph_array_push(result, val)
+  result

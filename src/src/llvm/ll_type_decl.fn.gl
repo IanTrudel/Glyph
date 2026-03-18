@@ -1,0 +1,8 @@
+ll_type_decl entry =
+  name = glyph_arr_get_str(entry, 0)
+  fields = entry[1]
+  types = entry[2]
+  n = glyph_array_len(fields)
+  fields_str = ll_struct_fields(fields, types, n, 0)
+  lb = cg_lbrace()
+  s7("%Glyph_", name, " = type ", lb, " ", fields_str, " }\n")

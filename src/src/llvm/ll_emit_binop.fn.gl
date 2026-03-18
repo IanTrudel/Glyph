@@ -1,0 +1,44 @@
+ll_emit_binop stmt bid mir_local_types strs fn_name =
+  d = stmt.sdest
+  op = stmt.sival
+  f1 = is_op_float(mir_local_types, stmt.sop1)
+  f2 = is_op_float(mir_local_types, stmt.sop2)
+  is_flt = f1 == 1 || f2 == 1 || mir_local_types[d] == 3
+  p1 = ll_load_op1(stmt.sop1, bid, strs, fn_name)
+  p2 = ll_load_op2(stmt.sop2, bid, strs, fn_name)
+  v1 = p1[1]
+  v2 = p2[1]
+  tmp1 = s2("%ftmp1_", itos(bid))
+  tmp2 = s2("%ftmp2_", itos(bid))
+  res_tmp = s2("%btmp_", itos(bid))
+  zext_nm = s2("%zext_", itos(bid))
+  body = match is_flt
+    true ->
+      instr = ll_fbinop_instr(op)
+      is_cmp = ll_is_cmp_op(op)
+      fc1 = s5("  ", tmp1, " = bitcast i64 ", v1, " to double\n")
+      fc2 = s5("  ", tmp2, " = bitcast i64 ", v2, " to double\n")
+      raw = s7("  ", res_tmp, " = ", instr, " double ", tmp1, s3(", ", tmp2, "\n"))
+      out = match is_cmp == 1
+        true ->
+          zext = s5("  ", zext_nm, " = zext i1 ", res_tmp, " to i64\n")
+          store = s5("  store i64 ", zext_nm, ", ptr ", ll_local(d), "\n")
+          s2(zext, store)
+        _ ->
+          bc = s5("  ", s2("%fbc_", itos(bid)), " = bitcast double ", res_tmp, " to i64\n")
+          store = s5("  store i64 ", s2("%fbc_", itos(bid)), ", ptr ", ll_local(d), "\n")
+          s2(bc, store)
+      s5(fc1, fc2, raw, out, "")
+    _ ->
+      instr = ll_binop_instr(op)
+      is_cmp = ll_is_cmp_op(op)
+      raw = s7("  ", res_tmp, " = ", instr, " i64 ", v1, s3(", ", v2, "\n"))
+      out = match is_cmp == 1
+        true ->
+          zext = s5("  ", zext_nm, " = zext i1 ", res_tmp, " to i64\n")
+          store = s5("  store i64 ", zext_nm, ", ptr ", ll_local(d), "\n")
+          s2(zext, store)
+        _ ->
+          s5("  store i64 ", res_tmp, ", ptr ", ll_local(d), "\n")
+      s2(raw, out)
+  s4(p1[0], p2[0], body, "")

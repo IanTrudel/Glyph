@@ -1,0 +1,13 @@
+ll_fbinop_instr op =
+  match op
+    _ ? op == mir_add() -> "fadd"
+    _ ? op == mir_sub() -> "fsub"
+    _ ? op == mir_mul() -> "fmul"
+    _ ? op == mir_div() -> "fdiv"
+    _ ? op == mir_eq() -> "fcmp oeq"
+    _ ? op == mir_neq() -> "fcmp one"
+    _ ? op == mir_lt() -> "fcmp olt"
+    _ ? op == mir_gt() -> "fcmp ogt"
+    _ ? op == mir_lt_eq() -> "fcmp ole"
+    _ ? op == mir_gt_eq() -> "fcmp oge"
+    _ -> "fadd"

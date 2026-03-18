@@ -1,7 +1,7 @@
 # Glyph Compiler: Real-World Readiness Assessment
 
-> **Date**: 2026-03-17 (updated 2026-03-17)
-> **Status**: Assessment document. Type error gate completed.
+> **Date**: 2026-03-17 (updated 2026-03-18)
+> **Status**: Assessment document. Type error gate completed. LLVM IR backend complete. Namespace (`ns`) column + namespace-aware import/export complete.
 > **Data sources**: Live MCP queries to glyph.glyph, Rust crate source, benchmark results,
 > existing assessment documents (module-assessment.md, portability-assessment.md).
 
@@ -21,8 +21,8 @@ The seven areas where real-world readiness requires the most work, ordered by im
 | 1 | Type system correctness | ~~Type errors advisory-only~~; BUG-006 fixed; gate done | — | P1 ✓ |
 | 2 | Language feature completeness | Maps absent (broken); generics absent | M–XL | P2–P3 |
 | 3 | Standard library | Collections, strings, hash maps missing | M | P1 |
-| 4 | Performance | 3–92× slower than C; known root causes | S–L | P2 |
-| 5 | LLM feedback loop | Type errors not in MCP; no build/run tools | M | P2 |
+| 4 | Performance | 3–92× slower than C; Fix 3 (LLVM backend) done; Fix 1+2 pending | S–L | P2 |
+| 5 | LLM feedback loop | build/run tools, type errors in MCP: all done | M | P2 |
 | 6 | Platform support | Linux x86-64 only; macOS 2 changes away | S–M | P3 |
 | 7 | Tooling & ecosystem | MCP complete; LSP/fmt/link not started | M | P3–P4 |
 
@@ -60,9 +60,9 @@ Total: 1,139 definitions across 13 logical subsystems (`cg_`, `tc_`, `lower_`, `
   → tco_optimize (tail-call → goto transform, 11 defs)
   → cg_program (MIR → C source)      [C backend, default]
   → cc (system C compiler → native binary)
--- or, with --emit=llvm (planned):
+-- or, with --emit=llvm:
   → cg_llvm_program (MIR → LLVM IR text)
-  → clang -x ir (LLVM → native binary)
+  → clang glyph_runtime.c glyph_out.ll (LLVM → native binary)
 ```
 
 Notable: TCO exists and handles direct tail-recursive functions. All gen=2 struct codegen
@@ -298,35 +298,56 @@ needed for LLMs to benefit from monomorphization.
   state parameter; services are loops; macros are what LLMs do via `put_def`. None of these
   represent expressiveness gaps for an LLM author.
 
-### Module system
+### Module system ✓ Done
 
-The `module` / `module_member` join tables are schema-only with zero rows (MCP-confirmed) and
-should be dropped. They are a human-language concept — modules as a syntactic namespace, with
-visibility enforced at call sites. For an LLM-native system that queries definitions via SQL,
-this design is strictly worse than a flat column.
+The `module` / `module_member` tables have been dropped (migration #5). The replacement is an
+`ns TEXT` column directly on `def`, implemented and backfilled (migration #7, schema_version='7').
 
-The right replacement is an `ns TEXT` column directly on `def`, populated automatically from
-the name prefix (`cg`, `tc`, `lower_`, `mcp_`, etc.) on insert. This gives LLMs exactly what
-they need:
+**How it works:**
+- `ns` is auto-derived from the name prefix on every `put`/`mcp put_def` insert via `extract_ns`
+  → `ns_from_prefix` → `nfp2..nfp7` chain
+- Full namespace names used (e.g. `"codegen"` not `"cg"`) for import/export readability
+- Unknown prefixes fall back to the prefix word itself (e.g. `build_*` → `"build"`)
+- `migrate_ns_col` auto-adds the column to old databases on first write
+
+**Current namespace distribution in glyph.glyph (1,231 defs):**
+
+| Namespace | Count | Contents |
+|---|---|---|
+| `typeck` | 166 | type checker, type constructors (`mk_t*`), type predicates |
+| `parser` | 165 | AST constants (`ex_*`, `op_*`, `pat_*`), parser helpers, format utils |
+| `mir` | 126 | MIR constants (`ag_*`, `rv_*`, `tm_*`, `ok_*`, `st_*`, `mir_*`), MIR constructors |
+| `lower` | 115 | MIR lowering, closures, free-variable analysis |
+| `codegen` | 114 | C codegen (`cg_*`) |
+| `tokenizer` | 102 | token constants (`tk_*`), scanner/skip helpers, `mk_token` |
+| `util` | 82 | string helpers (`s2`–`s7`, `itos`, `sort_*`, `split_*`, `sql_escape`) |
+| `build` | 73 | build pipeline (`build_*`, `compile_*`, `fix_*`, `read_*_defs`) |
+| `llvm` | 65 | LLVM IR backend (`ll_*`) |
+| `json` | 64 | JSON subsystem (`json_*`, `jb_*`, `jt_*`, `jn_*`) |
+| `mcp` | 54 | MCP server (`mcp_*`) |
+| `cli` | 47 | CLI commands (`cmd_*`, `dispatch_*`, `print_*`, `dump_*`) |
+| `io` | 14 | import/export (`import_*`, `export_*`) |
+| `tco` | 12 | TCO optimizer |
+| `builtin` | 13 | built-in type helpers (`blt_*`) |
+| `ns` | 9 | namespace helpers (`ns_*`, `nfp*`, `extract_ns`) |
+| *(none)* | 5 | `main`, `AstNode`, `FPoint`, `FPoint32`, `Point2D` |
+
+**Namespace-aware import/export:**
+- `glyph export <db> <out_dir>` writes `src/<ns>/<name>.<kind>.gl` (flat `src/` for unnamespaced)
+- Gen=2 defs go in `src/<ns>/gen2/`
+- `glyph import <db> <src_dir>` reads namespace back from directory position between `src/` and filename
+- Round-trip verified: 1,223 definitions exported and re-imported with correct namespace preservation
 
 ```sql
 -- what subsystems exist?
 SELECT DISTINCT ns FROM def ORDER BY ns
 
--- everything an LLM needs to start a task in the codegen subsystem
-SELECT name, body FROM def WHERE ns = 'cg'
+-- everything needed to work on MIR lowering
+SELECT name, body FROM def WHERE ns = 'lower' ORDER BY name
 
--- everything an LLM needs to start a task in the MIR lowering subsystem
-SELECT name, body FROM def WHERE ns = 'lower'
+-- cross-namespace: MIR + codegen together
+SELECT name, body FROM def WHERE ns IN ('mir','codegen') ORDER BY ns, name
 ```
-
-This formalises what LLMs already do implicitly when they recognise `cg_` or `tc_` prefixes
-— no join, no language syntax changes, no call-site rewrites. The `glyph dump --budget`
-command can use `ns` to prioritise which definitions to export.
-
-The full analysis of options is in `module-assessment.md`.
-
-**Effort: S (`ns TEXT` column + `cmd_put` update to extract ns from name prefix). Bootstrap: none.**
 
 ---
 
@@ -470,14 +491,15 @@ bounds checks can be conditional on `GLYPH_DEBUG`. Expected improvement: array_s
 
 **Bootstrap impact: none.** Change is in the C string emitted by `cg_runtime_c`.
 
-### Fix 3 — LLVM IR backend (L)
+### Fix 3 — LLVM IR backend (L) ✓ Done
 
-See §9 for full analysis. In brief: emit `.ll` text via new `cg_llvm_*` definitions,
-invoke `clang -x ir` instead of `cc`. Primary benefit is optimization quality; secondary
-benefit is wider target coverage. No Rust changes, no LLVM library dependency on the
-build machine.
+See §9. The `--emit=llvm` flag is implemented. `cg_llvm_program` emits `.ll` text;
+`build_program_llvm` compiles via `clang glyph_runtime.c glyph_out.ll`. Verified:
+calculator, glint (SQLite + named structs), and self-compilation (`glyph build glyph.glyph
+--emit=llvm` produces a working `glyph` binary that passes `stat glyph.glyph` correctly).
+All 166 tests pass under C backend throughout. IR validated by `llvm-as`.
 
-**Bootstrap impact: none** (new glyph.glyph definitions only, no new syntax).
+**Bootstrap impact: none.**
 
 ---
 
@@ -512,17 +534,9 @@ feedback without triggering a full build.
 
 ### Gaps in the LLM feedback loop
 
-**Type errors not surfaced through MCP** (M): `tc_report_errors` emits to stderr as
-unstructured text. An LLM calling `check_def` via MCP gets parse errors as JSON but receives
-no type error information. The fix is to have `check_def` run `tc_infer_loop` on the
-definition and return type errors in the same structured JSON envelope as parse errors.
+~~**Type errors not surfaced through MCP**~~ **Done.** `mcp_tool_check_def` now runs `mk_engine` → `register_builtins` → `parse_all_fns` → `tc_pre_register` → `tc_infer_loop` after a successful parse, and returns `eng.errors` as a `type_errors` JSON array (2026-03-18). Response shape: `{valid, name}` on success; `{valid:false, name, type_errors:[...]}` on type error; `{valid:false, message, detail}` on parse error. Helper: `collect_type_errs`.
 
-**No MCP `build` or `run` tool** (M): An LLM that wants to compile and test a program must
-drop out of MCP and invoke the CLI directly. Adding `build` and `run` tools to the MCP server
-would close the loop: write definitions via `put_def`, compile via `build`, observe output via
-`run` — all within a single MCP session. The JSON subsystem and `build_program` pipeline are
-already in glyph.glyph; the new tools are wrappers that capture stdout/stderr and return them
-as JSON fields.
+~~**No MCP `build` or `run` tool**~~ **Done.** `mcp_tool_build` and `mcp_tool_run` added (2026-03-18). Both shell out to `glyph build` with stdout/stderr redirected to a temp file (avoiding JSON-RPC stream corruption), then return the captured output as a text result. `run` additionally accepts an optional `stdin` parameter (written to a temp file and piped in). `glyph_args()[0]` provides the binary path without threading argv through the MCP call chain. All flags supported via the `flags` parameter (`--release`, `--emit=llvm`, etc.). 14 MCP tools total.
 
 **`dump --budget` token ordering** (S): `dump --budget` exports definitions up to a token
 budget but iterates flatly. Adding dep-depth ordering (definitions closer to `main` get higher
@@ -627,9 +641,9 @@ what was brought in.
 
 ---
 
-## 8. Schema Versioning & Migration
+## 8. Schema Versioning & Migration ✓ Complete (2026-03-18)
 
-**Priority: P2 — Effort: M**
+**Priority: P2 — Effort: M — Status: Done**
 
 ### Problem
 
@@ -761,14 +775,24 @@ for db in examples/*/**.glyph; do ./glyph migrate "$db"; done
 ./glyph sql glyph.glyph "SELECT id, name FROM migration ORDER BY id"
 ```
 
-**Effort: M. Bootstrap impact: none** (cmd_migrate is a new glyph.glyph definition;
-migration_log added to init_schema; no glyph0 changes).
+**Implemented (2026-03-18)**:
+- `migration` + `migration_log` tables created in glyph.glyph; all 4 historical migrations
+  populated (ids 1, 4, 5, 6) and pre-marked as applied.
+- `init_schema` updated to `schema_version='6'` and includes `migration_log` for new databases.
+- `cmd_migrate` + `migrate_loop` added to glyph.glyph; `migrate` added to `dispatch_cmd2`
+  and `print_usage`.
+- MCP `migrate` tool added (`mcp_tool_migrate`, `mcp_add_tools10`, `mcp_tools_call3`);
+  takes `target` parameter, reads migrations from the MCP server's own database (`db_path`).
+- Verified: `./glyph migrate glyph.glyph` → 0 applied, 4 skipped. Fresh database → 4 applied,
+  0 skipped. Second run → 0 applied, 4 skipped (idempotent).
+
+**Effort: M. Bootstrap impact: none.**
 
 ---
 
-## 9. LLVM Backend
+## 9. LLVM Backend ✓ Complete (2026-03-18)
 
-**Priority: P4 — Effort: L**
+**Priority: P4 — Effort: L — Status: Done**
 
 ### Architecture: multiple backends, one pipeline
 
@@ -880,17 +904,49 @@ This was the right choice and should not change:
   `./glyph`. Optimization quality in that stage is irrelevant; compilation speed matters.
   Cranelift compiles fast. LLVM does not.
 
-### Implementation path
+### Implementation (complete)
 
-All work is in glyph.glyph — new `cg_llvm_*` definition family (~40–60 defs) that emit
-LLVM IR text for each MIR construct: basic blocks, SSA values, arithmetic, calls, loads,
-stores, GEPs for field access. The build pipeline gets a new mode alongside the C backend,
-selectable via a `--emit=llvm` flag on `glyph build`.
+The backend adds ~60 `ll_*` definitions to glyph.glyph covering the full MIR → LLVM IR
+translation: naming helpers, LLVM string escaping (`ll_escape_str`), string literal
+collection and global emission (`ll_collect_strs`, `ll_cstrs_terms`, `ll_str_globals`),
+struct type declarations (`ll_type_decl`, `ll_struct_fields`), module-level declares
+(`ll_runtime_declares`, `ll_extern_declares`), instruction selectors (`ll_binop_instr`,
+`ll_fbinop_instr`), operand loading (`ll_load_operand` — calls `glyph_cstr_to_str` to
+create fat pointers from string constants), all nine statement emitters (`ll_emit_use`,
+`ll_emit_binop`, `ll_emit_unop`, `ll_emit_call`, `ll_emit_index`, `ll_emit_field`,
+`ll_emit_aggregate`, `ll_emit_str_interp`, `ll_emit_closure`), terminator emission
+(`ll_emit_term`), and block/function/module assembly (`ll_emit_function`,
+`ll_emit_functions`, `cg_llvm_program`, `build_program_llvm`).
 
-The C runtime can initially be compiled separately by `clang` and linked in — no need to
-port it to LLVM IR to get the initial backend working.
+Key design decisions made during implementation:
+- **All values = `i64`** (GVal = intptr_t). Float ops use bitcast i64↔double.
+- **Locals = `alloca i64`** + explicit `br label %bb0` entry block. MIR is not SSA;
+  mem2reg promotes allocas automatically.
+- **SSA uniqueness**: `bid = block_id * 10000 + stmt_idx` for load temporaries;
+  `block_id * 10000 + 9990/9991` for terminators. Prevents duplicate value names.
+- **String constants**: `ok_const_str` emits GEP to `@str_FN_N` global, then calls
+  `glyph_cstr_to_str(ptr)` to build a fat pointer `{ptr, len}`. Raw GEP pointers are
+  not valid Glyph strings.
+- **String globals in terminators**: `ll_collect_strs` scans both statements and
+  terminators (via `ll_cstrs_terms`) — zero-arg functions like `cg_lbrace = "\{"` return
+  string constants directly from the terminator.
+- **Struct types**: `ll_struct_fields` uses the `fields` (entry[1]) count with `i64`
+  fallback when `ctypes` (entry[2]) is empty. Compact-format types like
+  `AstNode = {kind:I ival:I ...}` (no commas) produce empty ctypes arrays; the fallback
+  ensures `%Glyph_AstNode = type { i64, i64, ... }` is emitted correctly.
+- **No `ll_fn_declares`**: user functions are `define`d in the same module; emitting
+  `declare` + `define` for the same symbol is a redefinition error in LLVM IR.
+- **Mode encoding**: 0/1/2 = C default/debug/release; 10/11/12 = LLVM default/debug/release.
 
-**Effort: L. Bootstrap impact: none** (pure glyph.glyph additions; glyph0 unchanged).
+Verified:
+- `examples/calculator/calc.glyph` — basic arithmetic, string I/O, user externs ✓
+- `examples/glint/glint.glyph` — SQLite externs, named struct types (`Glyph_*` GEPs) ✓
+- `glyph build glyph.glyph --emit=llvm` — self-compilation; `/tmp/glyph_llvm stat glyph.glyph`
+  reports correct stats ✓
+- IR validated by `llvm-as` (no errors) ✓
+- All 166 C-backend tests pass throughout ✓
+
+**Bootstrap impact: none** (pure glyph.glyph additions; glyph0 unchanged).
 
 ---
 
@@ -1101,11 +1157,10 @@ These are small, high-impact changes that fix silent correctness failures:
    in `cg_runtime_c`; eliminates the 21× array-sum gap.
 8. **macOS support** — remove `-no-pie` from `build_program`/`build_test_program` and
    `linker.rs`; 2 edits.
-9. **MCP `build` / `run` / `init` tools** — closes the write→compile→observe loop within
-   a single MCP session; extends `check_def` with type error JSON output.
-10. **Schema migration system** — `migration` table in glyph.glyph, `migration_log` in all
-    databases, `glyph migrate <db>` command. Fixes schema drift in examples/ and user
-    databases without glyph0 involvement.
+9. ~~**MCP `build` / `run` / `init` tools**~~ **Done** — `mcp_tool_build`, `mcp_tool_run` added; `init` was already present. Closes the write→compile→observe loop within a single MCP session.
+10. ~~**Richer `check_def` (type errors as JSON)**~~ **Done** — `mcp_tool_check_def` runs full HM type inference after successful parse and returns `type_errors:[...]` array in the same JSON envelope.
+10. ~~**Schema migration system**~~ **Done** — `migration` + `migration_log` tables, `glyph migrate <db>`,
+    MCP `migrate` tool. `init_schema` at v6. Idempotent runner verified.
 
 ### Phase 3 — Ecosystem features (P3)
 
@@ -1122,9 +1177,9 @@ These are small, high-impact changes that fix silent correctness failures:
 
 15. **Generics / monomorphization** — `mono_*` definition family; post-type-check transform
     on existing HM output, no glyph0 changes needed. Largest single engineering investment.
-16. **LLVM IR backend** — `cg_llvm_*` definitions (~40–60); emit `.ll` text, invoke
-    `clang -x ir`. Primary gain: optimization quality. Secondary: WebAssembly + wider
-    target coverage. No glyph0 changes; `clang` replaces `cc` as the assembler. See §9.
+16. ~~**LLVM IR backend**~~ **Done** — `cg_llvm_*` definitions (~60); emits `.ll` text,
+    compiles via `clang glyph_runtime.c glyph_out.ll`. `--emit=llvm` flag on `glyph build`.
+    Self-compilation verified. See §9.
 
 ---
 
@@ -1141,15 +1196,15 @@ These are small, high-impact changes that fix silent correctness failures:
 | Inline array macros | Unoptimized | S | P2 | No |
 | macOS support | Blocked (−no-pie) | S | P3 | Yes (linker.rs) |
 | `ns` column on `def` | Not present | S | P3 | No |
-| MCP build / run / init tools | Missing | M | P2 | No |
-| Schema migration system (`glyph migrate`) | Missing | M | P2 | No |
-| Richer check_def (type errors as JSON) | Partial | M | P2 | No |
+| MCP build / run / init tools | **Done** | M | P2 | No |
+| Schema migration system (`glyph migrate`) | **Done** | M | P2 | No |
+| Richer check_def (type errors as JSON) | **Done** | M | P2 | No |
 | Map type `{K:V}` + hash map runtime | Not implemented | M | P3 | No |
 | Windows support | Multiple blockers | M | P3 | Yes (abi.rs) |
 | `glyph link` | Missing | M | P3 | No |
 | Generic array_sort / map / filter | Missing | M | P3 | No |
 | Lift 200-def type-check threshold | **Fixed** | L | P2 | No |
-| LLVM IR backend (text-format, `clang -x ir`) | Not started | L | P4 | No |
+| LLVM IR backend (`--emit=llvm`, self-compilation verified) | **Done** | L | P4 | No |
 | Generics / monomorphization | Absent | XL | P2 | No |
 | `fsm` / `srv` / `macro` | Human abstractions | — | — | — |
 | Traits / impls | **Removed** | — | — | — |

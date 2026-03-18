@@ -1,0 +1,14 @@
+ns_from_prefix p =
+  match glyph_str_eq(p, "cg") == 1
+    true -> "codegen"
+    _ -> match glyph_str_eq(p, "ll") == 1
+      true -> "llvm"
+      _ -> match glyph_str_eq(p, "tc") == 1
+        true -> "typeck"
+        _ -> match glyph_str_eq(p, "lower") == 1
+          true -> "lower"
+          _ -> match glyph_str_eq(p, "lld") == 1
+            true -> "lower"
+            _ -> match glyph_str_eq(p, "parse") == 1
+              true -> "parser"
+              _ -> nfp2(p)

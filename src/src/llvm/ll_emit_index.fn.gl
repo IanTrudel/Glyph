@@ -1,0 +1,25 @@
+ll_emit_index stmt bid strs fn_name =
+  d = stmt.sdest
+  pa = ll_load_op1(stmt.sop1, bid, strs, fn_name)
+  pi = ll_load_op2(stmt.sop2, bid, strs, fn_name)
+  arr_v = pa[1]
+  idx_v = pi[1]
+  hdr_ptr = s2("%hdr_", itos(bid))
+  len_slot = s2("%lenslot_", itos(bid))
+  len_v = s2("%len_", itos(bid))
+  data_slot = s2("%dataslot_", itos(bid))
+  data_v = s2("%datav_", itos(bid))
+  data_ptr = s2("%dataptr_", itos(bid))
+  elem_slot = s2("%elemslot_", itos(bid))
+  elem_v = s2("%elemv_", itos(bid))
+  p2p = s5("  ", hdr_ptr, " = inttoptr i64 ", arr_v, " to ptr\n")
+  len_gep = s5("  ", len_slot, " = getelementptr i64, ptr ", hdr_ptr, ", i64 1\n")
+  len_ld = s5("  ", len_v, " = load i64, ptr ", len_slot, "\n")
+  bchk = s7("  call void @glyph_array_bounds_check(i64 ", idx_v, ", i64 ", len_v, ")\n", "", "")
+  data_gep = s5("  ", data_slot, " = getelementptr i64, ptr ", hdr_ptr, ", i64 0\n")
+  data_ld = s5("  ", data_v, " = load i64, ptr ", data_slot, "\n")
+  data_p2p = s5("  ", data_ptr, " = inttoptr i64 ", data_v, " to ptr\n")
+  elem_gep = s5("  ", elem_slot, " = getelementptr i64, ptr ", data_ptr, s3(", i64 ", idx_v, "\n"))
+  elem_ld = s5("  ", elem_v, " = load i64, ptr ", elem_slot, "\n")
+  store = s5("  store i64 ", elem_v, ", ptr ", ll_local(d), "\n")
+  s5(pa[0], s2(pi[0], p2p), s4(len_gep, len_ld, bchk, data_gep), s4(data_ld, data_p2p, elem_gep, elem_ld), store)

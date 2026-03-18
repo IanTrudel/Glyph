@@ -1,0 +1,1 @@
+ll_res_name dest = s2("%res_", itos(dest))

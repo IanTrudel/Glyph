@@ -1,0 +1,15 @@
+import_path_ns path =
+  len = glyph_str_len(path)
+  sl1 = import_slash_idx(path, len-1)
+  sl2 = import_slash_idx(path, sl1-1)
+  dir_name = glyph_str_slice(path, sl2+1, sl1)
+  match glyph_str_eq(dir_name, "src") == 1
+    true -> ""
+    _ -> match glyph_str_eq(dir_name, "gen2") == 1
+      true ->
+        sl3 = import_slash_idx(path, sl2-1)
+        ns_cand = glyph_str_slice(path, sl3+1, sl2)
+        match glyph_str_eq(ns_cand, "src") == 1
+          true -> ""
+          _ -> ns_cand
+      _ -> dir_name

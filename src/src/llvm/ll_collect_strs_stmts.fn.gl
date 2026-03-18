@@ -1,0 +1,13 @@
+ll_collect_strs_stmts stmts i strs =
+  match i >= glyph_array_len(stmts)
+    true -> strs
+    _ ->
+      stmt = stmts[i]
+      _ = match stmt.sop1.okind == ok_const_str()
+        true -> glyph_array_push(strs, stmt.sop1.ostr)
+        _ -> 0
+      _ = match stmt.sop2.okind == ok_const_str()
+        true -> glyph_array_push(strs, stmt.sop2.ostr)
+        _ -> 0
+      ll_collect_strs_ops(stmt.sops, 0, strs)
+      ll_collect_strs_stmts(stmts, i + 1, strs)

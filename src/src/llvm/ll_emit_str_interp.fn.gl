@@ -1,0 +1,9 @@
+ll_emit_str_interp stmt bid strs fn_name =
+  d = stmt.sdest
+  sb_nm = s2("%sb_", itos(bid))
+  sb_call = s5("  ", sb_nm, " = call i64 @glyph_sb_new()\n", "", "")
+  appends = ll_sb_appends(stmt.sops, bid, strs, fn_name, 0)
+  res = ll_res_name(bid)
+  build_call = s5("  ", res, " = call i64 @glyph_sb_build(i64 ", sb_nm, ")\n")
+  store = s5("  store i64 ", res, ", ptr ", ll_local(d), "\n")
+  s4(sb_call, appends, build_call, store)

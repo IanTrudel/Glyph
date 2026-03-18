@@ -1,0 +1,15 @@
+ll_escape_chars s i len out =
+  match i >= len
+    true -> out
+    _ ->
+      ch = glyph_str_char_at(s, i)
+      esc = match ch
+        _ ? ch == 10 -> "\\0A"
+        _ ? ch == 9 -> "\\09"
+        _ ? ch == 13 -> "\\0D"
+        _ ? ch == 34 -> "\\22"
+        _ ? ch == 92 -> "\\5C"
+        _ ? ch == 0 -> "\\00"
+        _ ? ch >= 32 && ch < 127 -> glyph_str_slice(s, i, i + 1)
+        _ -> ll_byte_hex(ch)
+      ll_escape_chars(s, i + 1, len, s2(out, esc))

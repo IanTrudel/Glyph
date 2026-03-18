@@ -1,0 +1,12 @@
+mcp_tool_migrate db_path id pool args =
+  target = json_get_str(pool, args, "target")
+  src_db = glyph_db_open(db_path)
+  tgt_db = glyph_db_open(target)
+  _ = glyph_db_exec(tgt_db, "CREATE TABLE IF NOT EXISTS migration_log (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')))")
+  rows = glyph_db_query_rows(src_db, "SELECT id, name, sql FROM migration ORDER BY id")
+  counts = migrate_loop(tgt_db, rows, 0, 0, 0)
+  glyph_db_close(src_db)
+  glyph_db_close(tgt_db)
+  applied = counts[0]
+  skipped = counts[1]
+  mcp_text_result(id, s4("Applied: ", itos(applied), ", skipped: ", itos(skipped)))

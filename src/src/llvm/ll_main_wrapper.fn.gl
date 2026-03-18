@@ -1,0 +1,4 @@
+ll_main_wrapper u =
+  lb = cg_lbrace()
+  rb = cg_rbrace()
+  s7("define i32 @main(i32 %argc, ptr %argv) ", lb, "\n  call void @glyph_set_args(i32 %argc, ptr %argv)\n  %ret = call i64 @glyph_main()\n  %ret32 = trunc i64 %ret to i32\n  ret i32 %ret32\n", rb, "\n", "", "")

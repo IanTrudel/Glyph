@@ -1,0 +1,2 @@
+ll_load_op1 op dest strs fn_name =
+  ll_load_operand(op, dest, 0, strs, fn_name)

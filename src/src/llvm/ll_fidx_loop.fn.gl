@@ -1,0 +1,11 @@
+ll_fidx_loop tname fname struct_map i n =
+  match i >= n
+    true -> 0
+    _ ->
+      entry = struct_map[i]
+      ename = glyph_arr_get_str(entry, 0)
+      match glyph_str_eq(ename, tname) == 1
+        true ->
+          fields = entry[1]
+          alpha_rank(fields, fname)
+        _ -> ll_fidx_loop(tname, fname, struct_map, i + 1, n)

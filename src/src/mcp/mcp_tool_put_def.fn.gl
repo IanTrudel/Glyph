@@ -1,0 +1,19 @@
+mcp_tool_put_def db_path id pool args =
+  name = json_get_str(pool, args, "name")
+  kind = json_get_str(pool, args, "kind")
+  body = json_get_str(pool, args, "body")
+  gen_idx = json_get(pool, args, "gen")
+  gen = match gen_idx >= 0
+    true -> pool[gen_idx].nval
+    _ -> 1
+  ns_arg = json_get_str(pool, args, "ns")
+  ns = match glyph_str_len(ns_arg) > 0
+    true -> ns_arg
+    _ -> extract_ns(name)
+  match str_eq(kind, "fn")
+    true ->
+      vr = validate_def(body)
+      match vr.vr_ok == 0
+        true -> mcp_put_error(id, pool, body, vr)
+        _ -> mcp_do_put(db_path, id, pool, name, kind, body, gen, ns)
+    _ -> mcp_do_put(db_path, id, pool, name, kind, body, gen, ns)

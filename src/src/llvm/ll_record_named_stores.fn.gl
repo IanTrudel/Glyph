@@ -1,0 +1,12 @@
+ll_record_named_stores ops names d strs fn_name tname struct_map r_ptr i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      fname = glyph_arr_get_str(names, i)
+      fidx = ll_field_idx(tname, fname, struct_map)
+      pair = ll_load_operand(ops[i], d, i + 50, strs, fn_name)
+      slot = s3("%rslot_", itos(d), s2("_", itos(i)))
+      stype = s2("%Glyph_", tname)
+      gep = s7("  ", slot, " = getelementptr ", stype, ", ptr ", r_ptr, s5(", i32 0, i32 ", itos(fidx), "\n", "", ""))
+      st = s5("  store i64 ", pair[1], ", ptr ", slot, "\n")
+      s4(pair[0], gep, st, ll_record_named_stores(ops, names, d, strs, fn_name, tname, struct_map, r_ptr, i + 1))

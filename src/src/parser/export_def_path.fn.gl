@@ -1,0 +1,2 @@
+export_def_path out_dir name knd gen ns =
+  s2(export_def_dir(out_dir, ns, gen), s5(name, ".", knd, ".", "gl"))

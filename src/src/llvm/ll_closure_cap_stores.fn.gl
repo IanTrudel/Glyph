@@ -1,0 +1,9 @@
+ll_closure_cap_stores ops d strs fn_name clo_ptr i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      pair = ll_load_operand(ops[i], d, i + 20, strs, fn_name)
+      slot = s3("%capslot_", itos(d), s2("_", itos(i)))
+      gep = s7("  ", slot, " = getelementptr i64, ptr ", clo_ptr, ", i64 ", itos(i + 1), "\n")
+      st = s5("  store i64 ", pair[1], ", ptr ", slot, "\n")
+      s4(pair[0], gep, st, ll_closure_cap_stores(ops, d, strs, fn_name, clo_ptr, i + 1))

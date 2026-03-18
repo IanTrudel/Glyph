@@ -1,0 +1,4 @@
+ll_emit_functions mirs i struct_map =
+  match i >= glyph_array_len(mirs)
+    true -> ""
+    _ -> s2(ll_emit_function(mirs[i], struct_map), ll_emit_functions(mirs, i + 1, struct_map))

@@ -1,0 +1,3 @@
+ll_escape_str s =
+  p = process_escapes(s)
+  ll_escape_chars(p, 0, glyph_str_len(p), "")

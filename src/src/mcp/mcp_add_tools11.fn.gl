@@ -1,0 +1,7 @@
+mcp_add_tools11 pool tools =
+  p11 = jb_obj(pool)
+  jb_put(pool, p11, "db", mcp_str_prop(pool, "Path to .glyph database. Default: CLI arg"))
+  jb_put(pool, p11, "output", mcp_str_prop(pool, "Output binary path. Default: db path without .glyph extension"))
+  jb_put(pool, p11, "flags", mcp_str_prop(pool, "Extra build flags (e.g. '--release', '--emit=llvm', '--gen 2')"))
+  jb_push(pool, tools, mcp_tool_schema(pool, "build", "Compile a .glyph database to a native binary", p11, jb_arr(pool)))
+  mcp_add_tools12(pool, tools)

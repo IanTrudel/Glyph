@@ -1,0 +1,11 @@
+ll_record_anon_stores ops d strs fn_name r_ptr names i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      fname = glyph_arr_get_str(names, i)
+      idx = alpha_rank(names, fname)
+      pair = ll_load_operand(ops[i], d, i + 50, strs, fn_name)
+      slot = s3("%rslot_", itos(d), s2("_", itos(i)))
+      gep = s7("  ", slot, " = getelementptr i64, ptr ", r_ptr, ", i64 ", itos(idx), "\n")
+      st = s5("  store i64 ", pair[1], ", ptr ", slot, "\n")
+      s4(pair[0], gep, st, ll_record_anon_stores(ops, d, strs, fn_name, r_ptr, names, i + 1))

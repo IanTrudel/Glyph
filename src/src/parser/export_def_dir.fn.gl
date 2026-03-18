@@ -1,0 +1,8 @@
+export_def_dir out_dir ns gen =
+  ns_part = match glyph_str_len(ns) > 0
+    true -> s2(ns, "/")
+    _ -> ""
+  gen_part = match gen == 2
+    true -> "gen2/"
+    _ -> ""
+  s3(out_dir, "/src/", s2(ns_part, gen_part))

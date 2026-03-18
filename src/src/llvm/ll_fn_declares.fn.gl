@@ -1,0 +1,4 @@
+ll_fn_declares mirs i =
+  match i >= glyph_array_len(mirs)
+    true -> ""
+    _ -> s2(ll_fn_declare(mirs[i]), ll_fn_declares(mirs, i + 1))

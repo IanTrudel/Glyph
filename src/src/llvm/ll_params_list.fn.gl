@@ -1,0 +1,10 @@
+ll_params_list fn_params i =
+  pc = glyph_array_len(fn_params)
+  match i >= pc
+    true -> ""
+    _ ->
+      param = s2("%p", itos(i))
+      rest = ll_params_list(fn_params, i + 1)
+      match i < pc - 1
+        true -> s3(s2("i64 ", param), ", ", rest)
+        _ -> s2("i64 ", param)

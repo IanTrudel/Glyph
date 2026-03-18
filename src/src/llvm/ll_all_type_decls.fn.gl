@@ -1,0 +1,4 @@
+ll_all_type_decls struct_map i =
+  match i >= glyph_array_len(struct_map)
+    true -> ""
+    _ -> s2(ll_type_decl(struct_map[i]), ll_all_type_decls(struct_map, i + 1))

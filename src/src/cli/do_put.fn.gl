@@ -1,0 +1,36 @@
+do_put db_path kind name body gen =
+  ns = extract_ns(name)
+  db = glyph_db_open(db_path)
+  _m = migrate_history(db)
+  _n = migrate_ns_col(db)
+  use_gen = match gen > 0
+    true -> gen
+    _ ->
+      max_q = s5("SELECT MAX(gen) FROM def WHERE name='", sql_escape(name), "' AND kind='", sql_escape(kind), "'")
+      max_rows = glyph_db_query_rows(db, max_q)
+      match glyph_array_len(max_rows) > 0
+        true ->
+          rv = max_rows[0]
+          val = rv[0]
+          match glyph_str_len(val) > 0
+            true -> glyph_str_to_int(val)
+            _ -> 1
+        _ -> 1
+  gen_s = int_to_str(use_gen)
+  check_sql = s7("SELECT id, tokens FROM def WHERE name = '", sql_escape(name), "' AND kind = '", sql_escape(kind), "' AND gen=", gen_s, "")
+  existing = glyph_db_query_rows(db, check_sql)
+  n = glyph_array_len(existing)
+  _del = match n > 0
+    true ->
+      old = existing[0]
+      old_id = old[0]
+      glyph_db_exec(db, s3("DELETE FROM def WHERE id = ", old_id, ""))
+      0
+    _ -> 0
+  esc_body = sql_escape(body)
+  vals = s7("'", sql_escape(name), "', '", sql_escape(kind), "', '", esc_body, "'")
+  ins_sql = s5("INSERT INTO def (name, kind, body, hash, tokens, gen, ns) VALUES (", vals, ", zeroblob(32), 0, ", gen_s, s3(", '", sql_escape(ns), "')"))
+  glyph_db_exec(db, ins_sql)
+  glyph_db_close(db)
+  println(s3(kind, " ", name))
+  0

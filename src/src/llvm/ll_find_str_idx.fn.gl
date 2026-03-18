@@ -1,0 +1,7 @@
+ll_find_str_idx strs target i =
+  match i >= glyph_array_len(strs)
+    true -> 0
+    _ ->
+      match glyph_str_eq(strs[i], target) == 1
+        true -> i
+        _ -> ll_find_str_idx(strs, target, i + 1)
