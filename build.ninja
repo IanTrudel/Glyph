@@ -2,13 +2,13 @@
 #
 # Bootstrap chain (4-stage):
 #   glyph0       (Rust/Cranelift)  compiles glyph.glyph → glyph1
-#   glyph1       (Cranelift)       self-builds via C codegen → glyph_c
-#   glyph_c      (self-hosted/C)   re-builds via LLVM codegen → glyph
+#   glyph1       (Cranelift)       self-builds via C codegen → glyph2
+#   glyph2       (self-hosted/C)   re-builds via LLVM codegen → glyph
 #   glyph        (self-hosted/LLVM) final binary, can rebuild itself
 #
 # Targets:
 #   ninja              build self-hosted compiler (default)
-#   ninja bootstrap    full chain: cargo → glyph0 → glyph1 → glyph_c → glyph
+#   ninja bootstrap    full chain: cargo → glyph0 → glyph1 → glyph2 → glyph
 #   ninja test         run all tests (Rust + self-hosted)
 #   ninja cover        run self-hosted tests with coverage (→ glyph.glyph.cover)
 #   ninja dump         regenerate glyph.sql from glyph.glyph
@@ -37,19 +37,19 @@ rule db_refresh
 
 build glyph1: db_refresh | glyph0
 
-# Stage 2: glyph1 rebuilds itself via C codegen → glyph_c (intermediate)
+# Stage 2: glyph1 rebuilds itself via C codegen → glyph2 (intermediate)
 rule c_build
-  command = ./glyph1 build glyph.glyph glyph_c 2>&1
-  description = glyph1 self-building → glyph_c (C codegen)
+  command = ./glyph1 build glyph.glyph glyph2 2>&1
+  description = glyph1 self-building → glyph2 (C codegen)
 
-build glyph_c: c_build | glyph1
+build glyph2: c_build | glyph1
 
-# Stage 3: glyph_c re-builds via LLVM codegen → final 'glyph' binary
+# Stage 3: glyph2 re-builds via LLVM codegen → final 'glyph' binary
 rule llvm_build
-  command = ./glyph_c build glyph.glyph glyph --emit=llvm 2>&1
-  description = glyph_c re-building → glyph (LLVM codegen)
+  command = ./glyph2 build glyph.glyph glyph --emit=llvm 2>&1
+  description = glyph2 re-building → glyph (LLVM codegen)
 
-build glyph: llvm_build | glyph_c
+build glyph: llvm_build | glyph2
 
 # Default target
 default glyph
