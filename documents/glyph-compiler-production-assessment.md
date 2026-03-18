@@ -58,12 +58,16 @@ Total: 1,139 definitions across 13 logical subsystems (`cg_`, `tc_`, `lower_`, `
   → fix_all_field_offsets (type-registry disambiguation)
   → fix_extern_calls (extern name rewriting)
   → tco_optimize (tail-call → goto transform, 11 defs)
-  → cg_program (MIR → C source)
+  → cg_program (MIR → C source)      [C backend, default]
   → cc (system C compiler → native binary)
+-- or, with --emit=llvm (planned):
+  → cg_llvm_program (MIR → LLVM IR text)
+  → clang -x ir (LLVM → native binary)
 ```
 
 Notable: TCO exists and handles direct tail-recursive functions. All gen=2 struct codegen
-(`typedef struct` + `->field` access) is in the main pipeline.
+(`typedef struct` + `->field` access) is in the main pipeline. Both backends share the
+entire pipeline up to and including MIR; only the codegen stage differs.
 
 ### Benchmark results (RESULTS.md, -O2, self-hosted C codegen)
 
@@ -468,10 +472,10 @@ bounds checks can be conditional on `GLYPH_DEBUG`. Expected improvement: array_s
 
 ### Fix 3 — LLVM IR backend (L)
 
-Add a `cg_llvm_*` definition family in glyph.glyph that emits LLVM IR text format instead
-of C. LLVM IR is structurally similar to Glyph's MIR (SSA, explicit types, CFG). LLVM's
-`opt` pass would handle inlining, vectorization, and loop optimization that C codegen cannot
-easily control. This eliminates the dependency on an external C compiler.
+See §9 for full analysis. In brief: emit `.ll` text via new `cg_llvm_*` definitions,
+invoke `clang -x ir` instead of `cc`. Primary benefit is optimization quality; secondary
+benefit is wider target coverage. No Rust changes, no LLVM library dependency on the
+build machine.
 
 **Bootstrap impact: none** (new glyph.glyph definitions only, no new syntax).
 
@@ -623,7 +627,274 @@ what was brought in.
 
 ---
 
-## 8. LLM-Native Language Features
+## 8. Schema Versioning & Migration
+
+**Priority: P2 — Effort: M**
+
+### Problem
+
+Every `.glyph` database is a SQLite file with a fixed schema. As the schema evolves —
+tables added, tables dropped, columns changed — databases created at older schema versions
+accumulate drift. Currently:
+
+- `examples/` databases were created before `module`/`module_member` were dropped (v5).
+  They still carry those tables.
+- Some older databases predate the `def_history` table and triggers (v4).
+- `glyph.glyph` itself has no `meta` table and therefore no recorded `schema_version`.
+
+There is no migration mechanism. The only recourse today is manual SQL or recreating the
+database from scratch.
+
+### Design
+
+Two tables, two purposes, no name collision — including when glyph.glyph migrates itself:
+
+**`migration` table — lives in `glyph.glyph` only**
+
+Stores migration definitions. This is the source of truth for what migrations exist.
+
+```sql
+CREATE TABLE migration (
+  id   INTEGER PRIMARY KEY,  -- ordering; also the schema version after this migration
+  name TEXT NOT NULL,        -- human-readable description
+  sql  TEXT NOT NULL         -- SQL to execute on the target database
+);
+```
+
+Populated with `INSERT` statements. Adding a new migration requires no recompilation and
+no glyph0 involvement:
+
+```bash
+./glyph sql glyph.glyph "INSERT INTO migration (id, name, sql) VALUES (
+  6, 'add_ns_column', 'ALTER TABLE def ADD COLUMN ns TEXT;')"
+```
+
+**`migration_log` table — lives in every database (including glyph.glyph)**
+
+Tracks which migrations have been applied to that specific database.
+
+```sql
+CREATE TABLE IF NOT EXISTS migration_log (
+  id         INTEGER PRIMARY KEY,  -- matches migration.id
+  name       TEXT NOT NULL,
+  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+Added to `init_schema` so new databases created by `glyph init` have it from the start.
+For old databases, the migration runner creates it unconditionally as its first step
+(`CREATE TABLE IF NOT EXISTS`), which is idempotent and safe on any database.
+
+### `glyph migrate <target.glyph>`
+
+Implemented as `cmd_migrate` in glyph.glyph. Algorithm:
+
+1. Open `target.glyph`
+2. `CREATE TABLE IF NOT EXISTS migration_log (...)` — bootstrap old databases
+3. Query `glyph.glyph`'s `migration` table: `SELECT id, name, sql FROM migration ORDER BY id`
+4. For each row: check if `id` already in `target.glyph`'s `migration_log`
+5. If not applied: execute `sql` against `target.glyph`, then insert `(id, name)` into
+   `target.glyph`'s `migration_log`
+6. Report applied/skipped counts
+
+Version number after migration = highest `migration_log.id` in the target database.
+
+### Self-migration
+
+`./glyph migrate glyph.glyph` works identically — source and target are the same file.
+SQLite handles this correctly on a single connection. The two tables never collide:
+
+- `migration` (definitions, only in glyph.glyph) is read from
+- `migration_log` (applied tracking, in all databases including glyph.glyph) is written to
+
+### No glyph0 dependency
+
+The entire system lives in glyph.glyph:
+- `cmd_migrate` is a new Glyph definition
+- `migration` table populated with INSERT statements via `./glyph sql`
+- `migration_log` added to `init_schema` (one definition update)
+- `dispatch_cmd` updated to route `migrate` to `cmd_migrate`
+
+glyph0 is not involved. Adding a new migration never requires recompiling anything.
+
+### Bootstrap (one-time)
+
+glyph.glyph currently has no `migration` table and no `migration_log`. The one-time setup:
+
+```bash
+./glyph sql glyph.glyph "CREATE TABLE migration (id INTEGER PRIMARY KEY, name TEXT NOT NULL, sql TEXT NOT NULL)"
+./glyph sql glyph.glyph "CREATE TABLE migration_log (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')))"
+# populate historical migrations (see below)
+# add cmd_migrate via ./glyph put
+# rebuild: ./glyph build glyph.glyph glyph
+# self-migrate: ./glyph migrate glyph.glyph
+```
+
+After this, all future migrations are a single `./glyph sql glyph.glyph "INSERT INTO migration ..."`.
+
+### Migration history
+
+| id | name | SQL |
+|----|------|-----|
+| 1 | `create_meta` | `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, val TEXT NOT NULL)` |
+| 4 | `add_def_history` | `CREATE TABLE IF NOT EXISTS def_history (...); CREATE TRIGGER ...` |
+| 5 | `remove_module_tables` | `DROP TABLE IF EXISTS module_member; DROP TABLE IF EXISTS module` |
+| 6 | `add_migration_log` | `CREATE TABLE IF NOT EXISTS migration_log (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')))` |
+
+Migration 6 is self-referential — it creates the `migration_log` table that the runner
+would normally create as its bootstrap step. Including it in the table ensures any database
+migrated from scratch via the runner ends up with `migration_log` recorded in its own log.
+
+### Practical workflow
+
+```bash
+# migrate all examples after a schema change
+for db in examples/*/**.glyph; do ./glyph migrate "$db"; done
+
+# check what version a database is at
+./glyph sql myapp.glyph "SELECT MAX(id) FROM migration_log"
+
+# see full migration history applied to a database
+./glyph sql myapp.glyph "SELECT id, name, applied_at FROM migration_log ORDER BY id"
+
+# see all available migrations (what glyph.glyph knows about)
+./glyph sql glyph.glyph "SELECT id, name FROM migration ORDER BY id"
+```
+
+**Effort: M. Bootstrap impact: none** (cmd_migrate is a new glyph.glyph definition;
+migration_log added to init_schema; no glyph0 changes).
+
+---
+
+## 9. LLVM Backend
+
+**Priority: P4 — Effort: L**
+
+### Architecture: multiple backends, one pipeline
+
+The C backend is not replaced — it remains the default and is essential for the bootstrap
+chain. The LLVM backend is an additional codegen path, selectable via `--emit=llvm` on
+`glyph build`. Both backends share the entire pipeline up to and including MIR; only the
+final codegen and assembler invocation differ.
+
+This enables a 3-stage bootstrap chain analogous to GCC and rustc:
+
+```
+Stage 0: glyph0  (Rust / Cranelift)   -- fast, unoptimized, correctness only
+    │  ./glyph0 build glyph.glyph --full
+    ▼
+Stage 1: glyph1  (glyph / C backend)  -- self-hosted, correct
+    │  ./glyph1 build glyph.glyph --emit=llvm
+    ▼
+Stage 2: glyph   (glyph / LLVM backend) -- production compiler, fully optimized
+```
+
+glyph0 compiles glyph.glyph using Cranelift to produce glyph1. glyph1 compiles
+glyph.glyph using the LLVM backend to produce glyph — the production binary, optimized
+by LLVM's full optimizer. The C backend never goes away: it is used in stage 1 and remains
+available for environments without `clang`.
+
+**Fixed-point test**: `./glyph build glyph.glyph glyph_next --emit=llvm` should produce
+a `glyph_next` that is functionally identical to `glyph`. This confirms the LLVM backend
+is correct and self-hosting holds at stage 2.
+
+### Text-format LLVM IR
+
+LLVM IR has a human-readable text format (`.ll` files). The self-hosted `./glyph` already
+generates C as text strings and invokes `cc`. The LLVM backend follows the same pattern
+exactly — `cg_llvm_*` definitions emit `.ll` strings, and `build_program` branches on the
+backend flag:
+
+```glyph
+-- C backend (default):
+glyph_system(s5("cc ", cc_flags, " ", c_path, " -o ", output_path, ...))
+
+-- LLVM backend (--emit=llvm):
+glyph_system(s5("clang -x ir ", ll_path, " -o ", output_path, ...))
+```
+
+No Rust changes. No LLVM library on the build machine. No increase in glyph binary size.
+The only new requirement is `clang` on `PATH` (in addition to `cc`).
+
+### `clang` vs `llc`
+
+`llc` (the LLVM static compiler) compiles `.ll` files to native code, but it is part of
+the full LLVM toolchain package — not always present when only `clang` is installed:
+
+- **Linux** (`apt install clang`): `llc` may be absent; needs separate `apt install llvm`
+- **macOS** (Xcode / Apple clang): ships a stripped-down clang — `llc` typically absent
+- **Full LLVM install** (`brew install llvm`, `apt install llvm`): includes both
+
+`clang` itself compiles LLVM IR directly via `-x ir`, making it a complete drop-in for
+`llc` for this purpose. Since `clang` is far more commonly installed than the full LLVM
+tools package, the LLVM backend should use `clang` as the default assembler — consistent
+with the `CC` env var convention already used for the C backend:
+
+```glyph
+cc_cmd = match glyph_getenv("CC") / "" -> "clang" / s -> s
+glyph_system(s5(cc_cmd, " -x ir ", ll_path, " -o ", output_path, " -no-pie ..."))
+```
+
+### What LLVM actually gives Glyph
+
+**Primary benefit — optimization quality**: LLVM's optimizer (inlining, loop
+vectorization, alias analysis, SROA) substantially outperforms what any C compiler can
+infer from Glyph's current generated C. The 21× `array_sum` gap and 3.1× `fib` gap are
+partly artifacts of the C backend generating patterns that C compilers cannot optimize
+through. LLVM IR gives direct control over what the optimizer sees.
+
+**Secondary benefit — target coverage**: LLVM supports x86-64, AArch64, RISC-V, MIPS,
+PowerPC, WebAssembly, and more. Emitting `.ll` and calling `clang --target=<triple>`
+covers any LLVM target. The current C backend already supports cross-compilation via
+`CC=<cross-compiler>`, so the marginal gain in target coverage is smaller than it
+appears — but WebAssembly (`wasm32`) is a genuinely new target that the C path cannot
+reach without significant runtime porting.
+
+**Important caveats on target coverage**:
+
+- **The C runtime is still C**: `cg_runtime_c`, `cg_runtime_io`, etc. are C strings
+  compiled alongside the generated IR. They still need cross-compiling and contain
+  platform-specific code (POSIX signals, `/tmp`, `system()`) absent on targets like
+  WebAssembly. Full wasm support requires a separate runtime porting effort.
+- **`GVal` assumes 64-bit**: the entire runtime uses `intptr_t` (8 bytes). On 32-bit
+  LLVM targets (ARM Thumb, wasm32, MIPS32), `intptr_t` is 4 bytes and every array
+  header, string fat pointer, and struct layout breaks. Fixing this requires making the
+  word size an explicit parameter throughout the runtime.
+
+### Why glyph0 should not use LLVM
+
+glyph0 currently uses Cranelift — a pure Rust codegen library with no LLVM dependency.
+This was the right choice and should not change:
+
+- **Building Rust from source requires building LLVM from source.** The Rust project
+  maintains its own LLVM fork as a git submodule (`src/llvm-project`). A full bootstrap
+  build compiles LLVM, which takes 30 minutes to several hours. Adding `inkwell` or
+  `llvm-sys` to glyph0 would impose a similar burden on anyone building glyph0 from
+  source.
+- **Static LLVM linkage makes the binary large, not the output.** If LLVM were statically
+  linked into glyph0, the glyph0 binary would balloon from ~12MB to potentially 100MB+.
+  The programs compiled by glyph0 would remain lean — LLVM is a compiler tool, not
+  embedded in its output, the same way `rustc` is 100MB+ but Rust binaries are small.
+  But a 100MB glyph0 is an unacceptable bootstrap tax.
+- **Cranelift is sufficient for bootstrap.** glyph0 compiles glyph.glyph once to produce
+  `./glyph`. Optimization quality in that stage is irrelevant; compilation speed matters.
+  Cranelift compiles fast. LLVM does not.
+
+### Implementation path
+
+All work is in glyph.glyph — new `cg_llvm_*` definition family (~40–60 defs) that emit
+LLVM IR text for each MIR construct: basic blocks, SSA values, arithmetic, calls, loads,
+stores, GEPs for field access. The build pipeline gets a new mode alongside the C backend,
+selectable via a `--emit=llvm` flag on `glyph build`.
+
+The C runtime can initially be compiled separately by `clang` and linked in — no need to
+port it to LLVM IR to get the initial backend working.
+
+**Effort: L. Bootstrap impact: none** (pure glyph.glyph additions; glyph0 unchanged).
+
+---
+
+## 10. LLM-Native Language Features
 
 **Priority: design space — not current gaps**
 
@@ -832,6 +1103,9 @@ These are small, high-impact changes that fix silent correctness failures:
    `linker.rs`; 2 edits.
 9. **MCP `build` / `run` / `init` tools** — closes the write→compile→observe loop within
    a single MCP session; extends `check_def` with type error JSON output.
+10. **Schema migration system** — `migration` table in glyph.glyph, `migration_log` in all
+    databases, `glyph migrate <db>` command. Fixes schema drift in examples/ and user
+    databases without glyph0 involvement.
 
 ### Phase 3 — Ecosystem features (P3)
 
@@ -848,8 +1122,9 @@ These are small, high-impact changes that fix silent correctness failures:
 
 15. **Generics / monomorphization** — `mono_*` definition family; post-type-check transform
     on existing HM output, no glyph0 changes needed. Largest single engineering investment.
-16. **LLVM IR backend** — `cg_llvm_*` definitions; eliminates C compiler dependency,
-    enables LLVM optimization passes.
+16. **LLVM IR backend** — `cg_llvm_*` definitions (~40–60); emit `.ll` text, invoke
+    `clang -x ir`. Primary gain: optimization quality. Secondary: WebAssembly + wider
+    target coverage. No glyph0 changes; `clang` replaces `cc` as the assembler. See §9.
 
 ---
 
@@ -867,13 +1142,14 @@ These are small, high-impact changes that fix silent correctness failures:
 | macOS support | Blocked (−no-pie) | S | P3 | Yes (linker.rs) |
 | `ns` column on `def` | Not present | S | P3 | No |
 | MCP build / run / init tools | Missing | M | P2 | No |
+| Schema migration system (`glyph migrate`) | Missing | M | P2 | No |
 | Richer check_def (type errors as JSON) | Partial | M | P2 | No |
 | Map type `{K:V}` + hash map runtime | Not implemented | M | P3 | No |
 | Windows support | Multiple blockers | M | P3 | Yes (abi.rs) |
 | `glyph link` | Missing | M | P3 | No |
 | Generic array_sort / map / filter | Missing | M | P3 | No |
 | Lift 200-def type-check threshold | **Fixed** | L | P2 | No |
-| LLVM IR backend | Not started | L | P4 | No |
+| LLVM IR backend (text-format, `clang -x ir`) | Not started | L | P4 | No |
 | Generics / monomorphization | Absent | XL | P2 | No |
 | `fsm` / `srv` / `macro` | Human abstractions | — | — | — |
 | Traits / impls | **Removed** | — | — | — |
