@@ -1,0 +1,6 @@
+mono_concat_loop a b i n =
+  match i >= n
+    true -> a
+    _ ->
+      glyph_array_push(a, b[i])
+      mono_concat_loop(a, b, i + 1, n)

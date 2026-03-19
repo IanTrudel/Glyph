@@ -1,0 +1,7 @@
+mono_lookup_loop keys vals call_ni i =
+  match i >= glyph_array_len(keys)
+    true -> ""
+    _ ->
+      match keys[i] == call_ni
+        true -> vals[i]
+        _ -> mono_lookup_loop(keys, vals, call_ni, i + 1)

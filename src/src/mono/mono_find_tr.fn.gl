@@ -1,0 +1,7 @@
+mono_find_tr tc_results idx =
+  match idx < 0
+    true -> {fn_tmap: [], fn_ty: 0 - 1, fn_ty_raw: []}
+    _ ->
+      match idx >= glyph_array_len(tc_results)
+        true -> {fn_tmap: [], fn_ty: 0 - 1, fn_ty_raw: []}
+        _ -> tc_results[idx]

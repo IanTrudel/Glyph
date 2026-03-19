@@ -1,0 +1,9 @@
+mono_coll_ast_loop pf tr caller_i parsed tc_results eng specs j n =
+  match j >= n
+    true -> specs
+    _ ->
+      node = pf.pf_ast[j]
+      specs2 = match node.kind == ex_call()
+        true -> mono_coll_call(pf, tr, caller_i, j, node, parsed, tc_results, eng, specs)
+        _ -> specs
+      mono_coll_ast_loop(pf, tr, caller_i, parsed, tc_results, eng, specs2, j + 1, n)

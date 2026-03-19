@@ -1,0 +1,2 @@
+instantiate_generic gtd args =
+  inst_subst_all(gtd.gtd_body, gtd.gtd_params, args, 0)

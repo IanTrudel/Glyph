@@ -1,0 +1,14 @@
+rgt_loop rows i acc =
+  match i >= glyph_array_len(rows)
+    true -> 0
+    _ ->
+      row = rows[i]
+      name = row[0]
+      body = row[1]
+      match is_generic_body(body)
+        true ->
+          tp = parse_type_params(body)
+          gtd = {gtd_name: name, gtd_params: tp.tp_params, gtd_body: tp.tp_rest}
+          glyph_array_push(acc, gtd)
+          rgt_loop(rows, i + 1, acc)
+        _ -> rgt_loop(rows, i + 1, acc)

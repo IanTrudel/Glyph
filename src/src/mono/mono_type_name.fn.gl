@@ -1,0 +1,24 @@
+mono_type_name eng ti =
+  match ti < 0
+    true -> "any"
+    _ ->
+      match ti >= glyph_array_len(eng.ty_pool)
+        true -> "any"
+        _ ->
+          node = pool_get(eng, ti)
+          tag = node.tag
+          match tag == ty_int()
+            true -> "int"
+            _ -> match tag == ty_str()
+              true -> "str"
+              _ -> match tag == ty_bool()
+                true -> "bool"
+                _ -> match tag == ty_float()
+                  true -> "float"
+                  _ -> match tag == ty_array()
+                    true -> s3("arr_", mono_type_name(eng, node.n1), "")
+                    _ -> match tag == ty_map()
+                      true -> s5("map_", mono_type_name(eng, node.n1), "_", mono_type_name(eng, node.n2), "")
+                      _ -> match tag == ty_opt()
+                        true -> s3("opt_", mono_type_name(eng, node.n1), "")
+                        _ -> "any"

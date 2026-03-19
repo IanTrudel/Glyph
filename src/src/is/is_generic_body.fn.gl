@@ -1,0 +1,5 @@
+is_generic_body body =
+  len = glyph_str_len(body)
+  match len == 0
+    true -> false
+    _ -> glyph_str_char_at(body, 0) == 60

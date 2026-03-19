@@ -1,0 +1,2 @@
+ctr_scan_rows type_rows gnames all_apps =
+  ctr_scan_rows_loop(type_rows, gnames, all_apps, 0)

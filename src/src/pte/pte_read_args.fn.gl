@@ -1,0 +1,10 @@
+pte_read_args s i =
+  len = glyph_str_len(s)
+  args = []
+  match i >= len
+    true -> {pra_args: args, pra_end: i}
+    _ ->
+      c = glyph_str_char_at(s, i)
+      match c == 60
+        true -> pte_collect_args(s, i + 1, len, args)
+        _ -> {pra_args: args, pra_end: i}

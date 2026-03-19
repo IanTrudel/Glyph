@@ -1,0 +1,4 @@
+build_generic_struct_map generic_defs apps =
+  result = []
+  bgsm_loop(apps, generic_defs, 0, result)
+  result

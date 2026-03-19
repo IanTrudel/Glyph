@@ -1,1 +1,0 @@
-mk_tctx tmap = {tc_tmap: tmap}

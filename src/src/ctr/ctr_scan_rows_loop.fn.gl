@@ -1,0 +1,11 @@
+ctr_scan_rows_loop type_rows gnames all_apps i =
+  match i >= glyph_array_len(type_rows)
+    true -> 0
+    _ ->
+      row = type_rows[i]
+      body = row[1]
+      match is_generic_body(body)
+        true -> ctr_scan_rows_loop(type_rows, gnames, all_apps, i + 1)
+        _ ->
+          ctr_scan_new(body, gnames, all_apps)
+          ctr_scan_rows_loop(type_rows, gnames, all_apps, i + 1)

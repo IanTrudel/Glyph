@@ -1,0 +1,4 @@
+test_parse_type_expr_simple u =
+  r = parse_type_expr_str("Int")
+  assert_str_eq(r.te_name, "Int")
+  assert_eq(glyph_array_len(r.te_args), 0)

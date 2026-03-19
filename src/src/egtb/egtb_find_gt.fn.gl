@@ -1,0 +1,8 @@
+egtb_find_gt s i len =
+  match i >= len
+    true -> -1
+    _ ->
+      c = glyph_str_char_at(s, i)
+      match c == 62
+        true -> i
+        _ -> egtb_find_gt(s, i + 1, len)

@@ -1,0 +1,7 @@
+is_in_gnames gnames name i =
+  match i >= glyph_array_len(gnames)
+    true -> false
+    _ ->
+      match glyph_str_eq(gnames[i], name)
+        true -> true
+        _ -> is_in_gnames(gnames, name, i + 1)

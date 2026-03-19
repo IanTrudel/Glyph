@@ -1,0 +1,6 @@
+mono_build_call_map specs caller_name =
+  keys = []
+  vals = []
+  mono_bcm_loop(specs, caller_name, 0, keys, vals)
+  {tmm_call_keys: keys, tmm_call_specs: vals}
+

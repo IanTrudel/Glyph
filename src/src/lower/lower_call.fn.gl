@@ -1,4 +1,4 @@
-lower_call ctx ast node =
+lower_call ctx ast node call_ni =
   callee_node = ast[node.n1]
   match callee_node.kind == ex_type_ident()
     true ->
@@ -8,8 +8,13 @@ lower_call ctx ast node =
       mk_op_local(dest)
     _ ->
       callee = lower_callee_expr(ctx, ast, node.n1)
+      spec = mono_lookup_call(ctx.tctx, call_ni)
+      callee2 = match glyph_str_len(spec) > 0
+        true -> mk_op_func(spec)
+        _ -> callee
       args = lower_call_args(ctx, ast, node.ns, 0)
       dest = mir_alloc_local(ctx, "")
-      mir_emit_call(ctx, dest, callee, args)
-      track_call_type(ctx, dest, callee)
+      mir_emit_call(ctx, dest, callee2, args)
+      track_call_type(ctx, dest, callee2)
       mk_op_local(dest)
+

@@ -1,0 +1,26 @@
+ctab_try_read_app body gnames i acc =
+  len = glyph_str_len(body)
+  name_end = pte_read_name(body, i)
+  match name_end <= i
+    true -> -1
+    _ ->
+      name = glyph_str_slice(body, i, name_end)
+      match is_in_gnames(gnames, name, 0) == false
+        true -> -1
+        _ ->
+          match name_end >= len
+            true -> -1
+            _ ->
+              c = glyph_str_char_at(body, name_end)
+              match c == 60
+                true ->
+                  r = pte_read_args(body, name_end)
+                  args = r.pra_args
+                  match glyph_array_len(args) > 0
+                    true ->
+                      concrete = concrete_type_name(name, args)
+                      app = {ta_name: name, ta_args: args, ta_concrete: concrete}
+                      glyph_array_push(acc, app)
+                      r.pra_end
+                    _ -> -1
+                _ -> -1

@@ -1,0 +1,16 @@
+type_arg_to_suffix arg =
+  match glyph_str_eq(arg, "Int") || glyph_str_eq(arg, "I")
+    true -> "int"
+    _ ->
+      match glyph_str_eq(arg, "Str") || glyph_str_eq(arg, "S")
+        true -> "str"
+        _ ->
+          match glyph_str_eq(arg, "Bool") || glyph_str_eq(arg, "B")
+            true -> "bool"
+            _ ->
+              match glyph_str_eq(arg, "Float") || glyph_str_eq(arg, "F")
+                true -> "float"
+                _ ->
+                  match glyph_str_eq(arg, "UInt") || glyph_str_eq(arg, "U")
+                    true -> "uint"
+                    _ -> str_to_lower(arg)

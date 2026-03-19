@@ -39,5 +39,15 @@ cmd_put argv argc =
                   name = extract_name(body)
                   do_put(db_path, kind, name, body, gen)
             _ ->
-              name = extract_name(body)
-              do_put(db_path, kind, name, body, gen)
+              raw_name = extract_name(body)
+              name = match glyph_str_eq(kind, "type")
+                true -> strip_type_params_from_name(raw_name)
+                _ -> raw_name
+              match glyph_str_eq(kind, "type")
+                true ->
+                  encoded = encode_generic_type_body(body)
+                  store_body = match glyph_str_eq(encoded, body)
+                    true -> body
+                    _ -> encoded
+                  do_put(db_path, kind, name, store_body, gen)
+                _ -> do_put(db_path, kind, name, body, gen)

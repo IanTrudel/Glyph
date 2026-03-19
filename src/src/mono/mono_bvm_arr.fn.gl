@@ -1,0 +1,11 @@
+mono_bvm_arr eng tnode concrete_ti acc =
+  match concrete_ti < 0
+    true -> acc
+    _ ->
+      match concrete_ti >= glyph_array_len(eng.ty_pool)
+        true -> acc
+        _ ->
+          cnode = pool_get(eng, concrete_ti)
+          match cnode.tag == tnode.tag
+            true -> mono_build_var_map(eng, tnode.n1, cnode.n1, acc)
+            _ -> acc

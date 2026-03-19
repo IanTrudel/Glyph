@@ -1,0 +1,19 @@
+ptp_loop body i acc =
+  len = glyph_str_len(body)
+  match i >= len
+    true -> -1
+    _ ->
+      c = glyph_str_char_at(body, i)
+      match c == 62
+        true -> i + 1
+        _ ->
+          match c == 44
+            true -> ptp_loop(body, i + 1, acc)
+            _ ->
+              match c == 32
+                true -> ptp_loop(body, i + 1, acc)
+                _ ->
+                  name_end = ptp_read_ident(body, i, len)
+                  param = glyph_str_slice(body, i, name_end)
+                  glyph_array_push(acc, param)
+                  ptp_loop(body, name_end, acc)

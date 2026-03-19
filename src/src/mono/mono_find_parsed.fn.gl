@@ -1,0 +1,8 @@
+mono_find_parsed parsed name i =
+  match i >= glyph_array_len(parsed)
+    true -> 0 - 1
+    _ ->
+      match str_eq((parsed[i]).pf_name, name)
+        true -> i
+        _ -> mono_find_parsed(parsed, name, i + 1)
+

@@ -1,0 +1,7 @@
+mono_bcm_loop specs caller_name i keys vals =
+  match i >= glyph_array_len(specs)
+    true -> 0
+    _ ->
+      spec = specs[i]
+      mono_bcm_callers(spec, caller_name, 0, keys, vals)
+      mono_bcm_loop(specs, caller_name, i + 1, keys, vals)

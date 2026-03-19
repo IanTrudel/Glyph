@@ -1,0 +1,9 @@
+test_type_arg_to_suffix u =
+  assert_str_eq(type_arg_to_suffix("Int"), "int")
+  assert_str_eq(type_arg_to_suffix("I"), "int")
+  assert_str_eq(type_arg_to_suffix("Str"), "str")
+  assert_str_eq(type_arg_to_suffix("S"), "str")
+  assert_str_eq(type_arg_to_suffix("Bool"), "bool")
+  assert_str_eq(type_arg_to_suffix("B"), "bool")
+  assert_str_eq(type_arg_to_suffix("Float"), "float")
+  assert_str_eq(type_arg_to_suffix("MyType"), "mytype")

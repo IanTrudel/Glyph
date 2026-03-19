@@ -1,0 +1,12 @@
+mono_bst_loop eng raw_tm var_map i n result =
+  match i >= n
+    true -> result
+    _ ->
+      raw_ti = raw_tm[i]
+      tag = match raw_ti < 0
+        true -> 0 - 1
+        _ ->
+          inst_ti = inst_type(eng, raw_ti, var_map)
+          tmap_resolve_tag(eng, inst_ti)
+      glyph_array_push(result, tag)
+      mono_bst_loop(eng, raw_tm, var_map, i + 1, n, result)

@@ -1,11 +1,15 @@
-lower_fn_def ast fn_idx za_fns tctx =
+lower_fn_def ast fn_idx za_fns tctx spec_name =
   node = ast[fn_idx]
-  ctx = mk_mir_lower(node.sval, za_fns, tctx)
+  fn_name = match glyph_str_len(spec_name) > 0
+    true -> spec_name
+    _ -> node.sval
+  ctx = mk_mir_lower(fn_name, za_fns, tctx)
   entry = mir_new_block(ctx)
   glyph_array_set(ctx.fn_entry, 0, entry)
   lower_fn_params(ctx, ast, node.ns, 0)
   body_op = lower_expr(ctx, ast, node.n1)
   mir_terminate(ctx, mk_term_return(body_op))
-  {fn_name: node.sval, fn_params: ctx.fn_params, fn_locals: ctx.local_names,
+  {fn_name: fn_name, fn_params: ctx.fn_params, fn_locals: ctx.local_names,
    fn_blocks_stmts: ctx.block_stmts, fn_blocks_terms: ctx.block_terms,
    fn_entry: entry, fn_subs: ctx.lifted_fns, fn_types: ctx.local_types}
+

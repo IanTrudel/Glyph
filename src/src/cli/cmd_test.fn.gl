@@ -19,8 +19,10 @@ cmd_test argv argc =
           fn_sources = read_fn_defs_gen(db, gen_str)
           externs = read_externs(db)
           type_rows = read_type_defs_gen(db, gen_str)
+          generic_defs = read_generic_types(db)
           glyph_db_close(db)
-          struct_map = build_struct_map(type_rows)
+          base_struct_map = build_struct_map(type_rows)
+          struct_map = expand_generics_pass(generic_defs, type_rows, base_struct_map)
           println(s3("Compiling ", itos(n), " tests..."))
           bin_path = "/tmp/glyph_test_bin"
           mode = match has_flag(argv, "--debug", 3) == 1

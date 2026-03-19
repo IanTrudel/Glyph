@@ -1,0 +1,3 @@
+test_inst_replace_whole_word u =
+  result = inst_replace_whole_word("\{fst:T,snd:Tree<T>}", "T", "I")
+  assert_str_eq(result, "\{fst:I,snd:Tree<I>}")

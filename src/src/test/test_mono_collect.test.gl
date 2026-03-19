@@ -1,0 +1,17 @@
+test_mono_collect u =
+  src_id = "identity x = x"
+  src_main = "main = println(int_to_str(identity(42)))"
+  parsed = parse_all_fns([src_id, src_main], 0)
+  eng = mk_engine()
+  register_builtins(eng)
+  tc_pre_register(eng, parsed, 0)
+  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  specs = mono_collect(parsed, tc_results, eng)
+  assert_eq(glyph_array_len(specs), 1)
+  match glyph_array_len(specs) > 0
+    true ->
+      s = specs[0]
+      assert_str_eq(s.ms_orig, "identity")
+      assert_str_eq(s.ms_spec, "identity__int")
+    _ -> 0
+

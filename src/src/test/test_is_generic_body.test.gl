@@ -1,0 +1,4 @@
+test_is_generic_body u =
+  assert_eq(is_generic_body("<T>\{items:[T]}"), true)
+  assert_eq(is_generic_body("\{x:I}"), false)
+  assert_eq(is_generic_body(""), false)

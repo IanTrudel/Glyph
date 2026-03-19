@@ -12,11 +12,10 @@ build_program sources externs output_path struct_map mode =
   tc_pre_register(eng, parsed, 0)
   tc_results = tc_infer_loop(eng, parsed, 0, [])
   tc_report_errors(eng)
-  match glyph_array_len(eng.errors) > 0
-    true -> glyph_exit(1)
-    _ -> 0
   za_fns = build_za_fns(parsed, 0, [])
-  mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose)
+  mp = mono_pass(parsed, tc_results, za_fns, eng)
+  mirs = compile_fns_parsed_mono(parsed, za_fns, tc_results, mp.mp_specs, verbose, 0)
+  mono_concat_mirs(mirs, mp.mp_mirs)
   fix_all_field_offsets(mirs)
   fix_extern_calls(mirs, externs)
   tco_optimize(mirs)
@@ -38,3 +37,4 @@ build_program sources externs output_path struct_map mode =
       _ -> "-w -Wno-int-conversion -Wno-incompatible-pointer-types -DGLYPH_DEBUG -O1"
   glyph_system(s5("cc ", cc_flags, s2(" ", c_path), s3(" -o ", output_path, " -no-pie"), s2(lib_flags, " -lm")))
   mirs
+

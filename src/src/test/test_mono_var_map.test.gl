@@ -1,0 +1,26 @@
+test_mono_var_map u =
+  src = "identity x = x"
+  parsed = parse_all_fns([src], 0)
+  eng = mk_engine()
+  register_builtins(eng)
+  tc_pre_register(eng, parsed, 0)
+  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  tr = tc_results[0]
+  fn_ty = tr.fn_ty
+  fn_node = pool_get(eng, fn_ty)
+  assert_eq(fn_node.tag, ty_forall())
+  match fn_node.tag == ty_forall()
+    true ->
+      body_ti = fn_node.n1
+      int_ti = mk_tint(eng.ty_pool)
+      concrete_fn_ti = mk_tfn(int_ti, int_ti, eng.ty_pool)
+      var_map = mono_build_var_map(eng, body_ti, concrete_fn_ti, [])
+      assert_eq(glyph_array_len(var_map) > 0, true)
+      match glyph_array_len(var_map) > 0
+        true ->
+          mapped_ty = var_map[1]
+          resolved_tag = tmap_resolve_tag(eng, mapped_ty)
+          assert_eq(resolved_tag, ty_int())
+        _ -> 0
+    _ -> 0
+

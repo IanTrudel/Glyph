@@ -1,0 +1,14 @@
+eag_loop generic_defs apps i result =
+  match i >= glyph_array_len(apps)
+    true -> 0
+    _ ->
+      app = apps[i]
+      idx = find_generic_def(generic_defs, app.ta_name, 0)
+      match idx >= 0
+        true ->
+          gtd = generic_defs[idx]
+          concrete_body = instantiate_generic(gtd, app.ta_args)
+          pair = {ep_name: app.ta_concrete, ep_body: concrete_body}
+          glyph_array_push(result, pair)
+          eag_loop(generic_defs, apps, i + 1, result)
+        _ -> eag_loop(generic_defs, apps, i + 1, result)

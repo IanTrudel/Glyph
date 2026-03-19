@@ -1,0 +1,6 @@
+test_parse_type_params u =
+  r = parse_type_params("<T,U>\{fst:T,snd:U}")
+  assert_eq(glyph_array_len(r.tp_params), 2)
+  assert_str_eq(r.tp_params[0], "T")
+  assert_str_eq(r.tp_params[1], "U")
+  assert_str_eq(r.tp_rest, "\{fst:T,snd:U}")

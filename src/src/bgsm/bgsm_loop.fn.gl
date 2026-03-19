@@ -1,0 +1,24 @@
+bgsm_loop apps generic_defs i result =
+  match i >= glyph_array_len(apps)
+    true -> 0
+    _ ->
+      app = apps[i]
+      idx = find_generic_def(generic_defs, app.ta_name, 0)
+      match idx >= 0
+        true ->
+          gtd = generic_defs[idx]
+          concrete_body = instantiate_generic(gtd, app.ta_args)
+          tp = parse_type_params(concrete_body)
+          actual_body = tp.tp_rest
+          fields = parse_struct_fields(actual_body)
+          match glyph_array_len(fields) > 0
+            true ->
+              ctypes = parse_struct_ctypes(actual_body)
+              entry = []
+              glyph_array_push(entry, app.ta_concrete)
+              glyph_array_push(entry, fields)
+              glyph_array_push(entry, ctypes)
+              glyph_array_push(result, entry)
+              bgsm_loop(apps, generic_defs, i + 1, result)
+            _ -> bgsm_loop(apps, generic_defs, i + 1, result)
+        _ -> bgsm_loop(apps, generic_defs, i + 1, result)

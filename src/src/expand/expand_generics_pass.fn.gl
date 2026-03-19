@@ -1,0 +1,13 @@
+expand_generics_pass generic_defs type_rows base_struct_map =
+  match glyph_array_len(generic_defs) == 0
+    true -> base_struct_map
+    _ ->
+      apps = collect_transitively(generic_defs, type_rows)
+      match glyph_array_len(apps) == 0
+        true -> base_struct_map
+        _ ->
+          extra = build_generic_struct_map(generic_defs, apps)
+          merged = []
+          egp_concat(base_struct_map, merged, 0)
+          egp_concat(extra, merged, 0)
+          merged

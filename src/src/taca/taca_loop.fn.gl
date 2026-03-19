@@ -1,0 +1,8 @@
+taca_loop args i acc =
+  match i >= glyph_array_len(args)
+    true -> 0
+    _ ->
+      arg = args[i]
+      suf = type_app_to_concrete_arg(arg)
+      glyph_array_push(acc, suf)
+      taca_loop(args, i + 1, acc)

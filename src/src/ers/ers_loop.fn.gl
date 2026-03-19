@@ -1,0 +1,19 @@
+ers_loop apps generic_defs gnames seen i =
+  match i >= glyph_array_len(apps)
+    true -> 0
+    _ ->
+      app = apps[i]
+      match app_in_seen(seen, app, 0)
+        true -> ers_loop(apps, generic_defs, gnames, seen, i + 1)
+        _ ->
+          idx = find_generic_def(generic_defs, app.ta_name, 0)
+          match idx >= 0
+            true ->
+              gtd = generic_defs[idx]
+              concrete_body = instantiate_generic(gtd, app.ta_args)
+              glyph_array_push(seen, app.ta_concrete)
+              found = []
+              ctab_loop(concrete_body, gnames, 0, found)
+              ctr_add_new(found, apps, 0)
+              ers_loop(apps, generic_defs, gnames, seen, i + 1)
+            _ -> ers_loop(apps, generic_defs, gnames, seen, i + 1)

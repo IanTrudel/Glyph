@@ -1,0 +1,3 @@
+mono_collect_fn pf tr caller_i parsed tc_results eng specs =
+  n = glyph_array_len(pf.pf_ast)
+  mono_coll_ast_loop(pf, tr, caller_i, parsed, tc_results, eng, specs, 0, n)

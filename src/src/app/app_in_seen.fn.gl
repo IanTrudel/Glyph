@@ -1,0 +1,7 @@
+app_in_seen seen app i =
+  match i >= glyph_array_len(seen)
+    true -> false
+    _ ->
+      match glyph_str_eq(seen[i], app.ta_concrete)
+        true -> true
+        _ -> app_in_seen(seen, app, i + 1)

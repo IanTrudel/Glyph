@@ -1,0 +1,12 @@
+mono_spec_exists specs orig spec_name i =
+  match i >= glyph_array_len(specs)
+    true -> false
+    _ ->
+      s = specs[i]
+      match str_eq(s.ms_orig, orig)
+        true ->
+          match str_eq(s.ms_spec, spec_name)
+            true -> true
+            _ -> mono_spec_exists(specs, orig, spec_name, i + 1)
+        _ -> mono_spec_exists(specs, orig, spec_name, i + 1)
+

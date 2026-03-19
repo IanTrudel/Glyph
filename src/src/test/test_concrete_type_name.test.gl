@@ -1,0 +1,4 @@
+test_concrete_type_name u =
+  args1 = []
+  glyph_array_push(args1, "Int")
+  assert_str_eq(concrete_type_name("Stack", args1), "Stack__int")

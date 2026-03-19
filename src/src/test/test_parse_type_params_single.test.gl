@@ -1,0 +1,5 @@
+test_parse_type_params_single u =
+  r = parse_type_params("<T>\{items:[T]}")
+  assert_eq(glyph_array_len(r.tp_params), 1)
+  assert_str_eq(r.tp_params[0], "T")
+  assert_str_eq(r.tp_rest, "\{items:[T]}")

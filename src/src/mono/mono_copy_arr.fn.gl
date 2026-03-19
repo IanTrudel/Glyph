@@ -1,0 +1,1 @@
+mono_copy_arr src = mono_copy_loop(src, [], 0, glyph_array_len(src))

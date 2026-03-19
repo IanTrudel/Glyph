@@ -1,0 +1,8 @@
+collect_transitively generic_defs type_rows =
+  gnames = []
+  generic_def_names(generic_defs, 0, gnames)
+  all_apps = []
+  ctr_scan_rows(type_rows, gnames, all_apps)
+  seen = []
+  expand_recursive_safe(all_apps, generic_defs, seen)
+  all_apps

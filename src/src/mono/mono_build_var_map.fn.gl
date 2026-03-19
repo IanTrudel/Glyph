@@ -1,0 +1,28 @@
+mono_build_var_map eng template_ti concrete_ti acc =
+  match template_ti < 0
+    true -> acc
+    _ ->
+      match template_ti >= glyph_array_len(eng.ty_pool)
+        true -> acc
+        _ ->
+          tnode = pool_get(eng, template_ti)
+          tag = tnode.tag
+          match tag == ty_var()
+            true ->
+              root = subst_find(eng.parent, tnode.n1)
+              match mono_bvm_has_root(acc, root, 0)
+                true -> acc
+                _ ->
+                  glyph_array_push(acc, root)
+                  glyph_array_push(acc, concrete_ti)
+                  acc
+            _ -> match tag == ty_fn()
+              true -> mono_bvm_fn(eng, tnode, concrete_ti, acc)
+              _ -> match tag == ty_array()
+                true -> mono_bvm_arr(eng, tnode, concrete_ti, acc)
+                _ -> match tag == ty_opt()
+                  true -> mono_bvm_arr(eng, tnode, concrete_ti, acc)
+                  _ -> match tag == ty_map()
+                    true -> mono_bvm_map(eng, tnode, concrete_ti, acc)
+                    _ -> acc
+

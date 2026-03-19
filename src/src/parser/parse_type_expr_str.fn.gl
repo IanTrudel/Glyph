@@ -1,0 +1,6 @@
+parse_type_expr_str s =
+  i0 = pte_skip_ws(s, 0)
+  name_end = pte_read_name(s, i0)
+  name = glyph_str_slice(s, i0, name_end)
+  r = pte_read_args(s, name_end)
+  {te_name: name, te_args: r.pra_args}

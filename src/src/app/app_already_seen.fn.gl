@@ -1,0 +1,8 @@
+app_already_seen apps new_concrete i =
+  match i >= glyph_array_len(apps)
+    true -> false
+    _ ->
+      app = apps[i]
+      match glyph_str_eq(app.ta_concrete, new_concrete)
+        true -> true
+        _ -> app_already_seen(apps, new_concrete, i + 1)

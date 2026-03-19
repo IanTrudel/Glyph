@@ -1,0 +1,10 @@
+mono_is_poly parsed tc_results eng name =
+  fn_ty = mono_fn_ty_idx(parsed, tc_results, name, 0)
+  match fn_ty < 0
+    true -> false
+    _ ->
+      match fn_ty >= glyph_array_len(eng.ty_pool)
+        true -> false
+        _ ->
+          node = pool_get(eng, fn_ty)
+          node.tag == ty_forall()

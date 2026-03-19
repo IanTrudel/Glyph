@@ -1,0 +1,2 @@
+mono_concat_mirs a b =
+  mono_concat_loop(a, b, 0, glyph_array_len(b))

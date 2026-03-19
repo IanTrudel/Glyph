@@ -1,0 +1,3 @@
+collect_type_apps_in_body body gnames acc =
+  ctab_loop(body, gnames, 0, acc)
+  acc
