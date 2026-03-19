@@ -2,7 +2,7 @@
 
 ## Overview
 
-Glyph has a self-hosted compiler: a compiler written in Glyph that can compile itself. The compiler source lives in `glyph.glyph` (a SQLite database with 553 definitions), and it produces a 153k native binary via C code generation.
+Glyph has a self-hosted compiler: a compiler written in Glyph that can compile itself. The compiler source lives in `glyph.glyph` (a SQLite database with ~1,363 definitions), and it produces a ~374k native binary via LLVM IR code generation.
 
 Bootstrapping is the process of building this self-hosted compiler from source. Since you need a Glyph compiler to compile Glyph, a Rust-based bootstrap compiler bridges the gap.
 
@@ -10,28 +10,29 @@ Bootstrapping is the process of building this self-hosted compiler from source. 
 
 ```
 Stage 0:  cargo build --release  →  glyph0  (12M, Rust/Cranelift)
-Stage 1:  glyph0 build glyph.glyph --full  →  glyph1  (186k, Cranelift-linked)
-Stage 2:  glyph1 build glyph.glyph glyph   →  glyph   (153k, C-codegen)
+Stage 1:  glyph0 build glyph.glyph --full  →  glyph1  (~471k, Cranelift-linked)
+Stage 2:  glyph1 build glyph.glyph glyph2  →  glyph2  (~558k, C-codegen)
+Stage 3:  glyph2 build glyph.glyph glyph   →  glyph   (~374k, LLVM IR-compiled)
 ```
 
 **Stage 0** compiles the Rust codebase into `glyph0`. This is a full compiler with a Cranelift backend — it can parse, type-check, lower to MIR, and generate native code via Cranelift JIT.
 
-**Stage 1** uses `glyph0` to compile all 553 definitions in `glyph.glyph`. The `--full` flag recomputes content hashes, token counts, and dependency edges, then compiles everything via Cranelift and links a native binary. We rename this to `glyph1` to avoid clobbering the final binary.
+**Stage 1** uses `glyph0` to compile all ~1,363 definitions in `glyph.glyph`. The `--full` flag recomputes content hashes, token counts, and dependency edges, then compiles everything via Cranelift and links a native binary.
 
-**Stage 2** uses `glyph1` (now a working Glyph compiler) to rebuild itself. `glyph1` reads the definition bodies from `glyph.glyph`, compiles each one through the self-hosted pipeline (tokenize → parse → type-check → MIR lower → C codegen), concatenates the output into a single C file, and invokes `cc` to produce the final `glyph` binary.
+**Stage 2** uses `glyph1` (now a working Glyph compiler) to rebuild itself via C codegen. `glyph1` reads the definition bodies from `glyph.glyph`, compiles each one through the self-hosted pipeline (tokenize → parse → type-check → MIR lower → C codegen), concatenates the output into a single C file, and invokes `cc` to produce `glyph2`.
 
-The result is a fixed point: `glyph` can rebuild itself from `glyph.glyph` and produce an identical binary.
+**Stage 3** uses `glyph2` to re-build via the LLVM IR backend (`--emit=llvm`). `glyph2` emits LLVM IR text, which is then compiled by `llc`/`cc` into the final `glyph` binary. This validates the LLVM backend and produces the production compiler.
+
+The result is a fixed point: `glyph` can rebuild itself from `glyph.glyph` and produce an equivalent binary.
 
 ## Build System
 
 The bootstrap chain is encoded in `build.ninja`:
 
 ```bash
-ninja              # default: full 3-stage bootstrap
-ninja bootstrap    # alias for default
-ninja test         # run Rust tests (68) + self-hosted tests (14)
-ninja dump         # regenerate glyph.sql from glyph.glyph
-ninja -t clean     # remove glyph0, glyph1, glyph, glyph.sql
+ninja              # default: full 4-stage bootstrap
+ninja test         # run Rust tests (73) + self-hosted tests (~186)
+ninja -t clean     # remove glyph0, glyph1, glyph2, glyph
 ```
 
 After `ninja -t clean`, a bare `ninja` rebuilds everything from scratch.
@@ -41,11 +42,12 @@ After `ninja -t clean`, a bare `ninja` rebuilds everything from scratch.
 | Binary | Size | Backend | Description |
 |--------|------|---------|-------------|
 | `glyph0` | 12M | Rust + Cranelift runtime | Full Rust compiler, large due to Cranelift codegen framework |
-| `glyph1` | 186k | Cranelift native code | All 553 Glyph definitions compiled to native x86-64 |
-| `glyph` | 153k | GCC-compiled C | Same definitions, but GCC's optimizer produces 15% less code |
-| `glyph.glyph` | 332k | — | The source database (SQLite, 553 definitions) |
+| `glyph1` | ~471k | Cranelift native code | All ~1,363 Glyph definitions compiled to native x86-64 |
+| `glyph2` | ~558k | C-codegen (GCC) | Same definitions via C backend; validates C codegen path |
+| `glyph` | ~374k | LLVM IR (llc) | Final binary via LLVM IR backend; production compiler |
+| `glyph.glyph` | ~1.4M | — | The source database (SQLite, ~1,363 definitions) |
 
-`glyph` is smaller than `glyph1` despite identical functionality because GCC (with `-O`) optimizes better than Cranelift (which prioritizes compilation speed over output quality).
+`glyph` (LLVM IR) is smaller than `glyph2` (C codegen) because LLVM's optimizer is more aggressive than GCC at `-O` for this workload.
 
 ## Two Codegen Backends
 
@@ -140,12 +142,7 @@ C codegen generates `_N = function_call(args)` for every call, assigning the res
 
 The `glyph.glyph` database has triggers that call custom SQLite functions (`glyph_hash`, `glyph_tokens`) on INSERT/UPDATE. These functions only exist inside the Rust compiler process.
 
-**Rule**: When modifying definitions via Python scripts or the `sqlite3` CLI, always drop triggers first:
-```python
-for t in ["trg_def_dirty", "trg_dep_dirty", "trg_def_hash_insert", "trg_def_hash_update"]:
-    conn.execute(f"DROP TRIGGER IF EXISTS {t}")
-```
-Then run `glyph0 build glyph.glyph --full` afterward to recompute hashes and tokens.
+**Rule**: Always use `./glyph put glyph.glyph fn -b '...'` or the MCP `put_def` tool to modify definitions — these handle hash/token computation automatically. If you must use the raw `sqlite3` CLI, the TEMP triggers that call `glyph_hash`/`glyph_tokens` won't be present (those custom functions only exist inside the compiler process), so hash values will be stale until `glyph0 build glyph.glyph --full` is run.
 
 ### Zero-argument functions with side effects
 
@@ -162,40 +159,46 @@ Both `build` and `run` commands write to `/tmp/glyph_out.c`. This is a useful de
 After any changes to `glyph.glyph` definitions:
 
 ```bash
-ninja                                          # rebuild everything
-ninja test                                     # run all tests
-./glyph build glyph.glyph glyph_verify         # self-build
-diff <(md5sum glyph) <(md5sum glyph_verify)    # should differ (non-deterministic C)
-./glyph_verify run test_comprehensive.glyph    # should produce same 14 lines
+ninja                          # rebuild full 4-stage chain
+./glyph test glyph.glyph       # run self-hosted test suite (~186 tests)
+ninja test                     # also run Rust unit tests (73 tests)
 ```
 
-The binaries won't be byte-identical (string addresses differ between compilations), but they should produce identical behavior. The test suite verifies: arithmetic, strings, arrays, match expressions, recursion, boolean operators, raw strings, and enum variants.
+The binaries won't be byte-identical (string addresses differ between compilations), but they should produce identical behavior on all tests.
 
 ## Adding New Definitions
 
 The recommended workflow for adding new definitions to the self-hosted compiler:
 
-1. Write a Python script that inserts/replaces definitions via `sqlite3` (avoids escaping issues)
-2. Run `ninja` to rebuild the full chain
-3. Run `ninja test` to verify nothing broke
-4. Run `ninja dump` to update `glyph.sql`
+**Primary: MCP tools** (no shell escaping, structured errors):
+```
+mcp__glyph__put_def(db="glyph.glyph", name="my_fn", kind="fn", body="my_fn x = x + 1")
+```
 
-Alternatively, use the self-hosted CLI directly:
-
+**Fallback: CLI**:
 ```bash
 ./glyph put glyph.glyph fn -b 'my_fn x = x + 1'
-ninja   # rebuilds with the new definition
+./glyph put glyph.glyph fn -f /tmp/my_fn.gl    # from file (avoids quoting)
 ```
+
+Then:
+```bash
+ninja              # rebuild full chain
+./glyph test glyph.glyph   # run self-hosted test suite
+./glyph export glyph.glyph src/   # sync src/ files for git diff
+```
+
+Note: The `glyph.glyph` database has TEMP triggers that require the Rust compiler's custom SQLite functions (`glyph_hash`, `glyph_tokens`). These are only available when going through `glyph0` or `./glyph` — not through bare `sqlite3`.
 
 ## File Inventory
 
 ```
-glyph.glyph          Source database (553 definitions, 332k)
-glyph.sql            SQL dump of glyph.glyph (for version control)
-glyph0               Rust bootstrap compiler (stage 0)
-glyph1               Cranelift intermediate binary (stage 1)
-glyph                Self-hosted compiler (stage 2, final)
-build.ninja           Build system encoding the bootstrap chain
-test_comprehensive.glyph   Regression test database (14 tests)
-crates/               Rust compiler source (6 crates, ~10k lines)
+glyph.glyph          Source database (~1,363 definitions, ~1.4M)
+src/                 Exported .gl files for git-readable diffs
+glyph0               Rust bootstrap compiler (stage 0, ~12M)
+glyph1               Cranelift intermediate binary (stage 1, ~471k)
+glyph2               C-codegen binary (stage 2, ~558k)
+glyph                LLVM IR-compiled self-hosted compiler (stage 3, ~374k)
+build.ninja          Build system encoding the bootstrap chain
+crates/              Rust compiler source (6 crates, ~10k lines, 73 tests)
 ```

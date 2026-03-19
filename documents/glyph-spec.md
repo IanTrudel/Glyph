@@ -1,5 +1,13 @@
 # Glyph Language Specification v0.1
 
+> **Historical Design Document.** This is the original v0.1 spec written at project start. The language is now implemented and working; this document is preserved for historical reference. Key deviations from current implementation:
+> - Schema is now **v7** (added `gen`, `ns` columns to `def`; `def_history` table; `tag` table removed; `meta` table added)
+> - Foreign function table is **`extern_`** (underscore suffix), not `extern`
+> - Compiler binary is **`glyph`**, not `glyphc`; **MCP tools** are the primary workflow
+> - **Type errors gate builds** — `glyph build` aborts on type errors (not just `glyph check`)
+> - Bootstrap (Phase 3) is **complete** — self-hosted compiler in `glyph.glyph`, 4-stage chain
+> - Concurrency (`par`, `spawn`, `await`), standard library DB, and trait system are **not yet implemented**
+
 **An LLM-native programming language where programs are databases.**
 
 ---
@@ -89,7 +97,7 @@ CREATE INDEX idx_dep_to ON dep(to_id);  -- "who depends on me?"
 ---------------------------------------------------------------------
 -- EXTERN: foreign function declarations (C ABI)
 ---------------------------------------------------------------------
-CREATE TABLE extern (
+CREATE TABLE extern_ (
   id        INTEGER PRIMARY KEY,
   name      TEXT    NOT NULL,    -- Glyph-side name
   symbol    TEXT    NOT NULL,    -- C symbol name
@@ -566,7 +574,7 @@ VALUES (
 );
 
 -- Declare an extern
-INSERT INTO extern (name, symbol, lib, sig)
+INSERT INTO extern_ (name, symbol, lib, sig)
 VALUES ('clock', 'clock_gettime', 'librt', 'I -> *V -> I');
 ```
 
@@ -594,7 +602,7 @@ A complete interaction for "add a CSV parser":
 LLM:  SELECT name, sig FROM def WHERE kind = 'type';
 DB:   → Record = {name:S ..}, Row = [S], ...
 
-LLM:  SELECT name, sig FROM extern;
+LLM:  SELECT name, sig FROM extern_;
 DB:   → read_file: S -> !S, ...
 
 LLM:  INSERT INTO def (name, kind, body, hash, tokens) VALUES

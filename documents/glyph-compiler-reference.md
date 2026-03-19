@@ -1,6 +1,6 @@
 # Glyph Compiler: Comprehensive Reference
 
-*Internal reference for working on the Glyph Rust compiler. ~10,000 lines of Rust across 6 crates, 68 tests.*
+*Internal reference for working on the Glyph Rust compiler. ~10,000 lines of Rust across 6 crates, 73 tests. **Maintenance mode** — glyph0 exists solely to bootstrap glyph.glyph; new features go in the self-hosted compiler.*
 
 ## Architecture Overview
 
@@ -20,7 +20,7 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 
 ```bash
 cargo build                  # Build compiler
-cargo test                   # 68 tests (38 parse, 17 typeck, 6 db, 4 mir, 3 codegen)
+cargo test                   # 73 tests (38 parse, 17 typeck, 6 db, 4 mir, 3 codegen)
 cargo run -- build app.glyph # Compile a program
 cargo run -- run app.glyph   # Build + execute
 cargo run -- check app.glyph # Type-check only
@@ -29,8 +29,8 @@ cargo run -- test app.glyph  # Run test definitions
 
 **Bootstrap (self-hosted compiler):**
 ```bash
-ninja                        # glyph0 (Rust) → glyph (Cranelift) → glyph_new (C-codegen, must match)
-ninja test                   # Self-hosted regression tests
+ninja                        # full 4-stage: glyph0 → glyph1 → glyph2 → glyph
+./glyph test glyph.glyph     # Self-hosted regression tests (~186 tests)
 ```
 
 ---
@@ -113,7 +113,7 @@ NewDef { name, kind, sig?, body, generation }  // Insert params
 
 ## Crate 2: glyph-parse (Lexer + Parser + AST)
 
-**Files:** `parser.rs` (1693), `lexer.rs` (755), `ast.rs` (301), `token.rs` (83), `span.rs` (105), `error.rs` (29)
+**Files:** `parser.rs` (1760), `lexer.rs` (827), `ast.rs` (301), `token.rs` (83), `span.rs` (105), `error.rs` (29)
 
 ### Lexer (lexer.rs)
 
@@ -164,7 +164,7 @@ Lambda(Vec<Param>, Box<Expr>), Match(Box<Expr>, Vec<MatchArm>), Block(Vec<Stmt>)
 Array(Vec<Expr>), ArrayRange(start, end?), Record(Vec<FieldInit>), Tuple(Vec<Expr>)
 ```
 
-**PatternKind:** `Wildcard, Ident(String), IntLit(i64), BoolLit(bool), StrLit(String), Constructor(String, Vec<Pattern>), Record(Vec<(String, Option<Pattern>)>), Tuple(Vec<Pattern>)`
+**PatternKind:** `Wildcard, Ident(String), IntLit(i64), BoolLit(bool), StrLit(String), Constructor(String, Vec<Pattern>), Record(Vec<(String, Option<Pattern>)>), Tuple(Vec<Pattern>), OrPattern(Vec<Pattern>)`
 
 **TypeExprKind:** `Named(String), App(String, Vec<TypeExpr>), Fn(Box, Box), Tuple(Vec), Record(Vec<(String, TypeExpr)>, bool), Ref(Box), Ptr(Box), Opt(Box), Res(Box), Arr(Box), Map(Box, Box)`
 
@@ -197,7 +197,7 @@ format_diagnostic(def_name, source, span, level, message) → String
 
 ## Crate 3: glyph-typeck (Type Checking)
 
-**Files:** `infer.rs` (791), `unify.rs` (366), `resolve.rs` (288), `types.rs` (224), `env.rs` (~100), `builtins.rs` (~100), `error.rs` (~30)
+**Files:** `infer.rs` (815), `unify.rs` (366), `resolve.rs` (288), `types.rs` (224), `env.rs` (~100), `builtins.rs` (~100), `error.rs` (~30)
 
 ### Type Enum (types.rs)
 
@@ -274,7 +274,7 @@ Resolver { db: &Database, current_def_id, deps: Vec<(i64, DepEdge)>, locals: Vec
 
 ## Crate 4: glyph-mir (MIR Representation + Lowering)
 
-**Files:** `lower.rs` (1306), `ir.rs` (251), `mono.rs` (34), `closure.rs` (8), `match_compile.rs` (5)
+**Files:** `lower.rs` (1466), `ir.rs` (251), `mono.rs` (34), `closure.rs` (8), `match_compile.rs` (5)
 
 ### MIR Data Structures (ir.rs)
 
@@ -351,7 +351,7 @@ All MIR types derive `Serialize`/`Deserialize` (bincode). Enables incremental co
 
 ## Crate 5: glyph-codegen (Cranelift Backend + Runtime)
 
-**Files:** `cranelift.rs` (893), `runtime.rs` (637), `layout.rs` (127), `abi.rs` (41), `linker.rs` (74)
+**Files:** `cranelift.rs` (908), `runtime.rs` (637), `layout.rs` (127), `abi.rs` (41), `linker.rs` (74)
 
 ### Type Layout (layout.rs)
 
@@ -418,7 +418,7 @@ Embedded as `RUNTIME_C` string constant (compiled by cc at link time).
 
 ## Crate 6: glyph-cli (Build Orchestration)
 
-**Files:** `build.rs` (688), `main.rs` (121)
+**Files:** `build.rs` (677), `main.rs` (121)
 
 ### Commands (main.rs)
 
@@ -520,7 +520,7 @@ Runtime     → SIGSEGV handler     → "segfault in function: NAME"
 
 **Codegen:** Heap-allocate `(1 + N_captures) × 8` bytes → store fn_ptr at [0], captures at [1..N] → `call_indirect` with closure as first arg.
 
-**Note:** Self-hosted C codegen does NOT support closures (MakeClosure = 9 is defined but unimplemented).
+**Note:** Self-hosted C codegen implements closures via lambda lifting. `MakeClosure(lifted_name, captures)` (rv=9) emits a heap-allocated `{fn_ptr, cap1, cap2, ...}` struct; indirect calls pass the closure as hidden first arg.
 
 ---
 
@@ -528,12 +528,12 @@ Runtime     → SIGSEGV handler     → "segfault in function: NAME"
 
 | File | Lines | Key Contents |
 |------|-------|-------------|
-| `glyph-parse/src/parser.rs` | 1693 | Recursive-descent parser, all definition kinds |
-| `glyph-mir/src/lower.rs` | 1306 | AST→MIR lowering, pattern compilation, TCO, lambda lifting |
-| `glyph-codegen/src/cranelift.rs` | 893 | Cranelift IR generation, field offset resolution, closure calls |
-| `glyph-typeck/src/infer.rs` | 791 | HM type inference engine |
-| `glyph-parse/src/lexer.rs` | 755 | Indentation-sensitive lexer, string interpolation |
-| `glyph-cli/src/build.rs` | 688 | 5-phase build pipeline orchestration |
+| `glyph-parse/src/parser.rs` | 1760 | Recursive-descent parser, all definition kinds |
+| `glyph-mir/src/lower.rs` | 1466 | AST→MIR lowering, pattern compilation, TCO, lambda lifting |
+| `glyph-codegen/src/cranelift.rs` | 908 | Cranelift IR generation, field offset resolution, closure calls |
+| `glyph-typeck/src/infer.rs` | 815 | HM type inference engine |
+| `glyph-parse/src/lexer.rs` | 827 | Indentation-sensitive lexer, string interpolation |
+| `glyph-cli/src/build.rs` | 677 | 5-phase build pipeline orchestration |
 | `glyph-codegen/src/runtime.rs` | 637 | Embedded C runtime (strings, arrays, I/O, signal handler) |
 | `glyph-typeck/src/unify.rs` | 366 | Union-find substitution, row unification |
 | `glyph-db/src/queries.rs` | 338 | All SQL queries (insert, resolve, dirty, deps) |
@@ -548,32 +548,35 @@ Runtime     → SIGSEGV handler     → "segfault in function: NAME"
 
 | Crate | Tests | Coverage Focus |
 |-------|-------|---------------|
-| glyph-parse | 38 | Lexer (16): tokens, indent, interpolation, raw strings. Parser (18): all expr types, match, precedence. Span (4): diagnostics |
+| glyph-parse | 38 | Lexer (16): tokens, indent, interpolation, raw strings. Parser (18): all expr types, match, precedence, or-patterns, guards. Span (4): diagnostics |
 | glyph-typeck | 17 | Infer (12): literals, ops, records, lambdas, pipe, match. Unify (5): basics, fn, row, occurs check |
 | glyph-db | 6 | Insert, mark compiled, dirty cascade, name resolve, externs, tags |
 | glyph-mir | 4 | Simple lowering, match, constants, serde roundtrip |
 | glyph-codegen | 3 | Simple codegen, add, branch |
 | glyph-cli | 0 | (Integration tested via cargo run) |
+| **Total** | **73** | |
 
 ---
 
 # Part 2: Self-Hosted Compiler (glyph.glyph)
 
-*583 gen=1 definitions (580 fn, 3 type) + 38 gen=2 definitions. Compiles to C → invokes `cc`. The compiler itself is stored as rows in a SQLite database.*
+*~1,170 gen=1 fn + 186 test + 7 type = ~1,363 total definitions. C codegen (default) and LLVM IR (`--emit=llvm`) backends. MCP server (15 tools). The compiler itself is stored as rows in a SQLite database.*
 
 ## Overview
 
 The self-hosted compiler reimplements the Rust compiler's pipeline in Glyph itself. It reads definitions from a `.glyph` database via SQL, tokenizes, parses, lowers to MIR, generates C code, writes it to `/tmp/glyph_out.c`, and invokes `cc` to produce a native executable.
 
 **Pipeline:** `SQLite → tokenize → parse_fn_def → lower_fn_def → compile_fn_to_c → cg_program → write_file → cc`
+**LLVM path:** `... → cg_llvm_program → write_file → llc/cc` (`--emit=llvm`)
 
 **Key differences from Rust compiler:**
-- **Backend**: C codegen (not Cranelift)
+- **Backend**: C codegen by default; LLVM IR with `--emit=llvm` (not Cranelift)
 - **No loops**: All iteration is recursive with `*_loop` suffix convention
-- **No closures in codegen**: `MakeClosure` (rv=9) defined but not emitted
-- **Type system present but bypassed**: ~96 type inference functions exist but `compile_fn` doesn't call `typecheck_fn`
-- **All values are `long long`**: No type distinctions at C level (everything is 8 bytes)
-- **String interpolation**: Not processed by self-hosted parser; use `str_concat`/`s2`-`s7` helpers
+- **Closures**: Implemented via lambda lifting — `MakeClosure` (rv=9) emits heap `{fn_ptr, caps...}`, called via indirect
+- **Type system integrated**: HM type inference runs during build; type errors gate compilation
+- **All values are `long long`** at C level (GVal typedef); type info threads through MIR lowering via `local_types`
+- **String interpolation**: Supported — tokenizer emits `tk_str_interp_*`, parser builds `ex_str_interp` nodes
+- **Additional subsystems**: JSON parser (~64 defs), MCP server (~52 defs), LLVM IR emitter (~65 defs), monomorphization pass (~35 defs)
 
 ## Type Definitions (3)
 

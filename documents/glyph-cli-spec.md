@@ -1,5 +1,20 @@
 # Glyph CLI Specification v0.1
 
+> **Historical Design Document.** This is the original v0.1 CLI design spec. Many commands described here are aspirational and not yet implemented. Several commands were implemented that are not in this spec.
+>
+> **Commands implemented but NOT in this spec:**
+> - `undo <db> <name>` — undo last change to a definition (reversible)
+> - `history <db> <name>` — show change history for a definition
+> - `export <db> <dir>` — export defs to `src/<ns>/<name>.<kind>.gl` files
+> - `import <db> <dir>` — import defs from file tree
+> - `link <lib.glyph> <app.glyph> [--ns=N] [--prefix=P]` — copy defs from library into app
+> - `cover <db>` — show coverage report from last `test --cover` run
+> - `mcp <db>` — start MCP server (stdio JSON-RPC, 15 tools)
+>
+> **Commands in this spec NOT yet implemented:** `repl`, `batch`, `edit`, `mv`, `tag`, `diff`, `cat`, `attach`, `snapshot`, `restore`
+>
+> **Note on MCP tools:** The MCP server (`glyph mcp`) exposes 15 tools (`init`, `get_def`, `put_def`, `remove_def`, `list_defs`, `search_defs`, `check_def`, `deps`, `rdeps`, `sql`, `build`, `run`, `coverage`, `link`, `migrate`) and is now the **primary** workflow for LLM use. The CLI is a fallback.
+
 **The command-line interface to the Glyph program image.**
 
 ---
