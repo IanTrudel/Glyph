@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Glyph is an LLM-native programming language where **programs are SQLite3 databases** (`.glyph` files), not source files. The unit of storage is the *definition*, and SQL queries replace the traditional module/import system. The language is designed for token-minimal syntax to minimize BPE token count for LLM generation and consumption.
 
 **Current status:** Working compiler (v0.2). Two compilers exist:
-- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,019 definitions, C codegen backend, 19 CLI commands, MCP server. This is the primary compiler.
+- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,363 definitions, C codegen backend, LLVM IR backend (`--emit=llvm`), 24 CLI commands, MCP server (15 tools). This is the primary compiler.
 - **Rust compiler** (`cargo run -- ...`): Cranelift backend, used as bootstrap tool (`glyph0`) to rebuild `glyph.glyph`.
 
 ## Build Commands
@@ -51,6 +51,11 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 ./glyph dump program.glyph --budget 1000       # token-budgeted export
 ./glyph sql program.glyph "SELECT ..."         # raw SQL
 ./glyph extern program.glyph name sym sig      # add FFI declaration
+./glyph cover program.glyph                    # show coverage report from last test --cover
+./glyph export program.glyph src/              # export defs to src/<ns>/<name>.<kind>.gl files
+./glyph import program.glyph src/              # import defs from file tree
+./glyph migrate target.glyph                   # apply pending schema migrations
+./glyph link lib.glyph program.glyph           # link library defs into app
 ./glyph undo program.glyph fn_name             # undo last change
 ./glyph history program.glyph fn_name          # show change history
 ./glyph mcp program.glyph                      # start MCP server
@@ -72,7 +77,7 @@ glyph0 test program.glyph                     # run test definitions
 
 ```
 Cargo.toml (workspace)
-glyph.glyph             # self-hosted compiler source (SQLite database, ~1,019 definitions)
+glyph.glyph             # self-hosted compiler source (SQLite database, ~1,363 definitions)
 build.ninja              # bootstrap build rules
 crates/
   glyph-db/              # SQLite schema, custom functions (glyph_hash, glyph_tokens), DB access
@@ -103,6 +108,7 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 **Self-hosted compiler (primary):**
 ```
 .glyph DB → SELECT defs → Tokenizer → Parser → Type Infer (HM) → MIR → C codegen → cc → executable
+                                                                              ↳ LLVM IR → llc → executable  (--emit=llvm)
 ```
 
 **Rust compiler (bootstrap):**
@@ -141,7 +147,15 @@ Key views: `v_dirty` (dirty + transitive dependents), `v_context` (defs sorted b
 
 ## Inserting Definitions
 
-**Preferred method** — use the self-hosted CLI:
+**Preferred method** — use MCP tools (no shell escaping, multi-line bodies as JSON, structured errors):
+
+```
+mcp__glyph__put_def(db="program.glyph", name="main", kind="fn", body="main = println(\"hello\")")
+mcp__glyph__put_def(db="program.glyph", name="Point", kind="type", body="Point = {x: I, y: I}")
+mcp__glyph__check_def(db="program.glyph", name="my_fn", kind="fn", body="my_fn x = x + 1")
+```
+
+**Via CLI** (fallback):
 
 ```bash
 ./glyph put program.glyph fn -b 'main = println("hello")'
@@ -174,4 +188,4 @@ The `def` table has a `gen` column (default 1). The `--gen=N` flag selects the h
 - Bitwise operators use keywords: `bitand`, `bitor`, `bitxor`, `shl`, `shr`
 - Match guards: `pat ? guard_expr -> body`
 - Or-patterns: `1 | 2 | 3 -> body`
-- LLM interaction: read context via SQL SELECT, write definitions via `./glyph put` or SQL INSERT/UPDATE
+- LLM interaction: read context via `mcp__glyph__sql` or `mcp__glyph__get_def`; write via `mcp__glyph__put_def` (preferred) or `./glyph put`
