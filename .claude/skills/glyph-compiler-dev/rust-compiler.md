@@ -1,6 +1,8 @@
 # Rust Compiler Crate Guide
 
-6 crates, ~10k LOC, 68 tests. Dependency chain:
+6 crates, ~10k LOC, 73 tests. **Maintenance mode** — glyph0 exists solely to bootstrap glyph.glyph. New features go in the self-hosted compiler, not here.
+
+Dependency chain:
 ```
 glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → glyph-db
 ```
@@ -38,7 +40,7 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 
 ## glyph-parse (Lexer + Parser + AST)
 
-**Files:** `parser.rs` (1693), `lexer.rs` (755), `ast.rs` (301), `token.rs` (83), `span.rs` (105)
+**Files:** `parser.rs` (1760), `lexer.rs` (827), `ast.rs` (301), `token.rs` (83), `span.rs` (105)
 
 ### Lexer
 - **Entry:** `Lexer::new(source).tokenize() → Vec<Token>`
@@ -54,8 +56,10 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 - **Critical:** `parse_body()` calls `skip_newlines()` before checking for `Indent`
 
 ### AST
-- **ExprKind:** 25 variants — `IntLit, StrLit, BoolLit, Ident, Binary, Unary, Call, FieldAccess, Index, Lambda, Match, Block, Array, Record, Pipe, Compose, Propagate, Unwrap, StrInterp, FieldAccessor, ...`
-- **PatternKind:** `Wildcard, Ident, IntLit, BoolLit, StrLit, Constructor, Record, Tuple`
+- **ExprKind:** 25+ variants — `IntLit, StrLit, BoolLit, Ident, Binary, Unary, Call, FieldAccess, Index, Lambda, Match, Block, Array, Record, Pipe, Compose, Propagate, Unwrap, StrInterp, FieldAccessor, ...`
+- **PatternKind:** `Wildcard, Ident, IntLit, BoolLit, StrLit, Constructor, Record, Tuple, OrPattern(Vec<Pattern>)`
+- **MatchArm:** `{ pattern, body, guard: Option<Expr> }` — match guards: `pat ? guard_expr -> body`
+- **StmtKind:** includes `LetDestructure(Vec<String>, Expr)` — `{x, y} = expr` syntax
 - **TypeExprKind:** `Named, App, Fn, Record, Ref, Ptr, Opt, Res, Arr, Map, Tuple`
 - **TypeBody:** `Record(fields)`, `Enum(variants)`, `Alias(type_expr)`
 
@@ -63,7 +67,7 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 
 ## glyph-typeck (Type Checking)
 
-**Files:** `infer.rs` (791), `unify.rs` (366), `resolve.rs` (288), `types.rs` (224)
+**Files:** `infer.rs` (815), `unify.rs` (366), `resolve.rs` (288), `types.rs` (224)
 
 ### Type Enum
 20 variants: `Int, Int32, UInt, Float, Float32, Str, Bool, Void, Never, Fn, Tuple, Array, Map, Opt, Res, Ref, Ptr, Named, Record(RowType), Var, ForAll, Error`
@@ -89,7 +93,7 @@ Scope stack + DB queries for cross-definition references. Records dependency edg
 
 ## glyph-mir (MIR Representation + Lowering)
 
-**Files:** `lower.rs` (1306), `ir.rs` (251)
+**Files:** `lower.rs` (1466), `ir.rs` (251)
 
 ### MIR Structures (ir.rs)
 ```
@@ -111,15 +115,17 @@ Statement { dest: LocalId, rvalue: Rvalue }
 - **Records:** Fields sorted alphabetically → `Aggregate(Record(names), ops)`
 - **Enums:** `Aggregate(Variant(type, name, disc), fields)`. Match → extract tag at offset 0.
 - **Strings:** `+` → `str_concat`, interpolation → `sb_new → sb_append × N → sb_build`
-- **Lambdas:** Collect free vars → lift to top-level → `MakeClosure(lifted_name, captures)`
+- **Lambdas/Closures:** Collect free vars → lift to top-level → `MakeClosure(lifted_name, captures)`. Calling convention: closure ptr as hidden first arg.
 - **TCO:** Self-recursive tail calls → copy args, `Goto(loop_header)`
-- **Match:** Chain of tests → branch to match/next for each arm
+- **Match:** Chain of tests → branch to match/next for each arm. Guards: `lower_arm_body_guarded` helper.
+- **Or-patterns:** Desugared to chained Branch tests
+- **Let destructuring:** `LetDestructure` → temp binding + field accesses
 
 **When to modify:** New expression lowering, new Rvalue kinds, pattern compilation, TCO changes.
 
 ## glyph-codegen (Cranelift Backend + Runtime)
 
-**Files:** `cranelift.rs` (893), `runtime.rs` (637), `layout.rs` (127), `linker.rs` (74)
+**Files:** `cranelift.rs` (908), `runtime.rs` (637), `layout.rs` (127), `linker.rs` (74)
 
 ### Type Layout
 
@@ -160,7 +166,7 @@ Embedded as `RUNTIME_C` string constant. Categories: Memory, Print, String, Stri
 
 ## glyph-cli (Build Orchestration)
 
-**Files:** `build.rs` (688), `main.rs` (121)
+**Files:** `build.rs` (677), `main.rs` (121)
 
 **Commands:** `init`, `build [--full] [--emit-mir] [--gen N]`, `run [--gen N]`, `check [--gen N]`, `test [--gen N]`
 
@@ -194,4 +200,4 @@ Embedded as `RUNTIME_C` string constant. Categories: Memory, Print, String, Stri
 | glyph-mir | 4 | Lowering, match, constants, serde roundtrip |
 | glyph-codegen | 3 | Simple codegen, add, branch |
 | glyph-cli | 0 | Integration tested via `cargo run` |
-| **Total** | **68** | |
+| **Total** | **73** | |

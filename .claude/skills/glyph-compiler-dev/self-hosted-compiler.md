@@ -1,6 +1,6 @@
 # Self-Hosted Compiler Guide (glyph.glyph)
 
-~597 gen=1 definitions (594 fn, 3 type) + 47 gen=2 definitions (~647 total). Compiles Glyph programs to C → `cc` → native executable.
+~1,170 gen=1 fn + 186 test + 7 type = ~1,363 total definitions. Compiles Glyph programs to C → `cc` → native executable. Also supports `--emit=llvm` for LLVM IR output.
 
 ## Overview
 
@@ -13,15 +13,17 @@ glyph_db_open → read_fn_defs + read_type_defs + read_externs
   → [optional: tc_pre_register → tc_infer_all → tc_report_errors]  (glyph check only)
   → compile_fns_parsed → lower_fn_def    (per function)
   → fix_all_field_offsets → fix_extern_calls   (post-processing)
-  → cg_program → glyph_write_file("/tmp/glyph_out.c") → cc → EXE
+  → cg_program → glyph_write_file("/tmp/glyph_out.c") → cc → EXE        (default)
+  → ll_program → glyph_write_file("/tmp/glyph_out.ll") → llc → EXE      (--emit=llvm)
 ```
 
 **Key differences from Rust compiler:**
 - C codegen backend (not Cranelift)
 - No loops — all iteration is recursive with `*_loop` suffix
-- Type system present (~96 functions), available via `glyph check` but not called during `glyph build`
+- Type system present (~171 functions), available via `glyph check` but not called during `glyph build`
 - All values are `long long` — no type distinctions at C level
 - String interpolation (`"text {expr}"`) supported in self-hosted parser (tokenizer + parser handle `{}`)
+- `ns TEXT` column on `def` table — auto-derived from name prefix (`cg_`→`"codegen"`, `ll_`→`"llvm"`, `mcp_`→`"mcp"`, `json_`→`"json"`, `mono_`→`"mono"`, etc.)
 
 ## Type Definitions (3)
 
@@ -40,7 +42,7 @@ Fields sorted alphabetically (BTreeMap convention). At C level: `typedef struct`
 
 ## Subsystem Map
 
-### 1. Tokenizer (~60 functions)
+### 1. Tokenizer (~102 functions)
 
 **Entry:** `tokenize(src) → [Token]`
 **Core loop:** `tok_loop(src, pos, tokens, indents, bracket_depth)` → recursive, calls `tok_one`
@@ -58,7 +60,7 @@ Fields sorted alphabetically (BTreeMap convention). At C level: `typedef struct`
 
 **Key functions:** `is_digit`, `is_alpha`, `scan_ident_end`, `scan_number_end`, `scan_string_end`, `keyword_kind`, `measure_indent`, `emit_dedents`, `tok_text`
 
-### 2. Parser (~52 functions)
+### 2. Parser (~170 functions)
 
 **Entry:** `parse_fn_def(src, tokens, pos, ast_pool) → ParseResult`
 Returns `.node` (index into `ast_pool` array) and `.pos` (new token position).
@@ -75,15 +77,16 @@ Returns `.node` (index into `ast_pool` array) and `.pos` (new token position).
 - Pipeline: `ex_pipe=20, ex_compose=21, ex_propagate=22, ex_unwrap=23`
 - Other: `ex_str_interp=24, ex_field_accessor=25`
 
-**Statement kinds:** `st_expr=1, st_let=2, st_assign=3`
-**Pattern kinds:** `pat_wildcard=1, pat_int=2, pat_str=3, pat_bool=4, pat_ident=5, pat_ctor=6`
+**Statement kinds:** `st_expr=1, st_let=2, st_assign=3, st_let_destr=203` (let destructuring `{x, y} = expr`)
+**Pattern kinds:** `pat_wildcard=1, pat_int=2, pat_str=3, pat_bool=4, pat_ident=5, pat_ctor=6, pat_or=7` (or-patterns `1 | 2 | 3`)
+**Match arms:** stride-3 arrays `[pat, body, guard]`; guard=-1 when no guard
 
 **Precedence chain (low → high):**
 `parse_pipe_expr → parse_compose → parse_logic_or → parse_logic_and → parse_cmp → parse_add → parse_mul → parse_unary → parse_postfix → parse_atom`
 
 Each level has a `*_loop` companion for left-recursive iteration.
 
-### 3. Type System (~96 functions)
+### 3. Type System (~171 functions)
 
 **Available via `glyph check` but not called during `glyph build`.** The `cmd_check` (gen=2) override runs `tc_pre_register` → `tc_infer_all` → `tc_report_errors`. Record type unification has known bugs (crashes on some record patterns), so typecheck is advisory only.
 
@@ -92,7 +95,7 @@ Each level has a `*_loop` companion for left-recursive iteration.
 **Type tags:** `ty_int=1..ty_error=99`
 **Key subsystems:** `subst_*` (union-find), `unify*` (type unification), `env_*` (scope stack), `infer_*`/`infer_expr2`/`infer_expr3` (split across 3 chain functions)
 
-### 4. MIR Lowering (~108 functions)
+### 4. MIR Lowering (~126 functions)
 
 **Entry:** `lower_fn_def(ast_pool, fn_node_idx) → MIR result record`
 
@@ -105,7 +108,11 @@ Each level has a `*_loop` companion for left-recursive iteration.
 
 **Expression lowering:** `lower_expr`/`lower_expr2` dispatch by AST kind to: `lower_ident`, `lower_binary`, `lower_unary`, `lower_call`, `lower_field`, `lower_idx`, `lower_lambda`, `lower_pipe`, `lower_array`, `lower_record`, `lower_str_interp`
 
-**Match lowering:** `lower_match → lower_match_arms → lower_match_wildcard/int/str/bool/ident/ctor`
+**Match lowering:** `lower_match → lower_match_arms → lower_match_wildcard/int/str/bool/ident/ctor/or`
+**Guard lowering:** `lower_guard_body` — evaluates guard after pattern match; falls through on false
+**Or-pattern lowering:** `lower_match_or` — desugars to chained Branch tests in MIR
+**Let destructuring:** `lower_let_destr` → `lld_loop` — `{x, y} = expr` desugars to temp binding + field accesses
+**Closure lowering:** `lower_lambda` — collects free vars via `walk_free_vars`, lifts to top-level, emits `rv_make_closure=9`
 
 **Emission helpers:** `mir_emit`, `mir_emit_use`, `mir_emit_binop`, `mir_emit_call`, `mir_emit_field`, `mir_emit_aggregate`
 **Block management:** `mir_new_block`, `mir_switch_block`, `mir_terminate`
@@ -127,7 +134,7 @@ Renames `ok_func_ref` operands from user name to `glyph_`-prefixed wrapper name.
 
 **Type disambiguation:** `find_best_type` prefers largest type when field sets overlap (e.g., AstNode 7 fields beats TyNode 5 fields).
 
-### 6. C Code Generation (~70 functions)
+### 6. C Code Generation (~115 functions)
 
 **Entry:** `cg_program(mirs)` (gen=1) or `cg_program(mirs, struct_map)` (gen=2)
 
@@ -176,10 +183,47 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 **Skip rules:** Functions with `glyph_` prefix or matching `is_runtime_fn` chain are skipped.
 **Key functions:** `cg_extern_wrappers`, `fix_extern_calls`, `split_arrow`, `collect_libs`
 
-### 9. CLI Dispatch (~39 functions)
+### 11. LLVM IR Backend (~65 functions)
+
+**Entry:** `cg_llvm_program(mirs, struct_map, externs) → S` — emits complete LLVM IR text
+**Trigger:** `./glyph build app.glyph out --emit=llvm` → writes `/tmp/glyph_out.ll`
+**Prefix:** `ll_*` (namespace `llvm`)
+**Structure:** `cg_llvm_program → ll_emit_functions → ll_emit_function → ll_emit_block → ll_emit_stmt/ll_emit_term`
+**Key functions:** `cg_llvm_program`, `ll_emit_function`, `ll_emit_block`, `ll_emit_stmt`, `ll_emit_term`, `ll_load_operand`, `ll_all_type_decls`
+**LLVM type mapping:** `I` → `i64`, `S` → `{i64, i64}*`, `B` → `i1`, arrays/records → pointer types
+**Self-compilation verified** via LLVM path (`./glyph build glyph.glyph --emit=llvm`)
+
+### 12. Monomorphization (~35 functions)
+
+**Entry:** called during `compile_fns_parsed` when generic type defs are present
+**Prefix:** `mono_*` (namespace `mono`)
+**Purpose:** resolve polymorphic type applications at build time — each distinct instantiation generates a specialized version
+**Key functions:** `mono_pass`, `mono_collect`, `mono_specialize`
+**Status:** syntactic parameter resolution; deep type-checking not enforced at instantiation sites. Generic type params compile to `GVal` — no enforcement at call sites.
+
+### 13. MCP Server (~52 functions)
+
+**Entry:** `cmd_mcp → mcp_loop` (reads lines from stdin, writes JSON to stdout)
+**Prefix:** `mcp_*` (namespace `mcp`)
+**Transport:** stdio JSON-RPC; start with `./glyph mcp app.glyph`
+**15 tools:** init, put_def, get_def, remove_def, list_defs, search_defs, check_def, deps, rdeps, sql, build, run, coverage, link, migrate
+**Key functions:** `cmd_mcp`, `mcp_loop`, `mcp_dispatch`, `mcp_tools_call`
+**Tool input/output:** `json_parse` for params, `mcp_str_prop`/`mcp_int_prop` for extraction
+**Chain pattern:** `mcp_add_toolsN` calls `mcp_add_toolsN+1`; `mcp_tools_callN` falls through to `mcp_tools_callN+1`
+**Critical:** build/run tools shell out (`glyph_system`) to avoid stdout corruption — they cannot use stdout themselves
+
+### 14. JSON (~64 functions)
+
+**Entry:** `json_parse(s) → JNode pool`, `json_encode(val) → S`
+**Prefix:** `json_*`, `jb_*` (namespace `json`)
+**Purpose:** MCP server protocol; also used for structured error responses
+**JNode:** `{kind:I, sval:S, tag:I}` stored in flat pool array
+**Critical:** `find_best_type` picks AstNode (7 fields) over JNode (3 fields) for shared field names. In any JSON function that accesses `.sval` on a pool element without dispatching on `.tag`, add `_ = node.tag` as a hint to force correct offset. Affected functions: `json_get_str`, `mcp_get_db`, `mcp_tool_get_def`, `mcp_tool_list_defs`, `mcp_tool_remove_def`, `mcp_tool_search_defs`.
+
+### 9. CLI Dispatch (~45 functions)
 
 **Entry:** `main → dispatch_cmd → dispatch_cmd2 → dispatch_cmd3 → dispatch_cmd4`
-**17 commands:** init, build, run, test, get, put, rm, ls, find, deps, rdeps, stat, dump, sql, extern, check
+**21 commands:** init, build, run, test, cover, get, put, rm, ls, find, deps, rdeps, stat, dump, sql, extern, check, undo, history, export, import, migrate, link, mcp
 **DB pattern:** `glyph_db_open(path) → glyph_db_exec/query_rows/query_one → glyph_db_close`
 **Put upserts:** DELETE+INSERT (avoids UPDATE triggers that call unavailable custom functions)
 
@@ -223,7 +267,7 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 | Limitation | Impact | Workaround |
 |-----------|--------|------------|
 | Type system bugs on records | `glyph check` crashes on some record type patterns | Advisory only; build pipeline skips typecheck |
-| No closures in C codegen | `MakeClosure` defined but not emitted | Avoid closures in programs |
+| Generics are syntactic only | Type params compile to `GVal`; no enforcement at call sites | Monomorphization pass handles basic cases; deep type mismatch is a runtime crash |
 | `s2()` nesting limit ~7 | Stack overflow in Cranelift binary | Combine at same nesting level |
 | No stdin support | `read_file` uses fseek | Use `-b` flag or temp files |
 | No GC | All heap allocs persist | Short-lived programs only |
@@ -234,14 +278,18 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 
 | Subsystem | Count | Prefix/Pattern | Entry Point |
 |-----------|-------|----------------|-------------|
-| Tokenizer | ~60 | `tok_*`, `tk_*`, `scan_*` | `tokenize` |
-| Parser | ~52 | `parse_*`, `pat_*`, `ex_*`, `st_*` | `parse_fn_def` |
-| Type System | ~96 | `infer_*`, `unify_*`, `subst_*`, `ty_*`, `env_*` | `mk_engine` |
-| MIR Lowering | ~108 | `lower_*`, `mir_*`, `mk_op`, `mk_stmt`, `rv_*`, `ok_*` | `lower_fn_def` |
+| Tokenizer | ~102 | `tok_*`, `tk_*`, `scan_*` | `tokenize` |
+| Parser | ~170 | `parse_*`, `pat_*`, `ex_*`, `st_*` | `parse_fn_def` |
+| Type System | ~171 | `infer_*`, `unify_*`, `subst_*`, `ty_*`, `env_*` | `mk_engine` |
+| MIR Lowering | ~126 | `lower_*`, `mir_*`, `mk_op`, `mk_stmt`, `rv_*`, `ok_*` | `lower_fn_def` |
 | MIR Post-Process | ~35 | `fix_*`, `coll_*`, `build_type_reg` | `fix_all_field_offsets` |
-| C Codegen | ~70 | `cg_*` | `cg_program` |
-| Gen=2 Structs | 47 | `cg_*2`, `blt_*`, `fsn_*`, `psf_*` | `compile_db` |
+| C Codegen | ~115 | `cg_*` | `cg_program` |
+| Gen=2 Structs | ~47 | `cg_*2`, `blt_*`, `fsn_*`, `psf_*` | `compile_db` |
 | Extern System | ~24 | `cg_extern_*`, `fix_ext_*`, `collect_libs` | `cg_extern_wrappers` |
-| CLI | ~39 | `cmd_*`, `dispatch_cmd*` | `main` |
+| LLVM Backend | ~65 | `ll_*` | `cg_llvm_program` |
+| Monomorphization | ~35 | `mono_*` | `mono_pass` |
+| MCP Server | ~52 | `mcp_*` | `cmd_mcp` / `mcp_loop` |
+| JSON | ~64 | `json_*`, `jb_*` | `json_parse` |
+| CLI | ~45 | `cmd_*`, `dispatch_cmd*` | `main` |
 | Build | ~10 | `compile_*`, `build_*`, `read_*` | `compile_db` |
 | Utilities | ~20 | `s2`–`s7`, `sort_str_*`, `itos` | `s2` |

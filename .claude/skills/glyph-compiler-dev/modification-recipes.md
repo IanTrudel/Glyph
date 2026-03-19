@@ -17,7 +17,7 @@ Both compilers embed the C runtime, so both must be updated.
 6. Add to `is_runtime_fn` chain (extend the last `fn6`, or add `fn7` and chain it)
 7. Add to `cg_fn_name` mapping if the name needs `glyph_` prefix
 8. Rebuild: `./glyph0 build glyph.glyph --full --gen=2`
-9. Test: `./glyph build test_comprehensive.glyph test_out && ./test_out`
+9. Test: `./glyph test glyph.glyph`
 
 **Runtime chain note:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6`. Each handles ~5-8 names. The last function in the chain returns 0 (not runtime). To add fn7: write `is_runtime_fn7 name = ...`, update fn6's default case to call `is_runtime_fn7(name)` instead of returning 0.
 
@@ -69,6 +69,15 @@ Both compilers embed the C runtime, so both must be updated.
 ## Recipe 4: Fix a C Codegen Bug (Self-Hosted)
 
 1. **Reproduce:** Build a minimal test program that triggers the bug
+
+   Via MCP (preferred — no shell escaping, interactive):
+   ```
+   mcp__glyph__init(db="/tmp/test.glyph")
+   mcp__glyph__put_def(db="/tmp/test.glyph", name="main", kind="fn", body="main = ...")
+   mcp__glyph__run(db="/tmp/test.glyph")
+   ```
+
+   Via CLI (fallback):
    ```bash
    ./glyph init /tmp/test.glyph
    ./glyph put /tmp/test.glyph fn -b 'main = ...'
@@ -100,7 +109,7 @@ Both compilers embed the C runtime, so both must be updated.
 7. **Verify:**
    ```bash
    ./glyph build /tmp/test.glyph /tmp/test_out && /tmp/test_out
-   ./glyph build test_comprehensive.glyph test_out && ./test_out
+   ./glyph test glyph.glyph    # full test suite (186 tests)
    ```
 
 ## Recipe 5: Add a Gen=2 Override
@@ -253,8 +262,13 @@ ninja test               # Runs all tests
 
 ## Recipe 11: Inserting Multi-Line Definitions
 
-For multi-line functions, use the Write tool to create a temp file, then `./glyph put -f`:
+**Via MCP (preferred — no shell escaping, body passed as JSON string):**
+```
+mcp__glyph__put_def(db="glyph.glyph", name="fn_name", kind="fn",
+  body="fn_name arg1 arg2 =\n  result = arg1 + arg2\n  match result > 0\n    true -> result\n    _ -> 0")
+```
 
+**Via CLI (fallback — write to temp file first):**
 ```bash
 # 1. Write the definition body to a temp file (use Write tool, not echo/cat)
 #    File contents — no quoting needed:
@@ -359,9 +373,101 @@ grep -A 50 "glyph_<compiler_fn>" /tmp/glyph_out.c
 | Wrong field value | Alphabetical sort order mismatch | Fields sorted A-Z, check offset |
 | Function returns garbage | Dangling stack pointer | Heap-allocate via `glyph_alloc` |
 | `_glyph_current_fn` shows wrong name | Crash in callee's prologue | Look at last called function |
+| `parse_single_pattern` returns wrong strings | String match patterns always fall through to `_ ->` | Double-stripping: token text already unquoted; don't call `str_slice(s, 1, len-1)` again. Use `s` directly. |
+
+## Recipe 13: Working with the MCP Server
+
+The MCP server is the **primary workflow** for interacting with glyph.glyph. It avoids shell escaping issues, supports multi-line bodies, and returns structured JSON errors.
+
+**Starting the MCP server:**
+```bash
+./glyph mcp glyph.glyph    # starts stdio JSON-RPC server
+```
+
+In Claude Code, MCP tools are available as `mcp__glyph__*` after the server is connected.
+
+**15 available tools:**
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__glyph__init` | Create a new .glyph database |
+| `mcp__glyph__get_def` | Read a definition body |
+| `mcp__glyph__put_def` | Insert/update a definition |
+| `mcp__glyph__remove_def` | Delete a definition |
+| `mcp__glyph__list_defs` | List definitions (filter by kind/ns) |
+| `mcp__glyph__search_defs` | Search names and bodies |
+| `mcp__glyph__check_def` | Type-check a definition, returns structured errors |
+| `mcp__glyph__deps` | Forward dependency edges |
+| `mcp__glyph__rdeps` | Reverse dependency edges |
+| `mcp__glyph__sql` | Raw SQL query |
+| `mcp__glyph__build` | Build the program (shells out) |
+| `mcp__glyph__run` | Build + run (shells out) |
+| `mcp__glyph__coverage` | Coverage report |
+| `mcp__glyph__link` | Link a library into an app |
+| `mcp__glyph__migrate` | Run schema migrations |
+
+**Adding a new MCP tool:**
+1. Write `mcp_tool_NAME(db, params)` — parse params with `mcp_str_prop`/`mcp_int_prop`, return JSON string
+2. Register in `mcp_add_toolsN` (whichever has room, or add `mcp_add_toolsN+1` and chain it)
+3. Handle in `mcp_tools_callN` — add match arm that calls `mcp_tool_NAME`
+4. If tool needs build/run, use `glyph_system(cmd)` — **never write to stdout directly** (corrupts JSON-RPC)
+5. Chain pattern: `mcp_add_toolsN` ends with a call to `mcp_add_toolsN+1`; `mcp_tools_callN` falls through to `mcp_tools_callN+1` at the bottom
+
+**Insert via MCP vs CLI:**
+```
+# MCP — preferred (no shell quoting, multi-line works naturally)
+mcp__glyph__put_def(db="glyph.glyph", name="my_fn", kind="fn",
+  body="my_fn x =\n  x + 1")
+
+# CLI — fallback
+./glyph put glyph.glyph fn -f /tmp/my_fn.gl
+```
+
+## Recipe 14: Adding to the LLVM Backend
+
+The LLVM IR backend lives in `glyph.glyph` under the `llvm` namespace (`ll_*` prefix). It mirrors the structure of the C codegen backend.
+
+**Trigger:** `./glyph build app.glyph out --emit=llvm` → writes `/tmp/glyph_out.ll`
+
+**Entry point:** `cg_llvm_program(mirs, struct_map, externs) → S` — assembles complete LLVM IR module text
+
+**Structure (mirrors C codegen):**
+```
+cg_llvm_program → ll_emit_functions → ll_emit_function → ll_emit_block → ll_emit_stmt / ll_emit_term
+```
+
+**LLVM type mapping:**
+| Glyph | LLVM |
+|-------|------|
+| `I` (Int64) | `i64` |
+| `S` (Str) | `{i64, i64}*` |
+| `B` (Bool) | `i1` |
+| Array | `{i64, i64, i64}*` |
+| Record/Enum | `i64*` |
+
+**Adding a new MIR statement kind to LLVM:**
+1. Read the analogous C codegen handler in `cg_stmt`/`cg_stmt2` for reference
+2. Add a case in `ll_stmt` for the new `skind` value — emit LLVM IR text
+3. Use `ll_operand` to render operands (produces `%_N` for locals, integer constants, etc.)
+4. Test: `mcp__glyph__build(db="glyph.glyph", emit_llvm=true)` or `./glyph build glyph.glyph out --emit=llvm`
+
+**Self-compilation test:**
+```bash
+./glyph build glyph.glyph out --emit=llvm    # compiles glyph compiler via LLVM path
+./out stat glyph.glyph                        # verify produced binary works
+```
 
 ## Quick Reference: Reading/Writing Definitions
 
+**Preferred: MCP tools (no shell escaping)**
+```
+mcp__glyph__get_def(db="glyph.glyph", name="fn_name")
+mcp__glyph__put_def(db="glyph.glyph", name="fn_name", kind="fn", body="fn_name x = x + 1")
+mcp__glyph__search_defs(db="glyph.glyph", query="cg_stmt")
+mcp__glyph__sql(db="glyph.glyph", query="SELECT name FROM def WHERE kind='fn' AND name LIKE 'cg_%'")
+```
+
+**Fallback: CLI**
 ```bash
 # Read a definition
 ./glyph get glyph.glyph fn_name                    # Print body

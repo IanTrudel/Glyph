@@ -17,7 +17,7 @@ DB → Parser → Resolver →         DB → tokenize → parse_fn_def →
 ```
 
 - **Rust compiler** (6 crates, ~10k LOC): Cranelift backend, full type checking, incremental compilation
-- **Self-hosted compiler** (glyph.glyph, ~647 definitions): C codegen backend, type system wired into `glyph check`, everything is `long long`
+- **Self-hosted compiler** (glyph.glyph, ~1,363 definitions): C codegen backend, LLVM IR backend (`--emit=llvm`), MCP server (stdio transport, 15 tools), type system wired into `glyph check`, everything is `long long`
 - The compiler IS a SQLite database — `glyph.glyph` contains all self-hosted definitions as rows
 
 **Bootstrap chain (2-stage):**
@@ -28,22 +28,27 @@ glyph0 build glyph.glyph --gen=2 → glyph (Cranelift binary with gen=2 struct c
 
 ## Which Compiler to Modify
 
+**The Rust compiler (`glyph0`) is in maintenance mode** — it exists only to bootstrap glyph.glyph. New language features and capabilities go in `glyph.glyph` (self-hosted). Only modify the Rust crates when glyph.glyph uses a feature that glyph0 cannot parse or compile.
+
 | Task | Modify | Build/Test |
 |------|--------|-----------|
-| Language syntax/parsing | Rust: `glyph-parse` | `cargo test -p glyph-parse` |
-| Type system | Rust: `glyph-typeck` | `cargo test -p glyph-typeck` |
-| MIR lowering | Rust: `glyph-mir` AND/OR `glyph.glyph` | Both have MIR lowering |
+| Language syntax/parsing | `glyph.glyph` (self-hosted); Rust only if bootstrap needs it | `ninja` |
+| Type system | `glyph.glyph` (self-hosted); Rust `glyph-typeck` only for bootstrap | `ninja` |
+| MIR lowering | `glyph.glyph` primarily | `ninja` |
 | C codegen (gen=1/gen=2) | `glyph.glyph` only | `ninja` |
-| Cranelift codegen | Rust: `glyph-codegen` | `cargo test -p glyph-codegen` |
-| Runtime functions | Both: `runtime.rs` + `cg_runtime_*` | See [recipes](modification-recipes.md) |
+| Cranelift codegen | Rust: `glyph-codegen` (maintenance only) | `cargo test -p glyph-codegen` |
+| Runtime functions | Both: `runtime.rs` + `cg_runtime_*` (must stay in sync for bootstrap) | See [recipes](modification-recipes.md) |
 | CLI commands | `glyph.glyph` | `ninja` |
 | Schema changes | Rust: `glyph-db` + `glyph.glyph` | Both |
+| LLVM IR emission | `glyph.glyph` only (`ll_*` defs) | `./glyph build --emit=llvm` |
+| MCP server | `glyph.glyph` | `ninja` |
+| Monomorphization | `glyph.glyph` only (`mono_*` defs) | `ninja` |
 
 ## Build & Test
 
 ```bash
 # Rust compiler
-cargo build && cargo test              # Build + 68 tests
+cargo build && cargo test              # Build + 73 tests
 cargo run -- build app.glyph           # Test against a program
 cargo run -- build app.glyph --gen=2   # Build with gen=2 struct codegen
 
@@ -51,10 +56,13 @@ cargo run -- build app.glyph --gen=2   # Build with gen=2 struct codegen
 ninja                                   # 2-stage: glyph0 → glyph (gen=2 via Cranelift)
 ninja test                              # Rust tests + self-hosted regression
 
-# Quick iteration on self-hosted changes
+# Quick iteration on self-hosted changes (MCP preferred — see recipes)
 ./glyph0 build glyph.glyph --full --gen=1    # Rebuild gen=1 only
 ./glyph0 build glyph.glyph --full --gen=2    # Rebuild with gen=2 overrides
-./glyph build test_comprehensive.glyph test_out && ./test_out  # Regression
+./glyph test glyph.glyph                     # Run full self-hosted test suite (186 tests)
+
+# MCP workflow (primary — no shell escaping, structured errors)
+./glyph mcp glyph.glyph               # Start MCP server; use mcp__glyph__* tools in Claude
 
 # Inspect generated C
 cat /tmp/glyph_out.c                   # Last compiled C output
@@ -114,6 +122,8 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 | `s2()` nesting ~7 limit | Stack overflow in Cranelift binary with deep nesting | Combine strings at same nesting level |
 | Gen=2 parameter reads | Field-access tagging covers most cases; edge cases fall back | Use unique field prefixes for reliable struct detection |
 | Extern headers | Wrappers only see stdlib includes | Heavy FFI: use separate C wrapper file instead of extern_ table |
+| String pattern matching | `parse_single_pattern` double-stripping: extracted token text is already unquoted, so `glyph_str_slice(s, 1, len-1)` gives wrong result | Fixed 2026-03-19; watch for similar bugs when adding new pattern kinds |
+| JNode `.sval` field access | `find_best_type` picks AstNode (7 fields) over JNode (3 fields) — wrong offset | Add `_ = node.tag` hint in JSON functions that access JNode `.sval` without dispatching on `.tag` |
 
 ## Build Modes
 
@@ -160,14 +170,14 @@ See [modification-recipes.md](modification-recipes.md) Recipe 12 for the full de
 crates/
   glyph-db/       connection.rs (229), queries.rs (338), model.rs (170),
                    schema.rs (150), functions.rs (48)
-  glyph-parse/    parser.rs (1693), lexer.rs (755), ast.rs (301),
+  glyph-parse/    parser.rs (1760), lexer.rs (827), ast.rs (301),
                    token.rs (83), span.rs (105)
-  glyph-typeck/   infer.rs (791), unify.rs (366), resolve.rs (288),
+  glyph-typeck/   infer.rs (815), unify.rs (366), resolve.rs (288),
                    types.rs (224)
-  glyph-mir/      lower.rs (1306), ir.rs (251)
-  glyph-codegen/  cranelift.rs (893), runtime.rs (637), layout.rs (127),
+  glyph-mir/      lower.rs (1466), ir.rs (251)
+  glyph-codegen/  cranelift.rs (908), runtime.rs (637), layout.rs (127),
                    linker.rs (74)
-  glyph-cli/      build.rs (688), main.rs (121)
+  glyph-cli/      build.rs (677), main.rs (121)
 ```
 
 Dependency chain (strict, no cycles):
@@ -178,6 +188,6 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 ## Supporting Files
 
 - [rust-compiler.md](rust-compiler.md) — Crate-by-crate guide to the Rust compiler
-- [self-hosted-compiler.md](self-hosted-compiler.md) — Subsystem guide for glyph.glyph (~647 definitions)
+- [self-hosted-compiler.md](self-hosted-compiler.md) — Subsystem guide for glyph.glyph (~1,363 definitions)
 - [modification-recipes.md](modification-recipes.md) — Step-by-step recipes for common compiler changes
 - [documents/glyph-compiler-reference.md](../../../documents/glyph-compiler-reference.md) — Exhaustive reference (~950 lines)

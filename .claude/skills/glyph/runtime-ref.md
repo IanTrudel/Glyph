@@ -13,13 +13,19 @@ Runtime functions are prefixed `glyph_` in generated C (e.g., `println` → `gly
 | `dealloc` | `*V -> V` | Free heap pointer |
 | `realloc` | `*V -> I -> *V` | Resize allocation |
 
-## Print
+## Print / I/O
 
 | Function | Sig | Description |
 |----------|-----|-------------|
 | `print` | `S -> I` | Print to stdout (no newline) |
 | `println` | `S -> I` | Print + newline to stdout |
 | `eprintln` | `S -> I` | Print + newline to stderr |
+| `read_file` | `S -> S` | Read entire file (not stdin/pipes) |
+| `write_file` | `S -> S -> I` | Write string to file (0=ok) |
+| `read_line` | `-> S` | Read a line from stdin |
+| `flush` | `-> V` | Flush stdout |
+| `args` | `-> [S]` | Command-line arguments |
+| `system` | `S -> I` | Execute shell command, return exit code |
 
 ## String
 
@@ -28,7 +34,7 @@ Runtime functions are prefixed `glyph_` in generated C (e.g., `println` → `gly
 | `str_concat` | `S -> S -> S` | Concatenate (prefer `+` operator) |
 | `str_eq` | `S -> S -> I` | Equality (1=eq, 0=neq; prefer `==`) |
 | `str_len` | `S -> I` | Length in bytes |
-| `str_slice` | `S -> I -> I -> S` | Substring `[start..end)` |
+| `str_slice` | `S -> I -> I -> S` | Substring `[start..end)` (clamps) |
 | `str_char_at` | `S -> I -> I` | Byte at index (-1 if OOB) |
 | `int_to_str` | `I -> S` | Integer to string |
 | `str_to_int` | `S -> I` | Parse integer (0 on failure) |
@@ -45,6 +51,28 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `sb_append` | `*V -> S -> *V` | Append string |
 | `sb_build` | `*V -> S` | Finalize, return string |
 
+## Float
+
+| Function | Sig | Description |
+|----------|-----|-------------|
+| `int_to_float` | `I -> F` | Integer to float |
+| `float_to_int` | `F -> I` | Float to integer (truncate) |
+| `float_to_str` | `F -> S` | Float to string |
+| `str_to_float` | `S -> F` | Parse float (0.0 on failure) |
+
+## Float Math
+
+| Function | Sig | Description |
+|----------|-----|-------------|
+| `sqrt` | `F -> F` | Square root |
+| `sin` | `F -> F` | Sine |
+| `cos` | `F -> F` | Cosine |
+| `atan2` | `F -> F -> F` | Arc tangent of y/x |
+| `fabs` | `F -> F` | Absolute value |
+| `pow` | `F -> F -> F` | Power: `pow(base, exp)` |
+| `floor` | `F -> F` | Round down |
+| `ceil` | `F -> F` | Round up |
+
 ## Array
 
 | Function | Sig | Description |
@@ -53,17 +81,41 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `array_push` | `[I] -> I -> I` | Push element, returns new data ptr |
 | `array_len` | `[I] -> I` | Element count |
 | `array_set` | `[I] -> I -> I -> V` | Set element at index |
-| `array_pop` | `[I] -> I` | Remove and return last |
+| `array_pop` | `[I] -> I` | Remove and return last (panics if empty) |
 | `array_bounds_check` | `I -> I -> V` | Check `[0..len)`, panic if OOB |
 
-## I/O
+## Map
+
+Hash map with string keys. All values are `I` (GVal) internally.
 
 | Function | Sig | Description |
 |----------|-----|-------------|
-| `read_file` | `S -> S` | Read entire file (no stdin/pipes) |
-| `write_file` | `S -> S -> I` | Write string to file (0=ok) |
-| `args` | `-> [S]` | Command-line arguments |
-| `system` | `S -> I` | Execute shell command, return exit code |
+| `hm_new` | `-> *V` | Create empty map |
+| `hm_set` | `*V -> S -> I -> V` | Insert or update entry |
+| `hm_get` | `*V -> S -> I` | Lookup value (0 if absent) |
+| `hm_has` | `*V -> S -> I` | Membership test (1=present, 0=absent) |
+| `hm_del` | `*V -> S -> V` | Remove entry |
+| `hm_keys` | `*V -> [S]` | Extract all keys as array |
+| `hm_len` | `*V -> I` | Number of entries |
+
+Note: Current implementation uses string keys only (`hm_keq` does string equality). Values are stored as `I` (GVal/intptr_t) — store pointers or integers.
+
+```
+-- Example: word frequency counter
+count_words words =
+  m = hm_new()
+  count_loop(m, words, 0)
+  m
+
+count_loop m words i =
+  match i >= array_len(words)
+    true -> 0
+    _ ->
+      w = words[i]
+      cur = hm_get(m, w)
+      hm_set(m, w, cur + 1)
+      count_loop(m, words, i + 1)
+```
 
 ## Result
 
@@ -94,15 +146,21 @@ match result
 
 ## SQLite
 
-Available when program uses `glyph_db_*`. Links `-lsqlite3`.
+Declare functions in the `extern_` table; the compiler generates C wrappers and links `-lsqlite3`. Do not use `glyph_` prefix in your code — that's the generated C name.
 
-| Function | Sig | Description |
-|----------|-----|-------------|
-| `glyph_db_open` | `S -> I` | Open database (0=error) |
-| `glyph_db_close` | `I -> V` | Close handle |
-| `glyph_db_exec` | `I -> S -> I` | Execute SQL, no result (0=ok) |
-| `glyph_db_query_rows` | `I -> S -> [[S]]` | Query → rows of string columns |
-| `glyph_db_query_one` | `I -> S -> S` | Query → single value |
+```bash
+./glyph extern app.glyph db_open sqlite3_open "S -> I" --lib sqlite3
+```
+
+Common pattern using `glyph_db_*` helpers (declare via extern):
+
+| Name | Sig | Description |
+|------|-----|-------------|
+| `db_open` | `S -> I` | Open database, returns handle (0=error) |
+| `db_close` | `I -> V` | Close handle |
+| `db_exec` | `I -> S -> I` | Execute SQL, no result (0=ok) |
+| `db_query_rows` | `I -> S -> [[S]]` | Query → rows of string columns |
+| `db_query_one` | `I -> S -> S` | Query → single value |
 
 ## Test Assertions
 
@@ -120,6 +178,7 @@ Only in test builds (`./glyph test`). All return 0, set `_test_failed` flag on f
 |------|--------|------|
 | String | `{ptr: *char, len: i64}` | 16B |
 | Array | `{ptr: *i64, len: i64, cap: i64}` | 24B |
+| Map | opaque pointer to hash map | 8B (ptr) |
 | Record (named) | `typedef struct { long long f1; ... } Glyph_Name;` | 8B/field |
 | Record (anonymous) | Fields at fixed offsets, alphabetical | 8B/field |
 | Enum | `{tag: i64, payload...}` heap-allocated | 8B + 8B/field |
