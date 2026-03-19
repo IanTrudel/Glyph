@@ -122,15 +122,18 @@ Incremental compilation: content-hash (BLAKE3) each definition, recompile only d
 
 ```
 Stage 0: glyph0 (Rust compiler, cargo build --release)
-    │  Compiles glyph.glyph via Cranelift
-    ▼
-Stage 1: glyph (self-hosted, C codegen, ~307k binary)
-    │  Compiles user .glyph programs to C → native
+    │  Compiles glyph.glyph via Cranelift → glyph1
+Stage 1: glyph1 (Cranelift binary)
+    │  Self-builds via C codegen → glyph2
+Stage 2: glyph2 (C-codegen binary)
+    │  Re-builds via LLVM IR codegen → glyph
+Stage 3: glyph (final LLVM-compiled self-hosted compiler)
+    │  Compiles user .glyph programs
     ▼
 Programs: user applications
 ```
 
-Build with `ninja` (or manually: `cargo build --release && cp target/release/glyph glyph0 && ./glyph0 build glyph.glyph --full`).
+Build with `ninja` (runs all 4 stages). Manual: `cargo build --release && cp target/release/glyph glyph0 && ./glyph0 build glyph.glyph --full`.
 
 ## Core Database Schema
 

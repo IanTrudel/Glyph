@@ -12,7 +12,7 @@ Two design decisions follow from this premise:
 
 The MCP server gives Claude structured tools to navigate the program graph, query definitions, check types, and write code directly into the database. The compiler's own source — stored in the same format — serves as the language reference.
 
-> **Status:** Working self-hosted compiler (v0.2). ~1,100 definitions, C codegen backend, MCP server, full bootstrap chain.
+> **Status:** Working self-hosted compiler (v0.2). ~1,363 definitions, C codegen + LLVM IR backends, MCP server (15 tools), 4-stage bootstrap chain.
 
 > **Note:** Glyph programs are written by LLMs, not humans. If you're here to contribute, see [Contributing](#contributing).
 
@@ -63,7 +63,7 @@ ninja                          # build self-hosted glyph compiler
 sudo ninja install
 ```
 
-`ninja` automatically reconstructs `glyph.glyph` from `src/` if it's missing, then runs the full 3-stage bootstrap chain.
+`ninja` automatically reconstructs `glyph.glyph` from `src/` if it's missing, then runs the full 4-stage bootstrap chain.
 
 To force a fresh reconstruction from source files:
 
@@ -128,7 +128,11 @@ All tools accept an optional `db` parameter to target a specific `.glyph` databa
 | `deps` | Forward dependencies of a definition (what it calls) |
 | `rdeps` | Reverse dependencies (what calls it) |
 | `sql` | Execute a raw SQL query — full access to the database schema |
+| `build` | Compile a `.glyph` database to a native executable |
+| `run` | Build and execute, returning stdout |
 | `coverage` | Show function-level coverage from the last `glyph test --cover` run |
+| `link` | Copy definitions from a library database into an application database |
+| `migrate` | Apply pending schema migrations to a database |
 
 ---
 
@@ -170,7 +174,7 @@ The `src/` directory holds one `.gl` file per definition, making individual func
 ```
 Cargo.toml               workspace root
 build.ninja              bootstrap build rules
-glyph.glyph              self-hosted compiler (SQLite database, ~1,100 defs)
+glyph.glyph              self-hosted compiler (SQLite database, ~1,363 defs)
 src/                     compiler source as split .gl files (for git diffs/PRs)
   schema.sql             database schema + extern declarations
   src/<name>.<kind>.gl   gen=1 definitions
@@ -208,25 +212,30 @@ Glyph is self-hosted. The compiler is written in Glyph and stored in `glyph.glyp
 
 ```
 Stage 0:  glyph0          Rust/Cranelift compiler (cargo build --release)
-             │ compiles glyph.glyph --gen=2
+             │ compiles glyph.glyph → Cranelift binary
              ▼
 Stage 1:  glyph1          Cranelift-linked binary
              │ self-builds via C codegen
              ▼
-Stage 2:  glyph           final self-hosted compiler (~307k binary)
+Stage 2:  glyph2          C-codegen binary
+             │ re-builds via LLVM IR codegen
+             ▼
+Stage 3:  glyph           final self-hosted compiler (LLVM-compiled)
 ```
+
+Each stage validates the previous one: glyph2 proves C codegen works, glyph proves LLVM codegen works and can reproduce itself.
 
 Build commands:
 
 ```bash
 cargo build --release      # build glyph0 only
-ninja                      # full chain: glyph0 → glyph1 → glyph
+ninja                      # full chain: glyph0 → glyph1 → glyph2 → glyph
 ninja reconstruct          # rebuild glyph.glyph from src/ files
 ninja test                 # run Rust + self-hosted tests
 ninja cover                # run tests with coverage instrumentation
 ninja install              # install glyph + glyph.glyph to /usr/local
 PREFIX=/usr ninja install  # install to /usr instead
-ninja -t clean             # remove ninja build artifacts (glyph0, glyph1, glyph, glyph.glyph.cover)
+ninja -t clean             # remove ninja build artifacts
 cargo clean                # remove Rust build artifacts (target/)
 ```
 

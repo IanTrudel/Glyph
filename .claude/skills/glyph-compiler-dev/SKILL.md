@@ -20,10 +20,12 @@ DB → Parser → Resolver →         DB → tokenize → parse_fn_def →
 - **Self-hosted compiler** (glyph.glyph, ~1,363 definitions): C codegen backend, LLVM IR backend (`--emit=llvm`), MCP server (stdio transport, 15 tools), type system wired into `glyph check`, everything is `long long`
 - The compiler IS a SQLite database — `glyph.glyph` contains all self-hosted definitions as rows
 
-**Bootstrap chain (2-stage):**
+**Bootstrap chain (4-stage):**
 ```
 cargo build → glyph0 (Rust/Cranelift)
-glyph0 build glyph.glyph --gen=2 → glyph (Cranelift binary with gen=2 struct codegen)
+glyph0 build glyph.glyph → glyph1 (Cranelift binary)
+glyph1 build glyph.glyph → glyph2 (C-codegen binary)
+glyph2 build glyph.glyph --emit=llvm → glyph (final LLVM-compiled binary)
 ```
 
 ## Which Compiler to Modify
