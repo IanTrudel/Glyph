@@ -41,7 +41,7 @@ echo "Installed: $GLYPH_VER"
 echo "Binary:    $BIN_DIR/glyph"
 echo ""
 echo "Add to your MCP config (~/.claude.json):"
-printf '  "glyph": {\n    "command": "%s",\n    "args": ["mcp", "%s"]\n  }\n' \
-  "$BIN_DIR/glyph" "$SHARE_DIR/glyph.glyph"
+printf '  "glyph": {\n    "command": "%s",\n    "args": ["mcp"]\n  }\n' \
+  "$BIN_DIR/glyph"
 echo ""
 echo "Reload your shell or run: source ~/.zshrc"
