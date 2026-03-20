@@ -18,6 +18,12 @@
 | [mir.md](mir.md) | Flat CFG intermediate representation between AST and codegen |
 | [migrations.md](migrations.md) | Design for the schema migration system (`glyph migrate` command) |
 
+## Tooling & Distribution
+
+| Document | Description |
+|----------|-------------|
+| [distribution.md](distribution.md) | Distribution strategy: GitHub Releases + install script + `glyph update` command |
+
 ## Archives
 
 Historical, superseded, and completed design documents have been moved to `../Archives/documents/`.
