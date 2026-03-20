@@ -67,22 +67,6 @@ CREATE TABLE IF NOT EXISTS tag (
 CREATE INDEX IF NOT EXISTS idx_tag_key_val ON tag(key, val);
 
 ---------------------------------------------------------------------
--- MODULES: logical grouping
----------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS module (
-  id        INTEGER PRIMARY KEY,
-  name      TEXT    NOT NULL UNIQUE,
-  doc       TEXT
-);
-
-CREATE TABLE IF NOT EXISTS module_member (
-  module_id INTEGER NOT NULL REFERENCES module(id) ON DELETE CASCADE,
-  def_id    INTEGER NOT NULL REFERENCES def(id) ON DELETE CASCADE,
-  exported  INTEGER NOT NULL DEFAULT 1,
-  PRIMARY KEY (module_id, def_id)
-);
-
----------------------------------------------------------------------
 -- COMPILATION CACHE
 ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS compiled (
