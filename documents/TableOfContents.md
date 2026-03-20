@@ -23,6 +23,7 @@
 | Document | Description |
 |----------|-------------|
 | [distribution.md](distribution.md) | Distribution strategy: GitHub Releases + install script + `glyph update` command |
+| [library-linking.md](library-linking.md) | Current linking behaviour, problems, and improvement options (provenance tags → lib_dep table → separate compilation) |
 
 ## Archives
 
