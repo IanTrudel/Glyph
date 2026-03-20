@@ -65,144 +65,70 @@ sudo ninja install
 
 `ninja` automatically reconstructs `glyph.glyph` from `src/` if it's missing, then runs the full 4-stage bootstrap chain.
 
-To force a fresh reconstruction from source files:
-
-```bash
-ninja reconstruct              # rebuild glyph.glyph from src/
-ninja                          # then build the compiler
-```
-
----
-
 ## MCP server setup
 
-Glyph ships a built-in MCP (Model Context Protocol) server. Claude uses it to read context and write definitions directly to `.glyph` databases.
+Glyph ships a built-in MCP server. Claude uses it to explore the codebase, write and validate definitions, build, and run — all without touching files directly.
 
-### For application development
-
-The system-installed `glyph.glyph` is passed as the MCP argument — it serves as the language documentation and standard library reference. The program being worked on is passed as an additional MCP initialization parameter (JSON). Add to `~/.claude.json`:
+Pass the database you're working on as the startup argument; it becomes the default for all tool calls:
 
 ```json
 {
   "mcpServers": {
     "glyph": {
       "command": "/usr/local/bin/glyph",
-      "args": ["mcp", "/usr/local/share/glyph/glyph.glyph"],
-      "disabled": false,
-      "autoApprove": []
+      "args": ["mcp", "/usr/local/share/glyph/glyph.glyph"]
     }
   }
 }
 ```
 
-### For compiler development
-
-Point the server at `glyph.glyph` (the compiler's own source database). Add to `.claude/settings.json` in the Glyph repo:
-
-```json
-{
-  "mcpServers": {
-    "glyph": {
-      "command": "./glyph",
-      "args": ["mcp", "glyph.glyph"],
-      "disabled": false,
-      "autoApprove": []
-    }
-  }
-}
-```
+The `db` argument is optional. Omit it and pass `db=` explicitly on each tool call instead — useful when working across multiple databases in the same session.
 
 ### MCP tools
 
-All tools accept an optional `db` parameter to target a specific `.glyph` database, overriding the server's default.
-
 | Tool | Description |
 |------|-------------|
-| `init` | Create a new `.glyph` database at the given path (creates parent directories) |
+| `init` | Create a new `.glyph` database |
 | `get_def` | Read a definition by name and kind |
-| `put_def` | Insert or replace a definition (validates parse before inserting) |
-| `check_def` | Validate a definition body without inserting it |
+| `put_def` | Insert or replace a definition (validates before inserting) |
+| `check_def` | Validate a definition body without inserting |
 | `remove_def` | Delete a definition |
-| `list_defs` | List all definitions, optionally filtered by kind |
-| `search_defs` | Search definition bodies with a SQL `LIKE` pattern |
-| `deps` | Forward dependencies of a definition (what it calls) |
+| `list_defs` | List definitions, optionally filtered by kind |
+| `search_defs` | Search definition bodies with a `LIKE` pattern |
+| `deps` | Forward dependencies of a definition |
 | `rdeps` | Reverse dependencies (what calls it) |
-| `sql` | Execute a raw SQL query — full access to the database schema |
+| `sql` | Raw SQL — full access to the database schema |
 | `build` | Compile a `.glyph` database to a native executable |
 | `run` | Build and execute, returning stdout |
-| `coverage` | Show function-level coverage from the last `glyph test --cover` run |
-| `link` | Copy definitions from a library database into an application database |
+| `coverage` | Function-level coverage from the last `glyph test --cover` run |
+| `link` | Copy definitions from a library database into an application |
 | `migrate` | Apply pending schema migrations to a database |
 
 ---
 
 ## Development workflow
 
-Glyph programs are written by Claude. The human role is to direct Claude, review diffs, run tests, and commit. A typical session:
+Claude writes all Glyph code via MCP. The human role is to direct it, run the build, and commit.
 
-1. **Open Claude Code** in the Glyph repository with the MCP server configured above.
+1. **Configure the MCP server** (see above) and open Claude Code.
 
-2. **Ask Claude** to implement a feature or fix a bug — it uses MCP tools to read context and write definitions directly to `glyph.glyph`.
+2. **Direct Claude** — describe the feature or bug. Claude uses MCP tools to explore (`get_def`, `search_defs`, `sql`), write (`put_def`), and validate (`check_def`) definitions. No manual file editing.
 
-3. **Rebuild** the compiler:
+3. **Rebuild:**
    ```bash
    ninja
    ```
 
-4. **Run tests:**
+4. **Test:**
    ```bash
    ./glyph test glyph.glyph
    ```
 
-5. **Export** definitions to source files:
+5. **Commit:**
    ```bash
-   ./glyph export glyph.glyph src
-   ```
-
-6. **Commit** both the binary and the source files:
-   ```bash
-   git add src/ glyph.glyph
+   git add glyph.glyph
    git commit
    ```
-
-The `src/` directory holds one `.gl` file per definition, making individual function changes reviewable in GitHub PRs.
-
----
-
-## Project structure
-
-```
-Cargo.toml               workspace root
-build.ninja              bootstrap build rules
-glyph.glyph              self-hosted compiler (SQLite database, ~1,363 defs)
-src/                     compiler source as split .gl files (for git diffs/PRs)
-  schema.sql             database schema + extern declarations
-  src/<name>.<kind>.gl   gen=1 definitions
-  src/gen2/<name>.<kind>.gl  gen=2 definitions (struct codegen overrides)
-crates/
-  glyph-db/              SQLite schema, custom functions, DB access
-  glyph-parse/           indentation-sensitive lexer + recursive-descent parser
-  glyph-typeck/          Hindley-Milner type inference + row polymorphism
-  glyph-mir/             MIR (flat CFG), lowering, pattern match compilation
-  glyph-codegen/         Cranelift codegen, ABI, linker invocation
-  glyph-cli/             glyph0 binary — init/build/run/check/test/import
-examples/
-  calculator/            expression calculator REPL
-  glint/                 SQLite project analyzer
-  gstats/                statistical analyzer (named record types)
-  gled/                  terminal text editor (ncurses)
-  life/                  Conway's Game of Life (X11)
-  benchmark/             performance comparison vs C
-documents/
-  glyph-spec.md          formal language specification
-  glyph-self-hosted-programming-manual.md  LLM programming manual
-```
-
-**Crate dependency order** (no cycles):
-
-```
-glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → glyph-db
-```
 
 ---
 
@@ -224,20 +150,6 @@ Stage 3:  glyph           final self-hosted compiler (LLVM-compiled)
 ```
 
 Each stage validates the previous one: glyph2 proves C codegen works, glyph proves LLVM codegen works and can reproduce itself.
-
-Build commands:
-
-```bash
-cargo build --release      # build glyph0 only
-ninja                      # full chain: glyph0 → glyph1 → glyph2 → glyph
-ninja reconstruct          # rebuild glyph.glyph from src/ files
-ninja test                 # run Rust + self-hosted tests
-ninja cover                # run tests with coverage instrumentation
-ninja install              # install glyph + glyph.glyph to /usr/local
-PREFIX=/usr ninja install  # install to /usr instead
-ninja -t clean             # remove ninja build artifacts
-cargo clean                # remove Rust build artifacts (target/)
-```
 
 ---
 
