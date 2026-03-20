@@ -108,27 +108,33 @@ The `db` argument is optional. Omit it and pass `db=` explicitly on each tool ca
 
 ## Development workflow
 
-Claude writes all Glyph code via MCP. The human role is to direct it, run the build, and commit.
+Claude writes all Glyph code via MCP. The human role is to direct it, run builds, and commit.
 
-1. **Configure the MCP server** (see above) and open Claude Code.
+1. **Configure the MCP server** pointing at your application database (see above) and open Claude Code.
 
-2. **Direct Claude** — describe the feature or bug. Claude uses MCP tools to explore (`get_def`, `search_defs`, `sql`), write (`put_def`), and validate (`check_def`) definitions. No manual file editing.
+2. **Direct Claude** — describe what to build. Claude creates the database if needed (`init`), then explores, writes, and validates definitions via MCP tools. No manual file editing.
 
-3. **Rebuild:**
+3. **Run:**
    ```bash
-   ninja
+   glyph run myapp.glyph
    ```
 
-4. **Test:**
+4. **Test** (if your app has test definitions):
    ```bash
-   ./glyph test glyph.glyph
+   glyph test myapp.glyph
    ```
 
 5. **Commit:**
    ```bash
-   git add glyph.glyph
+   git add myapp.glyph
    git commit
    ```
+
+To build a standalone executable:
+```bash
+glyph build myapp.glyph myapp
+./myapp
+```
 
 ---
 
