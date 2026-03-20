@@ -35,21 +35,21 @@ rule db_refresh
   command = ([ -f glyph.glyph ] || ./glyph0 import src glyph.glyph) && ./glyph0 build glyph.glyph --full 2>&1 && mv glyph glyph1
   description = glyph0 compiling glyph.glyph → glyph1
 
-build glyph1: db_refresh | glyph0
+build glyph1: db_refresh | glyph0 glyph.glyph
 
 # Stage 2: glyph1 rebuilds itself via C codegen → glyph2 (intermediate)
 rule c_build
   command = ./glyph1 build glyph.glyph glyph2 2>&1
   description = glyph1 self-building → glyph2 (C codegen)
 
-build glyph2: c_build | glyph1
+build glyph2: c_build | glyph1 glyph.glyph
 
 # Stage 3: glyph2 re-builds via LLVM codegen → final 'glyph' binary
 rule llvm_build
   command = ./glyph2 build glyph.glyph glyph --emit=llvm 2>&1
   description = glyph2 re-building → glyph (LLVM codegen)
 
-build glyph: llvm_build | glyph2
+build glyph: llvm_build | glyph2 glyph.glyph
 
 # Default target
 default glyph
