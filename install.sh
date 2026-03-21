@@ -43,10 +43,12 @@ GLYPH_VER=$("$BIN_DIR/glyph" --version 2>/dev/null || echo "unknown")
 
 # Auto-configure MCP server in ~/.claude.json
 if command -v python3 >/dev/null 2>&1; then
-  python3 - "$BIN_DIR/glyph" "$HOME/.claude.json" <<'PYEOF'
+  python3 - "$BIN_DIR/glyph" "$HOME/.claude/settings.json" <<'PYEOF'
 import json, sys, os
 
 glyph_bin, config_path = sys.argv[1], sys.argv[2]
+
+os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
 config = {}
 if os.path.exists(config_path):
@@ -64,7 +66,7 @@ else:
     print("  Added glyph MCP server to " + config_path)
 PYEOF
 else
-  echo "  python3 not found — add MCP server manually to ~/.claude.json:"
+  echo "  python3 not found — add MCP server manually to ~/.claude/settings.json:"
   printf '    "glyph": {"command": "%s", "args": ["mcp"]}\n' "$BIN_DIR/glyph"
 fi
 
