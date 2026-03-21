@@ -57,7 +57,10 @@ Start the MCP server with `./glyph mcp app.glyph`, or use the pre-configured `mc
 | `mcp__glyph__build` | `db, output, flags` | Compile to native binary |
 | `mcp__glyph__run` | `db, flags, stdin` | Build + execute, returns stdout |
 | `mcp__glyph__coverage` | `db` | Coverage report from last test run |
-| `mcp__glyph__link` | `lib, target, ns, prefix` | Link library defs into app |
+| `mcp__glyph__link` | `lib, target, ns, prefix` | Link library defs into app (Level 1 — copies defs) |
+| `mcp__glyph__use` | `db, lib, ns` | Register library as build-time dep (Level 2 — non-destructive) |
+| `mcp__glyph__unuse` | `db, lib` | Remove a registered library dependency |
+| `mcp__glyph__libs` | `db` | List all registered library dependencies |
 | `mcp__glyph__migrate` | `target, db` | Apply pending schema migrations |
 
 ## CLI Commands
@@ -87,6 +90,9 @@ All commands: `./glyph <command> <db.glyph> [args...]`
 | `import` | `import <db> <dir>` | Import defs from file tree (reads ns from dir position) |
 | `migrate` | `migrate <target.glyph>` | Apply pending schema migrations |
 | `link` | `link <lib.glyph> <app.glyph> [--ns=N] [--prefix=P]` | Link library defs into app. `--ns` filters by namespace; `--prefix` renames `old_` prefix to `new_` |
+| `use` | `use <app.glyph> <lib.glyph> [--ns=N]` | Register library as a build-time dependency (Level 2 — non-destructive) |
+| `unuse` | `unuse <app.glyph> <lib.glyph>` | Remove a registered library dependency |
+| `libs` | `libs <app.glyph>` | List all registered library dependencies |
 | `undo` | `undo <db> <name> [--kind K]` | Undo last change (reversible) |
 | `history` | `history <db> <name> [--kind K]` | Show change history for a definition |
 | `mcp` | `mcp <db>` | Start MCP server on stdin/stdout |
@@ -211,6 +217,26 @@ loop_helper arr i =
 | Gen mismatch on `put` | Default auto-detects gen | Use `--gen N` to target a specific generation explicitly |
 | `True`/`False` segfaults | These are enum constructors, not bool literals | Use lowercase `true`/`false` in match patterns |
 
+## Library Dependencies
+
+Two mechanisms for using a library in an app:
+
+### Level 1: `glyph link` — copy defs into app (permanent)
+```bash
+glyph link lib.glyph app.glyph [--ns=NAME] [--prefix=NEW]
+```
+Copies fn/type/const defs from `lib.glyph` into `app.glyph`. Defs are tagged with provenance (`lib` tag) so they can be removed as a batch with `glyph unlink`. After linking, the library's defs are part of the app and compiled together.
+
+### Level 2: `glyph use` — register as build-time dependency (non-destructive)
+```bash
+glyph use app.glyph lib.glyph [--ns=NAME]   # register
+glyph unuse app.glyph lib.glyph              # deregister
+glyph libs app.glyph                         # list
+```
+Records the library path in `app.glyph`'s `lib_dep` table. At build time, the compiler opens each registered library via `glyph_db_open` and unions its defs into the compilation — **no copying**. The library file stays separate. To filter which namespace to import, use `--ns`.
+
+**Prefer Level 2** for reusable libraries — it's non-destructive, easy to upgrade (update the file on disk), and keeps the app database clean. Use Level 1 only when you need the defs permanently embedded or editable in the app.
+
 ## Schema Quick Reference
 
 ```sql
@@ -218,6 +244,7 @@ loop_helper arr i =
 def(id, name, kind, sig, body, hash, tokens, compiled, gen, ns, created, modified)
 dep(from_id, to_id, edge)         -- edge: calls|uses_type|implements|field_of|variant_of
 extern_(id, name, symbol, lib, sig, conv)
+lib_dep(id, lib_path, ns, prefix, hash) -- registered build-time library dependencies
 module(id, name, doc)
 module_member(module_id, def_id, exported)
 compiled(def_id, ir, target, hash)
