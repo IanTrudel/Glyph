@@ -40,6 +40,9 @@ jobs:
       - name: Build (full bootstrap)
         run: ninja bootstrap
 
+      - name: Test
+        run: ./glyph test glyph.glyph
+
       - name: Package
         run: |
           mkdir -p dist/skills
