@@ -19,8 +19,10 @@ examples/calculator/calc
 examples/life/life
 examples/glint/glint
 examples/gled/gled
+examples/api/api
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
 .ninja_log
 *.glyph.bak
+/workspace
