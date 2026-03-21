@@ -18,6 +18,18 @@ The MCP server gives Claude structured tools to navigate the program graph, quer
 
 ---
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IanTrudel/Glyph/main/install.sh | sh
+```
+
+Installs the `glyph` binary to `~/.glyph/bin/`, the Claude Code skill to `~/.claude/skills/glyph/`, and auto-configures the MCP server in `~/.claude.json`.
+
+**Requirements:** `clang` or `gcc`, `llvm` (for `--emit=llvm`), `python3` (for MCP auto-config).
+
+---
+
 ## Hello, World!
 
 With the Glyph MCP configured (see [MCP server setup](#mcp-server-setup)), prompt Claude:
@@ -57,7 +69,7 @@ See `examples/hello/hello.glyph` for the resulting database.
 ## Building from source
 
 ```bash
-git clone <repo>
+git clone https://github.com/IanTrudel/Glyph
 cd Glyph
 ninja                          # build self-hosted glyph compiler
 sudo ninja install

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="OWNER/REPO"           # fill in before first release
+REPO="IanTrudel/Glyph"
 INSTALL_DIR="$HOME/.glyph"
 BIN_DIR="$INSTALL_DIR/bin"
 SKILL_DIR="$HOME/.claude/skills/glyph"
