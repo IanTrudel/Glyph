@@ -4,7 +4,7 @@ set -e
 REPO="OWNER/REPO"           # fill in before first release
 INSTALL_DIR="$HOME/.glyph"
 BIN_DIR="$INSTALL_DIR/bin"
-SHARE_DIR="$INSTALL_DIR/share"
+SKILL_DIR="$HOME/.claude/skills/glyph"
 TARBALL="glyph-linux-x86_64.tar.gz"
 
 echo "Installing Glyph to $INSTALL_DIR ..."
@@ -21,10 +21,14 @@ fi
 # Download and extract
 TMPDIR=$(mktemp -d)
 curl -fSL "$URL" -o "$TMPDIR/$TARBALL"
-mkdir -p "$BIN_DIR" "$SHARE_DIR"
+mkdir -p "$BIN_DIR"
 tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR"
 install -m755 "$TMPDIR/glyph" "$BIN_DIR/glyph"
-install -m644 "$TMPDIR/glyph.glyph" "$SHARE_DIR/glyph.glyph"
+
+# Install Claude Code skill
+mkdir -p "$SKILL_DIR"
+cp "$TMPDIR/skills/"* "$SKILL_DIR/"
+
 rm -rf "$TMPDIR"
 
 # Patch PATH
@@ -36,12 +40,32 @@ for RC in "$HOME/.bashrc" "$HOME/.zshrc"; do
 done
 
 GLYPH_VER=$("$BIN_DIR/glyph" --version 2>/dev/null || echo "unknown")
+
+# Auto-configure MCP server in ~/.claude.json
+python3 - "$BIN_DIR/glyph" "$HOME/.claude.json" <<'PYEOF'
+import json, sys, os
+
+glyph_bin, config_path = sys.argv[1], sys.argv[2]
+
+config = {}
+if os.path.exists(config_path):
+    with open(config_path) as f:
+        config = json.load(f)
+
+servers = config.setdefault("mcpServers", {})
+if "glyph" in servers:
+    print("  MCP server already configured in " + config_path)
+else:
+    servers["glyph"] = {"command": glyph_bin, "args": ["mcp"]}
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
+        f.write("\n")
+    print("  Added glyph MCP server to " + config_path)
+PYEOF
+
 echo ""
 echo "Installed: $GLYPH_VER"
 echo "Binary:    $BIN_DIR/glyph"
-echo ""
-echo "Add to your MCP config (~/.claude.json):"
-printf '  "glyph": {\n    "command": "%s",\n    "args": ["mcp"]\n  }\n' \
-  "$BIN_DIR/glyph"
+echo "Skill:     $SKILL_DIR"
 echo ""
 echo "Reload your shell or run: source ~/.zshrc"
