@@ -1,0 +1,6 @@
+append_arr dst src i =
+  match i >= glyph_array_len(src)
+    true -> 0
+    _ ->
+      _ = glyph_array_push(dst, src[i])
+      append_arr(dst, src, i + 1)

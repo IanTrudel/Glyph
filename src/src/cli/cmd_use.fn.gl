@@ -1,0 +1,19 @@
+cmd_use argv argc =
+  match argc < 4
+    true ->
+      _ = eprintln("Usage: glyph use <app.glyph> <lib.glyph> [--ns=NAME]")
+      1
+    _ ->
+      app_path = argv[2]
+      lib_path = argv[3]
+      ns = find_flag(argv, "--ns", 4)
+      db = glyph_db_open(app_path)
+      _ = migrate_lib_dep(db)
+      ns_val = match glyph_str_len(ns) > 0
+        true -> s3("'", ns, "'")
+        _ -> "NULL"
+      _ = glyph_db_exec(db, s5("INSERT OR REPLACE INTO lib_dep (lib_path, ns) VALUES ('", lib_path, "', ", ns_val, ")"))
+      glyph_db_close(db)
+      println(s2("Registered library: ", lib_path))
+      0
+

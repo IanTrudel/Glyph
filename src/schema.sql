@@ -55,15 +55,11 @@ CREATE TABLE extern_ (
   UNIQUE(name)
 );
 
+CREATE TABLE lib_dep (id INTEGER PRIMARY KEY, lib_path TEXT NOT NULL UNIQUE, ns TEXT, prefix TEXT, hash BLOB);
+
 CREATE TABLE migration (id INTEGER PRIMARY KEY, name TEXT NOT NULL, sql TEXT NOT NULL);
 
 CREATE TABLE migration_log (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')));
-
-CREATE TABLE module (
-  id        INTEGER PRIMARY KEY,
-  name      TEXT    NOT NULL UNIQUE,
-  doc       TEXT
-);
 
 CREATE TABLE tag (
   def_id    INTEGER NOT NULL REFERENCES def(id) ON DELETE CASCADE,

@@ -1,0 +1,6 @@
+migrate_lib_dep db =
+  rows = glyph_db_query_rows(db, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='lib_dep'")
+  cnt = rows[0]
+  match glyph_str_eq(cnt[0], "0") == 1
+    true -> glyph_db_exec(db, "CREATE TABLE IF NOT EXISTS lib_dep (id INTEGER PRIMARY KEY, lib_path TEXT NOT NULL UNIQUE, ns TEXT, prefix TEXT, hash BLOB)")
+    _ -> 0

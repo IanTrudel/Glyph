@@ -1,0 +1,7 @@
+sig_part_ty part pool =
+  match part
+    _ ? glyph_str_eq(part, "F") -> mk_tfloat(pool)
+    _ ? glyph_str_eq(part, "S") -> mk_tstr(pool)
+    _ ? glyph_str_eq(part, "B") -> mk_tbool(pool)
+    _ ? glyph_str_eq(part, "V") -> mk_tvoid(pool)
+    _ -> mk_tint(pool)

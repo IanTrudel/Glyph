@@ -1,0 +1,10 @@
+dispatch_cmd3 argv argc cmd =
+  match cmd
+    _ ? glyph_str_eq(cmd, "--version") -> cmd_version(argv, argc)
+    _ ? glyph_str_eq(cmd, "version") -> cmd_version(argv, argc)
+    _ ? glyph_str_eq(cmd, "update") -> cmd_update(argv, argc)
+    _ ? glyph_str_eq(cmd, "unlink") -> cmd_unlink(argv, argc)
+    _ ? glyph_str_eq(cmd, "use") -> cmd_use(argv, argc)
+    _ ? glyph_str_eq(cmd, "unuse") -> cmd_unuse(argv, argc)
+    _ ? glyph_str_eq(cmd, "libs") -> cmd_libs(argv, argc)
+    _ -> print_usage

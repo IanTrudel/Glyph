@@ -1,0 +1,9 @@
+update_find_asset_loop pool items i name =
+  match i >= glyph_array_len(items)
+    true -> ""
+    _ ->
+      asset = items[i]
+      n = json_get_str(pool, asset, "name")
+      match glyph_str_eq(n, name)
+        true -> json_get_str(pool, asset, "browser_download_url")
+        _ -> update_find_asset_loop(pool, items, i + 1, name)

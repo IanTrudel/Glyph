@@ -1,0 +1,7 @@
+read_fn_defs_ns db gen_str ns =
+  ns_clause = match glyph_str_len(ns) > 0
+    true -> s3(" AND d.ns='", ns, "'")
+    _ -> ""
+  q = s5("SELECT d.body FROM def d INNER JOIN (SELECT name, kind, MAX(gen) as max_gen FROM def WHERE gen <= ", gen_str, " GROUP BY name, kind) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen WHERE d.kind='fn'", ns_clause, " ORDER BY d.name")
+  rows = glyph_db_query_rows(db, q)
+  extract_bodies_acc(rows, 0, [])

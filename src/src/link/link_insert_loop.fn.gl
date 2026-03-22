@@ -1,4 +1,4 @@
-link_insert_loop rows app_db i n =
+link_insert_loop rows app_db i n lib_tag =
   match i >= n
     true -> 0
     _ ->
@@ -12,4 +12,7 @@ link_insert_loop rows app_db i n =
       part2 = s4(gen, ",'", sql_escape(ns), "',zeroblob(32),0,0)")
       sql = s2(part1, part2)
       _ = glyph_db_exec(app_db, sql)
-      link_insert_loop(rows, app_db, i + 1, n)
+      rowid = glyph_db_query_one(app_db, "SELECT last_insert_rowid()")
+      tag_sql = s4("INSERT OR IGNORE INTO tag (def_id,key,val) VALUES (", rowid, ",'lib','", s2(sql_escape(lib_tag), "')"))
+      _ = glyph_db_exec(app_db, tag_sql)
+      link_insert_loop(rows, app_db, i + 1, n, lib_tag)

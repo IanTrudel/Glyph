@@ -12,9 +12,6 @@ build_program_llvm sources externs output_path struct_map mode =
   tc_pre_register(eng, parsed, 0)
   tc_results = tc_infer_loop(eng, parsed, 0, [])
   tc_report_errors(eng)
-  match glyph_array_len(eng.errors) > 0
-    true -> glyph_exit(1)
-    _ -> 0
   za_fns = build_za_fns(parsed, 0, [])
   mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose)
   fix_all_field_offsets(mirs)
@@ -37,3 +34,4 @@ build_program_llvm sources externs output_path struct_map mode =
   link_flags = s3(" -lm", lib_flags, s2(" ", opt_flags))
   glyph_system(s7(clang_base, " ", rt_path, " ", ll_path, s3(" -o ", output_path, " -no-pie"), link_flags))
   mirs
+

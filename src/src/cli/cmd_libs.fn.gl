@@ -1,0 +1,17 @@
+cmd_libs argv argc =
+  match argc < 3
+    true ->
+      _ = eprintln("Usage: glyph libs <app.glyph>")
+      1
+    _ ->
+      db_path = argv[2]
+      db = glyph_db_open(db_path)
+      _ = migrate_lib_dep(db)
+      rows = read_lib_deps(db)
+      glyph_db_close(db)
+      match glyph_array_len(rows) == 0
+        true ->
+          _ = println("(no libraries registered)")
+          0
+        _ -> print_libs(rows, 0)
+      0

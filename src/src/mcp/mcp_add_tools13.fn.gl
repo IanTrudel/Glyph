@@ -8,4 +8,5 @@ mcp_add_tools13 pool tools =
   _ = jb_push(pool, req13, jb_str(pool, "lib"))
   _ = jb_push(pool, req13, jb_str(pool, "target"))
   jb_push(pool, tools, mcp_tool_schema(pool, "link", "Link definitions from a library database into an application database", p13, req13))
-  0
+  mcp_add_tools14(pool, tools)
+

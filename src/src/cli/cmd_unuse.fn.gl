@@ -1,0 +1,15 @@
+cmd_unuse argv argc =
+  match argc < 4
+    true ->
+      _ = eprintln("Usage: glyph unuse <app.glyph> <lib.glyph>")
+      1
+    _ ->
+      app_path = argv[2]
+      lib_path = argv[3]
+      db = glyph_db_open(app_path)
+      _ = migrate_lib_dep(db)
+      _ = glyph_db_exec(db, s3("DELETE FROM lib_dep WHERE lib_path='", lib_path, "'"))
+      glyph_db_close(db)
+      println(s2("Removed library: ", lib_path))
+      0
+

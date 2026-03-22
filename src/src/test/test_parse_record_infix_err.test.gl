@@ -1,0 +1,8 @@
+test_parse_record_infix_err u =
+  src = "f p = \{p | x: 1}"
+  tokens = tokenize(src)
+  ast = []
+  r = parse_fn_def(src, tokens, 0, ast)
+  assert_eq(is_err(r), 1)
+  assert_eq(str_contains(r.pr_err, "postfix"), 1)
+  0

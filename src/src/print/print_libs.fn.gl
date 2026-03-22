@@ -1,0 +1,12 @@
+print_libs rows i =
+  match i >= glyph_array_len(rows)
+    true -> 0
+    _ ->
+      row = rows[i]
+      lib = glyph_arr_get_str(row, 0)
+      ns = glyph_arr_get_str(row, 1)
+      line = match glyph_str_len(ns) > 0
+        true -> s3(lib, "  (ns=", s2(ns, ")"))
+        _ -> lib
+      _ = println(line)
+      print_libs(rows, i + 1)

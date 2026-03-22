@@ -1,0 +1,9 @@
+test_record_update_mir u =
+  mir = compile_fn("f p = p\{x: 1}", [])
+  stmts = mir.fn_blocks_stmts[mir.fn_entry]
+  i = test_find_stmt_kind(stmts, rv_aggregate(), 0)
+  assert(i >= 0)
+  s = stmts[i]
+  assert_eq(s.sival, ag_record_update())
+  assert(s.sop1.okind > 0)
+  0

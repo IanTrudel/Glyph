@@ -1,0 +1,13 @@
+cg_struct_stores_direct ops names tname struct_map i =
+  match i >= glyph_array_len(ops)
+    true -> ""
+    _ ->
+      fname = names[i]
+      ftype = find_field_ctype(tname, fname, struct_map)
+      val = cg_operand(ops[i])
+      store = match glyph_str_eq(ftype, "")
+        true -> s4("__r->", fname, " = ", s2(val, "; "))
+        _ -> match is_float_ctype(ftype) == 1
+          true -> s4("__r->", fname, s3(" = (", ftype, ")_glyph_i2f("), s2(val, "); "))
+          _ -> s4("__r->", fname, s3(" = (", ftype, ")"), s2(val, "; "))
+      s2(store, cg_struct_stores_direct(ops, names, tname, struct_map, i + 1))

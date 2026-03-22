@@ -1,0 +1,2 @@
+glyph_dirname path =
+  glyph_dirname_loop(path, glyph_str_len(path) - 1, -1)

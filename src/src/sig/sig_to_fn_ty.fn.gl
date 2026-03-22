@@ -1,0 +1,7 @@
+sig_to_fn_ty eng parts =
+  n = glyph_array_len(parts)
+  ret_ty = sig_part_ty(parts[n - 1], eng.ty_pool)
+  nparams = sig_param_count(parts)
+  match nparams == 0
+    true -> mk_tfn(mk_tint(eng.ty_pool), ret_ty, eng.ty_pool)
+    _ -> sig_build_fn_ty(eng, parts, 0, nparams, ret_ty)

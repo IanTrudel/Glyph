@@ -1,0 +1,7 @@
+test_parse_record_update_inline u =
+  src = "f p = match p.x\n  1 -> p\{x: 2}\n  _ -> p\{x: 0}"
+  tokens = tokenize(src)
+  ast = []
+  r = parse_fn_def(src, tokens, 0, ast)
+  assert_eq(is_err(r), 0)
+  0

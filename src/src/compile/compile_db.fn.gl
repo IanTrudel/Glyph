@@ -1,10 +1,13 @@
 compile_db db_path output_path mode gen_str =
   db = glyph_db_open(db_path)
+  _ = migrate_lib_dep(db)
   sources = read_fn_defs_gen(db, gen_str)
   externs = read_externs(db)
   type_rows = read_type_defs_gen(db, gen_str)
   generic_defs = read_generic_types(db)
+  lib_deps = read_lib_deps(db)
   glyph_db_close(db)
+  _ = load_lib_loop(lib_deps, sources, externs, type_rows, generic_defs, 0, gen_str)
   base_struct_map = build_struct_map(type_rows)
   struct_map = expand_generics_pass(generic_defs, type_rows, base_struct_map)
   n = glyph_array_len(sources)

@@ -1,0 +1,20 @@
+cmd_unlink argv argc =
+  match argc < 4
+    true ->
+      eprintln("Usage: glyph unlink <lib.glyph> <app.glyph>")
+      1
+    _ ->
+      lib_path = argv[2]
+      app_path = argv[3]
+      app_db = glyph_db_open(app_path)
+      del_sql = s4("DELETE FROM def WHERE id IN (SELECT def_id FROM tag WHERE key='lib' AND val='", sql_escape(lib_path), "')", "")
+      _ = glyph_db_exec(app_db, del_sql)
+      removed = glyph_db_query_one(app_db, "SELECT changes()")
+      _ = glyph_db_close(app_db)
+      match glyph_str_eq(removed, "0")
+        true ->
+          eprintln(s3("no definitions found tagged with '", lib_path, "' — was this library linked?"))
+          1
+        _ ->
+          println(s3("unlinked ", removed, " definitions"))
+          0

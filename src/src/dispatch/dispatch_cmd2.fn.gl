@@ -14,4 +14,4 @@ dispatch_cmd2 argv argc cmd =
     _ ? glyph_str_eq(cmd, "import") -> cmd_import(argv, argc)
     _ ? glyph_str_eq(cmd, "migrate") -> cmd_migrate(argv, argc)
     _ ? glyph_str_eq(cmd, "link") -> cmd_link(argv, argc)
-    _ -> print_usage
+    _ -> dispatch_cmd3(argv, argc, cmd)

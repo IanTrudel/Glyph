@@ -10,6 +10,7 @@ tc_infer_loop eng parsed i acc =
           eng_set_tmap(eng, ast_len)
           ty = infer_fn_def(eng, pf.pf_ast, pf.pf_fn_idx)
           gen_ty = generalize(eng, ty)
+          _ = env_insert(eng, pf.pf_name, gen_ty)
           tm = eng.tmap[0]
           raw_tm = mono_copy_arr(tm)
           resolve_tmap(eng, tm)
@@ -24,4 +25,3 @@ tc_infer_loop eng parsed i acc =
         _ -> 0
       glyph_array_push(acc, result)
       tc_infer_loop(eng, parsed, i + 1, acc)
-

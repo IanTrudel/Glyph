@@ -1,0 +1,15 @@
+register_externs eng externs i =
+  match i >= glyph_array_len(externs)
+    true -> 0
+    _ ->
+      row = externs[i]
+      name = row[0]
+      sig = row[2]
+      parts = split_arrow(sig)
+      match glyph_array_len(parts) >= 2
+        true ->
+          ty = sig_to_fn_ty(eng, parts)
+          env_insert(eng, name, ty)
+          0
+        _ -> 0
+      register_externs(eng, externs, i + 1)

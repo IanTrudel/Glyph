@@ -1,0 +1,12 @@
+test_float_lit_ty u =
+  eng = mk_engine()
+  src = "f u = 3.14"
+  toks = tokenize(src)
+  ast = []
+  r = parse_fn_def(src, toks, 0, ast)
+  ty = infer_fn_def(eng, ast, r.node)
+  fn_node = pool_get(eng, ty)
+  assert_eq(fn_node.tag, ty_fn())
+  ret_node = pool_get(eng, fn_node.n2)
+  assert_eq(ret_node.tag, ty_float())
+  0

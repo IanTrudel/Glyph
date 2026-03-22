@@ -1,0 +1,1 @@
+mk_tfloat pool = mk_ty_prim(ty_float(), pool)

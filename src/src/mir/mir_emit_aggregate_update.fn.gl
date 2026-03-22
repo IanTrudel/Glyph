@@ -1,0 +1,2 @@
+mir_emit_aggregate_update ctx dest base_op field_names ops =
+  mir_emit(ctx, mk_stmt(dest, rv_aggregate(), ag_record_update(), field_names, base_op, mk_op_nil(), ops))

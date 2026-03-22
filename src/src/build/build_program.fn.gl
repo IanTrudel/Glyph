@@ -37,4 +37,3 @@ build_program sources externs output_path struct_map mode =
       _ -> "-w -Wno-int-conversion -Wno-incompatible-pointer-types -DGLYPH_DEBUG -O1"
   glyph_system(s5("cc ", cc_flags, s2(" ", c_path), s3(" -o ", output_path, " -no-pie"), s2(lib_flags, " -lm")))
   mirs
-

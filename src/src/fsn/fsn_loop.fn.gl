@@ -5,5 +5,6 @@ fsn_loop sorted struct_map i =
       entry = struct_map[i]
       entry_fields = entry[1]
       match fsn_fields_eq(sorted, entry_fields)
-        true -> entry[0]
+        true -> glyph_arr_get_str(entry, 0)
         _ -> fsn_loop(sorted, struct_map, i + 1)
+

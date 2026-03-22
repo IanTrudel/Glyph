@@ -3,6 +3,9 @@ cg_call_stmt stmt =
   match callee.okind == ok_func_ref()
     true ->
       callee_str = cg_fn_name(callee.ostr)
-      args_str = cg_call_args(stmt.sops, 0)
-      s6("  ", cg_local(stmt.sdest), " = ", callee_str, s2("(", args_str), ");\n")
+      match glyph_str_eq(callee_str, "glyph_array_new") && glyph_array_len(stmt.sops) == 0
+        true -> s4("  ", cg_local(stmt.sdest), " = glyph_array_new(16);\n", "")
+        _ ->
+          args_str = cg_call_args(stmt.sops, 0)
+          s6("  ", cg_local(stmt.sdest), " = ", callee_str, s2("(", args_str), ");\n")
     _ -> cg_indirect_call_stmt(stmt)

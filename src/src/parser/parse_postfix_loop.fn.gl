@@ -35,6 +35,22 @@ parse_postfix_loop src tokens pos pool node =
             _ ->
               idx = pool_push(pool, mk_node(ex_index(), 0, "", node, ir.node, 0 - 1, []))
               parse_postfix_loop(src, tokens, p2, pool, idx)
+    _ ? k == tk_lbrace() ->
+      prev_kind = match pos > 0
+        true -> (tokens[pos - 1]).kind
+        _ -> 0 - 1
+      line_boundary = match prev_kind == tk_dedent()
+        true -> 1
+        _ -> match prev_kind == tk_newline()
+          true -> 1
+          _ -> 0
+      match line_boundary == 1
+        true -> mk_result(node, pos)
+        _ ->
+          rr = parse_record_with_base(src, tokens, pos + 1, pool, node)
+          match is_err(rr)
+            true -> rr
+            _ -> parse_postfix_loop(src, tokens, rr.pos, pool, rr.node)
     _ ? k == tk_question() ->
       idx = pool_push(pool, mk_node(ex_propagate(), 0, "", node, 0 - 1, 0 - 1, []))
       parse_postfix_loop(src, tokens, pos + 1, pool, idx)
@@ -42,3 +58,4 @@ parse_postfix_loop src tokens pos pool node =
       idx = pool_push(pool, mk_node(ex_unwrap(), 0, "", node, 0 - 1, 0 - 1, []))
       parse_postfix_loop(src, tokens, pos + 1, pool, idx)
     _ -> mk_result(node, pos)
+

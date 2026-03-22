@@ -1,0 +1,7 @@
+sig_build_fn_ty eng parts i nparams ret_ty =
+  match i >= nparams
+    true -> ret_ty
+    _ ->
+      param_ty = sig_part_ty(parts[i], eng.ty_pool)
+      rest = sig_build_fn_ty(eng, parts, i + 1, nparams, ret_ty)
+      mk_tfn(param_ty, rest, eng.ty_pool)

@@ -22,7 +22,7 @@ parse_single_pattern src tokens pos pool =
       mk_result(idx, pos + 1)
     _ ? k == tk_str() ->
       s = cur_text(src, tokens, pos)
-      idx = push_simple(pool, pat_str(), 0, glyph_str_slice(s, 1, glyph_str_len(s) - 1))
+      idx = push_simple(pool, pat_str(), 0, s)
       mk_result(idx, pos + 1)
     _ ? k == tk_type_ident() ->
       name = cur_text(src, tokens, pos)

@@ -1,0 +1,18 @@
+update_fetch_release repo =
+  tmp = "/tmp/glyph_release.json"
+  api_url = s4("https://api.github.com/repos/", repo, "/releases/latest", "")
+  cmd = s4("curl -fsSL ", api_url, " -o ", s2(tmp, " 2>/dev/null"))
+  exit_code = glyph_system(cmd)
+  match exit_code == 0
+    true ->
+      text = glyph_read_file(tmp)
+      toks = json_tokenize(text)
+      pool = []
+      r = json_parse(text, toks, 0, pool)
+      tag = json_get_str(pool, r.node, "tag_name")
+      assets_idx = json_get(pool, r.node, "assets")
+      assets_node = pool[assets_idx]
+      url = update_find_asset_loop(pool, assets_node.items, 0, "glyph-linux-x86_64.tar.gz")
+      {url: url, version: tag}
+    _ ->
+      {url: "", version: ""}

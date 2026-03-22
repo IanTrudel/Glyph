@@ -1,0 +1,2 @@
+read_lib_deps db =
+  glyph_db_query_rows(db, "SELECT lib_path, ns FROM lib_dep ORDER BY id")
