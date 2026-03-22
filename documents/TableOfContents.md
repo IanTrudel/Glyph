@@ -18,6 +18,12 @@
 | [mir.md](mir.md) | Flat CFG intermediate representation between AST and codegen |
 | [migrations.md](migrations.md) | Design for the schema migration system (`glyph migrate` command) |
 
+## Testing
+
+| Document | Description |
+|----------|-------------|
+| [glyph-property-testing.md](glyph-property-testing.md) | Property-based testing spec — `kind='prop'`, generators, shrinking, seed system, `prop_failure` table, MCP interface, compiler self-test suite |
+
 ## Tooling & Distribution
 
 | Document | Description |
