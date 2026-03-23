@@ -1,0 +1,12 @@
+test_match_field_ctor u =
+  -- StrTag = | SVal(S)
+  -- match on a struct field holding an enum value
+  -- The field is at a non-zero offset
+  box = {val: "hello"}
+  tag = SVal("active")
+  rec = {other: 999, tag2: tag}
+  r = match rec.tag2
+    SVal(s) -> s
+    _ -> "missing"
+  assert_str_eq(r, "active")
+  0

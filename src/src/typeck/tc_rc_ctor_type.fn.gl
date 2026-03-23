@@ -1,0 +1,8 @@
+tc_rc_ctor_type eng pnames struct_map =
+  result_ty = subst_fresh(eng)
+  match glyph_array_len(pnames) == 0
+    true -> result_ty
+    _ ->
+      pname = pnames[0]
+      param_ty = tc_rc_param_type(eng, pname, struct_map)
+      mk_tfn(param_ty, result_ty, eng.ty_pool)

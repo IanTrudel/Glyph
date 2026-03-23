@@ -12,8 +12,17 @@ infer_ctor_pattern eng ast node =
         _ -> 0
       mk_topt(inner, eng.ty_pool)
     _ ->
-      ctor_ty = env_lookup(eng, node.sval)
-      infer_ctor_bind_fresh(eng, ast, sub_pats, 0)
-      match ctor_ty < 0
-        true -> subst_fresh(eng)
-        _ -> ctor_ty
+      ctor_ty_idx = env_lookup(eng, node.sval)
+      match ctor_ty_idx < 0
+        true ->
+          infer_ctor_bind_fresh(eng, ast, sub_pats, 0)
+          subst_fresh(eng)
+        _ ->
+          cty_node = pool_get(eng, ctor_ty_idx)
+          match cty_node.tag == ty_fn()
+            true ->
+              infer_ctor_bind_typed(eng, ast, sub_pats, cty_node.n1, 0)
+              cty_node.n2
+            _ ->
+              infer_ctor_bind_fresh(eng, ast, sub_pats, 0)
+              ctor_ty_idx

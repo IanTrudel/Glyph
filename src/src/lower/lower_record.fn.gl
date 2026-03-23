@@ -8,6 +8,15 @@ lower_record ctx ast node =
     _ ->
       base_op = lower_expr(ctx, ast, node.n1)
       r = lower_record_fields(ctx, ast, node.ns, 0)
+      base_fields_str = match base_op.okind == ok_local()
+        true -> lower_scan_base_fields(ctx, base_op.oval)
+        _ -> ""
       dest = mir_alloc_local(ctx, "")
-      mir_emit_aggregate_update(ctx, dest, base_op, r.ostr, r.sops)
+      match glyph_str_len(base_fields_str) > 0
+        true ->
+          update_names = split_comma(r.ostr)
+          full = lower_expand_update(ctx, base_op, base_fields_str, update_names, r.sops)
+          mir_emit_aggregate(ctx, dest, ag_record(), full.ostr, full.sops)
+        _ ->
+          mir_emit_aggregate_update(ctx, dest, base_op, r.ostr, r.sops)
       mk_op_local(dest)

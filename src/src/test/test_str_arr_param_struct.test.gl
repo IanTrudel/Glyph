@@ -1,0 +1,5 @@
+test_str_arr_param_struct u =
+  arr = array_new(1)
+  _0 = array_push(arr, {val: "world"})
+  assert_eq(first_field_eq(arr, "world"), true)
+  0

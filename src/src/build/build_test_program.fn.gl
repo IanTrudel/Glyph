@@ -6,7 +6,7 @@ build_test_program fn_sources test_sources test_names externs output_path struct
   vmap = build_variant_map(type_rows)
   eng = mk_engine()
   register_builtins(eng)
-  tc_register_ctors(eng, vmap)
+  tc_register_ctors(eng, vmap, struct_map)
   tc_pre_register(eng, parsed_fns, 0)
   tc_pre_register(eng, parsed_tests, 0)
   tc_infer_loop_warm(eng, parsed_fns, [], 0)

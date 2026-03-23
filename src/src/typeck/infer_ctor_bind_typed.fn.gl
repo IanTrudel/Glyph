@@ -1,0 +1,9 @@
+infer_ctor_bind_typed eng ast sub_pats param_ty i =
+  match i >= glyph_array_len(sub_pats)
+    true -> 0
+    _ ->
+      sp = ast[sub_pats[i]]
+      match sp.kind == pat_ident()
+        true -> env_insert(eng, sp.sval, param_ty)
+        _ -> 0
+      infer_ctor_bind_typed(eng, ast, sub_pats, param_ty, i + 1)

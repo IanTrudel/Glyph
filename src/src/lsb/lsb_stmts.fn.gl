@@ -1,0 +1,15 @@
+lsb_stmts stmts_arr block_stmts base_lid i =
+  match i >= glyph_array_len(block_stmts)
+    true -> ""
+    _ ->
+      stmt = block_stmts[i]
+      match stmt.sdest == base_lid
+        true ->
+          match stmt.skind == rv_aggregate() && stmt.sival == ag_record()
+            true -> stmt.sstr
+            _ ->
+              op1 = stmt.sop1
+              match stmt.skind == rv_use() && op1.okind == ok_local()
+                true -> lsb_blocks(stmts_arr, op1.oval, 0)
+                _ -> ""
+        _ -> lsb_stmts(stmts_arr, block_stmts, base_lid, i + 1)

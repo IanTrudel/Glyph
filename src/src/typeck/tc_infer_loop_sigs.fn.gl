@@ -16,10 +16,12 @@ tc_infer_loop_sigs eng parsed sigs i acc =
               parts = split_arrow(sig_str)
               infer_fn_def_sig(eng, pf.pf_ast, pf.pf_fn_idx, parts)
             _ -> infer_fn_def(eng, pf.pf_ast, pf.pf_fn_idx)
-          gen_ty = generalize(eng, ty)
+          gr = generalize_raw(eng, ty)
+          gen_ty = gr.gen_ty
           _ = env_insert(eng, pf.pf_name, gen_ty)
           tm = eng.tmap[0]
           raw_tm = mono_copy_arr(tm)
+          _ = remap_raw_tm(eng, raw_tm, gr.gen_varmap, 0)
           resolve_tmap(eng, tm)
           resolved = match gen_ty >= 0
             true -> subst_resolve(eng, gen_ty)

@@ -1,0 +1,4 @@
+match_on_y p =
+  match p.y
+    99 -> "big"
+    _ -> "small"

@@ -1,0 +1,8 @@
+lsb_blocks stmts_arr base_lid i =
+  match i >= glyph_array_len(stmts_arr)
+    true -> ""
+    _ ->
+      result = lsb_stmts(stmts_arr, stmts_arr[i], base_lid, 0)
+      match glyph_str_len(result) > 0
+        true -> result
+        _ -> lsb_blocks(stmts_arr, base_lid, i + 1)

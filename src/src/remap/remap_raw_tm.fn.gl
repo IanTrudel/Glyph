@@ -1,0 +1,13 @@
+remap_raw_tm eng raw_tm var_map i =
+  match i >= glyph_array_len(raw_tm)
+    true -> 0
+    _ ->
+      raw_ti = raw_tm[i]
+      match raw_ti >= 0
+        true ->
+          new_ti = inst_type(eng, raw_ti, var_map)
+          match new_ti == raw_ti
+            true -> 0
+            _ -> glyph_array_set(raw_tm, i, new_ti)
+        _ -> 0
+      remap_raw_tm(eng, raw_tm, var_map, i + 1)

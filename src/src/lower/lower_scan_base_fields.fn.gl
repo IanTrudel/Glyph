@@ -1,0 +1,2 @@
+lower_scan_base_fields ctx base_lid =
+  lsb_blocks(ctx.block_stmts, base_lid, 0)

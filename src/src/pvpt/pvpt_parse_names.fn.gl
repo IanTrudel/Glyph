@@ -1,0 +1,18 @@
+pvpt_parse_names body i len result =
+  match i >= len
+    true -> result
+    _ ->
+      j = pev_skip_ws(body, i, len)
+      match j >= len
+        true -> result
+        _ ->
+          c = glyph_str_char_at(body, j)
+          match c == 41
+            true -> result
+            _ -> match c == 44
+              true -> pvpt_parse_names(body, j + 1, len, result)
+              _ ->
+                end_j = pvpt_name_end(body, j, len)
+                tname = glyph_str_slice(body, j, end_j)
+                glyph_array_push(result, tname)
+                pvpt_parse_names(body, end_j, len, result)

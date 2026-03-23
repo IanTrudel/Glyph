@@ -1,0 +1,6 @@
+anon_match_beta s =
+  -- beta is at offset 1 alphabetically (alpha=0, beta=1, gamma=2)
+  -- if offset stays 0, we read alpha=1 instead of beta=99
+  match s.beta
+    99 -> "correct"
+    _ -> "wrong"

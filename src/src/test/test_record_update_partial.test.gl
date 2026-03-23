@@ -1,0 +1,6 @@
+test_record_update_partial u =
+  a = {x: 10, y: 20, z: 30}
+  b = a{y: 99}
+  assert_eq(b.x, 10)
+  assert_eq(b.y, 99)
+  assert_eq(b.z, 30)

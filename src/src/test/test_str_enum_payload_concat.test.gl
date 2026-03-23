@@ -1,0 +1,8 @@
+test_str_enum_payload_concat u =
+  match SVal("hello")
+    SVal(s1) ->
+      match SVal(" world")
+        SVal(s2) ->
+          joined = s1 + s2
+          assert_eq(joined == "hello world", true)
+  0

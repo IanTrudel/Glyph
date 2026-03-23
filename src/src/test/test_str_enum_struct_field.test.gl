@@ -1,0 +1,8 @@
+test_str_enum_struct_field u =
+  x = {val: "hello"}
+  e = SComp(x)
+  match e
+    SComp(c) ->
+      assert_eq(c.val == "hello", true)
+      assert_eq(c.val == "world", false)
+  0

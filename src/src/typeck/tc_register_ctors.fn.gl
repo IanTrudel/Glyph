@@ -1,2 +1,2 @@
-tc_register_ctors eng vmap =
-  tc_rc_loop(eng, vmap, 0)
+tc_register_ctors eng vmap struct_map =
+  tc_rc_loop(eng, vmap, struct_map, 0)

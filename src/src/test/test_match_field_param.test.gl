@@ -1,0 +1,9 @@
+test_match_field_param u =
+  -- struct passed as parameter: field offset resolution uses struct_map
+  p = {x: 10, y: 99}
+  r = match_on_y(p)
+  assert_str_eq(r, "big")
+  p2 = {x: 10, y: 3}
+  r2 = match_on_y(p2)
+  assert_str_eq(r2, "small")
+  0

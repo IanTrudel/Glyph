@@ -1,0 +1,7 @@
+test_record_update_chained u =
+  a = {x: 1, y: 2, z: 3}
+  b = a{x: 10}
+  c = b{z: 30}
+  assert_eq(c.x, 10)
+  assert_eq(c.y, 2)
+  assert_eq(c.z, 30)

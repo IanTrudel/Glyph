@@ -1,0 +1,7 @@
+test_str_arr_elem_neq u =
+  arr = array_new(2)
+  _0 = array_push(arr, "hello")
+  _1 = array_push(arr, "world")
+  assert_eq(arr[0] == arr[1], false)
+  assert_eq(arr[0] != arr[1], true)
+  0

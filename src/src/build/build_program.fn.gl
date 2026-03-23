@@ -10,7 +10,7 @@ build_program sources sigs externs output_path struct_map mode type_rows =
   vmap = build_variant_map(type_rows)
   eng = mk_engine()
   register_builtins(eng)
-  tc_register_ctors(eng, vmap)
+  tc_register_ctors(eng, vmap, struct_map)
   tc_pre_register(eng, parsed, 0)
   _ = tc_infer_loop_warm(eng, parsed, sigs, 0)
   eng_reset_errors(eng)
