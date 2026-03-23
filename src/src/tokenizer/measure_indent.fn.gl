@@ -1,2 +1,0 @@
-measure_indent src pos =
-  measure_indent_loop(src, pos, 0, glyph_str_len(src))

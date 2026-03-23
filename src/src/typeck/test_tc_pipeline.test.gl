@@ -1,9 +1,0 @@
-test_tc_pipeline u =
-  eng = mk_engine()
-  srcs = ["f x = x + 1", "g x = x * 2"]
-  parsed = parse_all_fns(srcs, 0)
-  tc_pre_register(eng, parsed, 0)
-  tc_infer_all(eng, parsed, 0)
-  errs = eng.errors
-  assert_eq(glyph_array_len(errs), 0)
-  0

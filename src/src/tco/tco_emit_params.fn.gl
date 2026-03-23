@@ -1,7 +1,0 @@
-tco_emit_params stmts base_tmp nparams i = match i >= nparams
-  true -> 0
-  _ ->
-    tmp_id = base_tmp + i
-    s = mk_stmt(i, rv_use(), 0, "", mk_op_local(tmp_id), mk_op_nil(), [])
-    glyph_array_push(stmts, s)
-    tco_emit_params(stmts, base_tmp, nparams, i + 1)

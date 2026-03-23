@@ -1,5 +1,0 @@
-ll_collect_strs mir_fn =
-  strs = []
-  ll_cstrs_blks(mir_fn.fn_blocks_stmts, 0, strs)
-  ll_cstrs_terms(mir_fn.fn_blocks_terms, 0, strs)
-  strs

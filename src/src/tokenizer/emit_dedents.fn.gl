@@ -1,7 +1,0 @@
-emit_dedents indent_stack tokens new_indent pos line =
-  match new_indent < indent_top(indent_stack)
-    true ->
-      glyph_array_pop(indent_stack)
-      glyph_array_push(tokens, mk_token(tk_dedent(), pos, pos, line))
-      emit_dedents(indent_stack, tokens, new_indent, pos, line)
-    _ -> 0

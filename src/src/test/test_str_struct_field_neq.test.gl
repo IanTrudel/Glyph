@@ -1,9 +1,0 @@
-test_str_struct_field_neq u =
-  arr = array_new(2)
-  _0 = array_push(arr, {val: "hello"})
-  _1 = array_push(arr, {val: "world"})
-  a = arr[0]
-  b = arr[1]
-  assert_eq(a.val == b.val, false)
-  assert_eq(a.val != b.val, true)
-  0

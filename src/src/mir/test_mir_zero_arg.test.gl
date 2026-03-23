@@ -1,9 +1,0 @@
-test_mir_zero_arg u =
-  za = ["my_const"]
-  mir = compile_fn("f u = my_const", za)
-  stmts = mir.fn_blocks_stmts[mir.fn_entry]
-  i = test_find_stmt_kind(stmts, rv_call(), 0)
-  assert(i >= 0)
-  s = stmts[i]
-  assert_str_eq(s.sop1.ostr, "my_const")
-  0

@@ -1,4 +1,0 @@
-is_known_ctor name =
-  match name
-    "None" | "Some" | "Ok" | "Err" | "Left" | "Right" -> true
-    _ -> false

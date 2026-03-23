@@ -1,9 +1,0 @@
-cg_closure_stmt stmt =
-  fn_name = cg_fn_name(stmt.sstr)
-  n_caps = glyph_array_len(stmt.sops)
-  total = (1 + n_caps) * 8
-  lb = cg_lbrace()
-  rb = cg_rbrace()
-  gv = gval_t()
-  stores = cg_closure_stores(stmt.sops, 0)
-  s7("  ", lb, s4(" ", gv, "* __c = (", gv), s3("*)glyph_alloc(", itos(total), "); __c[0] = ("), s2(gv, s2(")&", fn_name)), s4("; ", stores, cg_local(stmt.sdest), s3(" = (", gv, ")__c; ")), s2(rb, "\n"))

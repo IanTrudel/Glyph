@@ -1,5 +1,0 @@
-cg_cov_collect_names fn_mirs test_mirs =
-  acc = []
-  cg_cov_collect_loop(fn_mirs, 0, acc)
-  cg_cov_collect_loop(test_mirs, 0, acc)
-  acc

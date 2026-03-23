@@ -1,2 +1,0 @@
-line_col src offset =
-  line_col_loop(src, 0, offset, 1)

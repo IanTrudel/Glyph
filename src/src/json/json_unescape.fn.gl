@@ -1,2 +1,0 @@
-json_unescape src start end =
-  json_unesc_loop(src, start, end, sb_new())

@@ -1,6 +1,0 @@
-infer_lambda eng ast node =
-  env_push(eng)
-  param_types = infer_lambda_params_ty(eng, ast, node.ns, 0)
-  body_ty = infer_expr(eng, ast, node.n1)
-  env_pop(eng)
-  build_fn_type(eng, param_types, body_ty, 0)

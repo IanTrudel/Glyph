@@ -1,7 +1,0 @@
-unify_array_elems eng ast elems first_ty i =
-  match i >= glyph_array_len(elems)
-    true -> 0
-    _ ->
-      et = infer_expr(eng, ast, elems[i])
-      unify(eng, first_ty, et)
-      unify_array_elems(eng, ast, elems, first_ty, i + 1)

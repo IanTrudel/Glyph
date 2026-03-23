@@ -1,2 +1,0 @@
-make_caret col =
-  make_spaces(col - 1, "")

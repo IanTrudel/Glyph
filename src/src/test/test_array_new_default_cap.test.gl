@@ -1,5 +1,0 @@
-test_array_new_default_cap u =
-  mir = compile_fn("f u = array_new()", [])
-  c = cg_function(mir)
-  assert_eq(str_contains(c, "glyph_array_new(16)"), 1)
-  0

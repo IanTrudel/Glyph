@@ -1,2 +1,0 @@
-mir_emit_aggregate ctx dest ag_kind field_names ops =
-  mir_emit(ctx, mk_stmt(dest, rv_aggregate(), ag_kind, field_names, mk_op_nil(), mk_op_nil(), ops))

@@ -1,7 +1,0 @@
-mir_pp_fns mirs i =
-  n = glyph_array_len(mirs)
-  match i >= n
-    true -> 0
-    _ ->
-      eprintln(mir_pp_fn(mirs[i]))
-      mir_pp_fns(mirs, i + 1)

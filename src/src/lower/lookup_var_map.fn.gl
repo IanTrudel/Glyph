@@ -1,7 +1,0 @@
-lookup_var_map var_map var_id i =
-  match i >= glyph_array_len(var_map)
-    true -> 0 - 1
-    _ ->
-      match var_map[i] == var_id
-        true -> var_map[i + 1]
-        _ -> lookup_var_map(var_map, var_id, i + 2)

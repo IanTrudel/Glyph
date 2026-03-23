@@ -1,3 +1,0 @@
-mono_build_spec_tmap eng raw_tm var_map =
-  n = glyph_array_len(raw_tm)
-  mono_bst_loop(eng, raw_tm, var_map, 0, n, [])

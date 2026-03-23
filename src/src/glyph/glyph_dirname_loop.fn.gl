@@ -1,8 +1,0 @@
-glyph_dirname_loop path i last =
-  match i < 0
-    true -> match last < 0
-      true -> "."
-      _ -> glyph_str_slice(path, 0, last)
-    _ -> match glyph_str_char_at(path, i) == 47
-      true -> glyph_dirname_loop(path, i - 1, i)
-      _ -> glyph_dirname_loop(path, i - 1, last)

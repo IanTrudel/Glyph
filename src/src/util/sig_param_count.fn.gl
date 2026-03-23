@@ -1,7 +1,0 @@
-sig_param_count parts =
-  n = glyph_array_len(parts) - 1
-  match n == 1
-    true -> match glyph_str_eq(parts[0], "V")
-      true -> 0
-      _ -> 1
-    _ -> n

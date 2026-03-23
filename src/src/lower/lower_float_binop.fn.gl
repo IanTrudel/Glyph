@@ -1,8 +1,0 @@
-lower_float_binop ctx ast_op left right =
-  mop = lower_binop(ast_op)
-  dest = mir_alloc_local(ctx, "")
-  mir_emit_binop(ctx, dest, mop, left, right)
-  _ = match is_arith_op(ast_op)
-    true -> mir_set_lt(ctx, dest, 3)
-    _ -> 0
-  mk_op_local(dest)

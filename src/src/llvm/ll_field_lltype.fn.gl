@@ -1,6 +1,0 @@
-ll_field_lltype ctype =
-  match glyph_str_eq(ctype, "double") == 1
-    true -> "double"
-    _ -> match glyph_str_eq(ctype, "float") == 1
-      true -> "float"
-      _ -> "i64"

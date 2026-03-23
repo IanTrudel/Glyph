@@ -1,4 +1,0 @@
-test_parse_type_params_none u =
-  r = parse_type_params("\{x:I,y:I}")
-  assert_eq(glyph_array_len(r.tp_params), 0)
-  assert_str_eq(r.tp_rest, "\{x:I,y:I}")

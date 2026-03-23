@@ -1,5 +1,0 @@
-sig_is_void_ret parts =
-  n = glyph_array_len(parts)
-  match glyph_str_eq(parts[n - 1], "V")
-    true -> 1
-    _ -> 0

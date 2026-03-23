@@ -1,8 +1,0 @@
-test_str_enum_payload_neq u =
-  match SVal("foo")
-    SVal(s1) ->
-      match SVal("bar")
-        SVal(s2) ->
-          assert_eq(s1 == s2, false)
-          assert_eq(s1 != s2, true)
-  0

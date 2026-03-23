@@ -1,7 +1,0 @@
-ll_emit_aggregate stmt bid struct_map strs fn_name =
-  nops = glyph_array_len(stmt.sops)
-  match stmt.sival == ag_array()
-    true -> ll_emit_array_agg(stmt, bid, strs, fn_name, nops)
-    _ -> match stmt.sival == ag_variant()
-      true -> ll_emit_variant_agg(stmt, bid, strs, fn_name, nops)
-      _ -> ll_emit_record_agg(stmt, bid, struct_map, strs, fn_name, nops)

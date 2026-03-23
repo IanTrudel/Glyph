@@ -1,5 +1,0 @@
-tco_opt_mirs mirs i = match i >= glyph_array_len(mirs)
-  true -> 0
-  _ ->
-    tco_opt_fn(mirs[i])
-    tco_opt_mirs(mirs, i + 1)

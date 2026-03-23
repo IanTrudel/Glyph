@@ -1,3 +1,0 @@
-cg_runtime_extra =
-  s2("GVal glyph_print(GVal s) \{ const char* p=*(const char**)s; long long l=*(long long*)((char*)s+8); fwrite(p,1,(size_t)l,stdout); fflush(stdout); return 0; }\n",
-  "GVal glyph_array_new(GVal cap) \{ if(cap<=0) cap=4; long long* d=(long long*)malloc(cap*8); if(!d) glyph_panic(\"array_new oom\"); long long* h=(long long*)malloc(24); h[0]=(long long)d; h[1]=0; h[2]=cap; return (GVal)h; }\n")

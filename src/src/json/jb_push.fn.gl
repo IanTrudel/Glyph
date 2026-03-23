@@ -1,4 +1,0 @@
-jb_push pool arr val =
-  node = pool[arr]
-  array_push(node.items, val)
-  arr

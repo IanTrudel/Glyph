@@ -1,7 +1,0 @@
-path_dir_loop path i =
-  match i <= 0
-    true -> "."
-    _ ->
-      match str_char_at(path, i) == 47
-        true -> str_slice(path, 0, i)
-        _ -> path_dir_loop(path, i - 1)

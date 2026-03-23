@@ -1,4 +1,0 @@
-collect_dep_pairs mirs =
-  pairs = []
-  cdp_mirs(mirs, 0, pairs)
-  pairs

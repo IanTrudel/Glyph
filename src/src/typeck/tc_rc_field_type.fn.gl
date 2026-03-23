@@ -1,7 +1,0 @@
-tc_rc_field_type eng ctype =
-  tag = type_name_tag(ctype)
-  match tag == 4
-    true -> mk_tstr(eng.ty_pool)
-    _ -> match tag == 3
-      true -> mk_tfloat(eng.ty_pool)
-      _ -> subst_fresh(eng)

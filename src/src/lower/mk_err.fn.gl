@@ -1,1 +1,0 @@
-mk_err pos = {node: 0 - 1, pos: pos, pr_err: ""}

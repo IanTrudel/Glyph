@@ -1,7 +1,0 @@
-cg_store_ops_alpha ops names i varname =
-  match i >= glyph_array_len(ops)
-    true -> ""
-    _ ->
-      pos = alpha_rank(names, names[i])
-      rest = cg_store_ops_alpha(ops, names, i + 1, varname)
-      s5(varname, "[", itos(pos), "] = ", s3(cg_operand(ops[i]), "; ", rest))

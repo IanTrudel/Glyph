@@ -1,3 +1,0 @@
-link_copy_externs lib_db app_db =
-  rows = glyph_db_query_rows(lib_db, "SELECT name,symbol,lib,sig,conv FROM extern_ ORDER BY name")
-  link_copy_externs_loop(rows, app_db, 0, glyph_array_len(rows))

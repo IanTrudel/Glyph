@@ -1,8 +1,0 @@
-resolve_tuple_elems eng elems i =
-  match i >= glyph_array_len(elems)
-    true -> []
-    _ ->
-      resolved = subst_resolve(eng, elems[i])
-      rest = resolve_tuple_elems(eng, elems, i + 1)
-      glyph_array_push(rest, resolved)
-      rest

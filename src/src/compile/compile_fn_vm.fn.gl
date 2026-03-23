@@ -1,5 +1,0 @@
-compile_fn_vm src za_fns vmap =
-  tokens = tokenize(src)
-  ast = []
-  r = parse_fn_def(src, tokens, 0, ast)
-  lower_fn_def(ast, r.node, za_fns, mk_null_tctx(0), "", vmap)

@@ -1,5 +1,0 @@
-lower_field ctx ast node =
-  base = lower_expr(ctx, ast, node.n1)
-  dest = mir_alloc_local(ctx, "")
-  mir_emit_field(ctx, dest, base, 0, node.sval)
-  mk_op_local(dest)

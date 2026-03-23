@@ -1,3 +1,0 @@
-ll_field_idx tname fname struct_map =
-  n = glyph_array_len(struct_map)
-  ll_fidx_loop(tname, fname, struct_map, 0, n)

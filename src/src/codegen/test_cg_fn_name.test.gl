@@ -1,6 +1,0 @@
-test_cg_fn_name u =
-  assert_str_eq(cg_fn_name("println"), "glyph_println")
-  assert_str_eq(cg_fn_name("str_len"), "glyph_str_len")
-  assert_str_eq(cg_fn_name("my_func"), "my_func")
-  assert_str_eq(cg_fn_name("foo"), "foo")
-  0

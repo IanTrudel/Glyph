@@ -1,7 +1,0 @@
-blt_has_field fields name i =
-  match i >= glyph_array_len(fields)
-    true -> false
-    _ ->
-      match glyph_str_eq(fields[i], name)
-        true -> true
-        _ -> blt_has_field(fields, name, i + 1)

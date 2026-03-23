@@ -1,9 +1,0 @@
-test_record_update_cg u =
-  type_rows = [["Point", "\{x: I, y: I}"]]
-  struct_map = build_struct_map(type_rows)
-  mir = compile_fn("f p = p\{x: 1}", [])
-  c = cg_function2(mir, struct_map)
-  assert(glyph_str_len(c) > 0)
-  assert_eq(str_contains(c, "sizeof(Glyph_Point)"), 1)
-  assert_eq(str_contains(c, "*__r = *((Glyph_Point*)"), 1)
-  0

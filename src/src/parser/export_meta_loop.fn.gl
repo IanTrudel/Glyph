@@ -1,4 +1,0 @@
-export_meta_loop rows i n acc =
-  match i >= n
-    true -> acc
-    _ -> export_meta_loop(rows, i+1, n, s2(acc, export_meta_row(rows[i])))

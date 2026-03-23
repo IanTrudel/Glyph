@@ -1,9 +1,0 @@
-ll_sb_appends ops d strs fn_name i =
-  match i >= glyph_array_len(ops)
-    true -> ""
-    _ ->
-      pair = ll_load_operand(ops[i], d, i + 10, strs, fn_name)
-      ap_res = s3("%ap_", itos(d), s2("_", itos(i)))
-      sb_nm = s2("%sb_", itos(d))
-      append = s7("  ", ap_res, " = call i64 @glyph_sb_append(i64 ", sb_nm, ", i64 ", pair[1], ")\n")
-      s3(pair[0], append, ll_sb_appends(ops, d, strs, fn_name, i + 1))

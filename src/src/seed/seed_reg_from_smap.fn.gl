@@ -1,8 +1,0 @@
-seed_reg_from_smap reg struct_map i =
-  match i >= glyph_array_len(struct_map)
-    true -> 0
-    _ ->
-      entry = struct_map[i]
-      fields = entry[1]
-      add_type_to_reg(reg, fields, 0)
-      seed_reg_from_smap(reg, struct_map, i + 1)

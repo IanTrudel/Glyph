@@ -1,8 +1,0 @@
-parse_record src tokens pos pool =
-  match cur_kind(tokens, pos) == tk_rbrace()
-    true ->
-      idx = pool_push(pool, mk_node(ex_record(), 0, "", 0 - 1, 0 - 1, 0 - 1, []))
-      mk_result(idx, pos + 1)
-    _ ->
-      pairs = []
-      parse_record_loop(src, tokens, pos, pool, pairs)

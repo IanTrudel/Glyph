@@ -1,4 +1,0 @@
-build_type_reg mirs =
-  reg = []
-  build_type_reg_mirs(mirs, 0, reg)
-  reg

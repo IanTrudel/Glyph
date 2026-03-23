@@ -1,9 +1,0 @@
-mir_pp_stmt stmt =
-  d = s3("    _", itos(stmt.sdest), " = ")
-  k = stmt.skind
-  match k
-    _ ? k == 1 -> s3(d, "use(", s2(mir_pp_op(stmt.sop1), ")"))
-    _ ? k == 2 -> s6(d, mir_pp_binop_name(stmt.sival), "(", mir_pp_op(stmt.sop1), ", ", s2(mir_pp_op(stmt.sop2), ")"))
-    _ ? k == 3 -> s4(d, mir_pp_binop_name(stmt.sival), "(", s2(mir_pp_op(stmt.sop1), ")"))
-    _ ? k == 4 -> s4(d, "call ", mir_pp_op(stmt.sop1), s3("(", mir_pp_ops(stmt.sops, 0), ")"))
-    _ -> mir_pp_stmt2(stmt, d)

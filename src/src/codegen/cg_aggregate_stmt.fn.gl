@@ -1,7 +1,0 @@
-cg_aggregate_stmt stmt =
-  nops = glyph_array_len(stmt.sops)
-  match stmt.sival == ag_array()
-    true -> cg_array_aggregate(stmt, nops)
-    _ -> match stmt.sival == ag_variant()
-      true -> cg_variant_aggregate(stmt, nops)
-      _ -> cg_record_aggregate(stmt, nops)

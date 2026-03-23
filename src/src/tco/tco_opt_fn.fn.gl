@@ -1,2 +1,0 @@
-tco_opt_fn mir =
-  tco_opt_blks(mir, mir.fn_blocks_stmts, mir.fn_blocks_terms, 0)

@@ -1,6 +1,0 @@
-wfv_add_all dst src i =
-  match i >= glyph_array_len(src)
-    true -> 0
-    _ ->
-      glyph_array_push(dst, src[i])
-      wfv_add_all(dst, src, i + 1)

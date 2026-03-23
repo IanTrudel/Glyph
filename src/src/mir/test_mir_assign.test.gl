@@ -1,7 +1,0 @@
-test_mir_assign u =
-  mir = compile_fn("f x = x := 1\n  x", [])
-  bc = mir_block_count(mir)
-  assert(bc >= 1)
-  lc = mir_local_count(mir)
-  assert(lc >= 1)
-  0

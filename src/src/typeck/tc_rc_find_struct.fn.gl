@@ -1,9 +1,0 @@
-tc_rc_find_struct struct_map name i =
-  match i >= glyph_array_len(struct_map)
-    true -> []
-    _ ->
-      entry = struct_map[i]
-      ename = glyph_arr_get_str(entry, 0)
-      match glyph_str_eq(ename, name)
-        true -> entry
-        _ -> tc_rc_find_struct(struct_map, name, i + 1)

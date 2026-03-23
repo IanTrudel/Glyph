@@ -1,7 +1,0 @@
-test_str_arr_concat u =
-  arr = array_new(2)
-  _0 = array_push(arr, "foo")
-  _1 = array_push(arr, "bar")
-  joined = arr[0] + arr[1]
-  assert_eq(joined == "foobar", true)
-  0

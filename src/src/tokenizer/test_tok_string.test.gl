@@ -1,7 +1,0 @@
-test_tok_string u =
-  q = "\""
-  src = s3(q, "hello", q)
-  toks = tokenize(src)
-  kinds = test_collect_kinds(toks, 0, [])
-  assert(has_kind(kinds, tk_str()))
-  0

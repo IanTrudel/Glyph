@@ -1,2 +1,0 @@
-mk_tvar var_id pool =
-  mk_ty(ty_var(), var_id, 0 - 1, pool)

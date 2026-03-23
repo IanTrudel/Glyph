@@ -1,2 +1,0 @@
-mk_tfn param ret pool =
-  mk_ty(ty_fn(), param, ret, pool)

@@ -1,6 +1,0 @@
-test_str_neq_two_params_sig u =
-  src = "f s1 s2 = s1 != s2"
-  mir = compile_fn_sig(src, "S -> S -> B")
-  c = cg_function(mir)
-  assert_eq(str_contains(c, "glyph_str_eq"), 1)
-  0

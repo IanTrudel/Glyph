@@ -1,3 +1,0 @@
-mir_push_scope ctx =
-  glyph_array_push(ctx.var_marks, glyph_array_len(ctx.var_names))
-  0

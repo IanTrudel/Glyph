@@ -1,8 +1,0 @@
-join_cols row i n acc =
-  match i < n
-    true ->
-      new_acc = match glyph_str_len(acc) == 0
-        true -> row[i]
-        _ -> s3(acc, "	", row[i])
-      join_cols(row, i + 1, n, new_acc)
-    _ -> acc

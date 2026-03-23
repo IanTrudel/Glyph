@@ -1,6 +1,0 @@
-ll_load_ops_list ops dest strs fn_name i =
-  match i >= glyph_array_len(ops)
-    true -> ""
-    _ ->
-      pair = ll_load_operand(ops[i], dest, i + 2, strs, fn_name)
-      s2(pair[0], ll_load_ops_list(ops, dest, strs, fn_name, i + 1))

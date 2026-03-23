@@ -1,9 +1,0 @@
-mcp_add_tools7 pool tools =
-  rb = jb_arr(pool)
-  jb_push(pool, rb, jb_str(pool, "body"))
-  p9 = jb_obj(pool)
-  jb_put(pool, p9, "kind", mcp_str_prop(pool, "Definition kind (fn, type, test). Default: fn"))
-  jb_put(pool, p9, "body", mcp_str_prop(pool, "Definition body (source code)"))
-  jb_put(pool, p9, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
-  jb_push(pool, tools, mcp_tool_schema(pool, "check_def", "Validate a definition without inserting", p9, rb))
-  mcp_add_tools8(pool, tools)

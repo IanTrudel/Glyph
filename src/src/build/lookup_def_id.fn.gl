@@ -1,6 +1,0 @@
-lookup_def_id db name =
-  sql = s3("SELECT id FROM def WHERE name = '", sql_escape(name), "' AND kind = 'fn' LIMIT 1")
-  rows = glyph_db_query_rows(db, sql)
-  match glyph_array_len(rows) > 0
-    true -> str_to_int(rows[0][0])
-    _ -> 0

@@ -1,3 +1,0 @@
-push_simple pool kind ival sval =
-  idx = pool_push(pool, mk_node(kind, ival, sval, 0 - 1, 0 - 1, 0 - 1, []))
-  idx

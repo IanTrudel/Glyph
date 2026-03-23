@@ -1,6 +1,0 @@
-collect_nested_lifted dst src i =
-  match i >= glyph_array_len(src)
-    true -> 0
-    _ ->
-      glyph_array_push(dst, src[i])
-      collect_nested_lifted(dst, src, i + 1)

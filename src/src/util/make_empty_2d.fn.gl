@@ -1,4 +1,0 @@
-make_empty_2d n i =
-  result = []
-  fill_empty_2d(result, n, 0)
-  result

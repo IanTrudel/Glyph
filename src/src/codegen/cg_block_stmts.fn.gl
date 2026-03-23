@@ -1,4 +1,0 @@
-cg_block_stmts stmts i =
-  match i >= glyph_array_len(stmts)
-    true -> ""
-    _ -> s2(cg_stmt(stmts[i]), cg_block_stmts(stmts, i + 1))

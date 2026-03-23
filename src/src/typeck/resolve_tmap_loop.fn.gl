@@ -1,8 +1,0 @@
-resolve_tmap_loop eng tm i =
-  match i >= glyph_array_len(tm)
-    true -> tm
-    _ ->
-      raw = tm[i]
-      tag = tmap_resolve_tag(eng, raw)
-      glyph_array_set(tm, i, tag)
-      resolve_tmap_loop(eng, tm, i + 1)

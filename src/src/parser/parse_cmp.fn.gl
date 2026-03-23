@@ -1,5 +1,0 @@
-parse_cmp src tokens pos pool =
-  left = parse_bitwise(src, tokens, pos, pool)
-  match is_err(left)
-    true -> left
-    _ -> parse_cmp_loop(src, tokens, left.pos, pool, left.node)

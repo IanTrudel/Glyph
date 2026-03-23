@@ -1,5 +1,0 @@
-lower_block ctx ast node =
-  mir_push_scope(ctx)
-  r = lower_stmts(ctx, ast, node.ns, 0)
-  mir_pop_scope(ctx)
-  r

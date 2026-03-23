@@ -1,4 +1,0 @@
-cg_functions mirs i =
-  match i >= glyph_array_len(mirs)
-    true -> ""
-    _ -> s2(cg_function(mirs[i]), cg_functions(mirs, i + 1))

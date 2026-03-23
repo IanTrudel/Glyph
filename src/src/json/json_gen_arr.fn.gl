@@ -1,6 +1,0 @@
-json_gen_arr pool node =
-  sb = sb_new()
-  sb_append(sb, "[")
-  json_gen_arr_loop(pool, node.items, 0, array_len(node.items), sb)
-  sb_append(sb, "]")
-  sb_build(sb)

@@ -1,2 +1,0 @@
-cg_test_preamble_extra =
-  "extern GVal glyph_assert(GVal cond);\nextern GVal glyph_assert_eq(GVal a, GVal b);\nextern GVal glyph_assert_str_eq(GVal a, GVal b);\n\n"

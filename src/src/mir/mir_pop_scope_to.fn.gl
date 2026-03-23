@@ -1,7 +1,0 @@
-mir_pop_scope_to names locals target =
-  match glyph_array_len(names) > target
-    true ->
-      glyph_array_pop(names)
-      glyph_array_pop(locals)
-      mir_pop_scope_to(names, locals, target)
-    _ -> 0

@@ -1,8 +1,0 @@
-test_json_access u =
-  src = r"""{"name":"hello","val":42}"""
-  pool = []
-  toks = json_tokenize(src)
-  pr = json_parse(src, toks, 0, pool)
-  assert_str_eq(json_get_str(pool, pr.node, "name"), "hello")
-  assert_eq(json_get_int(pool, pr.node, "val"), 42)
-  assert_eq(json_get(pool, pr.node, "missing"), 0 - 1)

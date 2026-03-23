@@ -1,4 +1,0 @@
-cur_kind tokens pos =
-  match pos < glyph_array_len(tokens)
-    true -> (tokens[pos]).kind
-    _ -> tk_eof()

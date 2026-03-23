@@ -1,9 +1,0 @@
-test_variant_disc u =
-  assert_eq(variant_discriminant("None"), 0)
-  assert_eq(variant_discriminant("Some"), 1)
-  assert_eq(variant_discriminant("Ok"), 0)
-  assert_eq(variant_discriminant("Err"), 1)
-  assert_eq(variant_discriminant("Left"), 0)
-  assert_eq(variant_discriminant("Right"), 1)
-  assert_eq(variant_discriminant("Unknown"), 0)
-  0

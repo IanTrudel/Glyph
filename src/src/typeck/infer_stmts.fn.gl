@@ -1,8 +1,0 @@
-infer_stmts eng ast stmts i =
-  match i >= glyph_array_len(stmts)
-    true -> mk_tvoid(eng.ty_pool)
-    _ ->
-      r = infer_stmt(eng, ast, stmts[i])
-      match i == glyph_array_len(stmts) - 1
-        true -> r
-        _ -> infer_stmts(eng, ast, stmts, i + 1)

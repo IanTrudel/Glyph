@@ -1,7 +1,0 @@
-test_str_direct_struct_field u =
-  a = {val: "hello"}
-  b = {val: "hello"}
-  assert_eq(a.val == b.val, true)
-  c = {val: "world"}
-  assert_eq(a.val == c.val, false)
-  0

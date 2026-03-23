@@ -1,5 +1,0 @@
-test_util_extract_name u =
-  assert_str_eq(extract_name("foo x = x + 1"), "foo")
-  assert_str_eq(extract_name("main = 42"), "main")
-  assert_str_eq(extract_name("hello_world x y = 0"), "hello_world")
-  0

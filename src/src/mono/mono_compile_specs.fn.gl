@@ -1,2 +1,0 @@
-mono_compile_specs specs parsed tc_results za_fns eng vmap =
-  mono_compile_specs_loop(specs, parsed, tc_results, za_fns, eng, 0, [], vmap)

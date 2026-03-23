@@ -1,7 +1,0 @@
-mono_compile_one_spec spec parsed tc_results za_fns eng vmap =
-  idx = mono_find_parsed(parsed, spec.ms_orig, 0)
-  pf = parsed[idx]
-  tr = mono_find_tr(tc_results, idx)
-  spec_tmap = mono_build_spec_tmap(eng, tr.fn_ty_raw, spec.ms_var_map)
-  tctx = mk_tctx(spec_tmap)
-  lower_fn_def(pf.pf_ast, pf.pf_fn_idx, za_fns, tctx, spec.ms_spec, vmap)

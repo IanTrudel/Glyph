@@ -1,6 +1,0 @@
-resolve_record2 eng fns rest =
-  new_fields = resolve_fields(eng, fns, 0)
-  new_rest = match rest < 0
-    true -> rest
-    _ -> rest
-  mk_trecord(new_fields, new_rest, eng.ty_pool)

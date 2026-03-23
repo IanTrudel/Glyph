@@ -1,5 +1,0 @@
-tctx_query tctx ni =
-  tm = tctx.tc_tmap
-  match ni < glyph_array_len(tm)
-    true -> tm[ni]
-    _ -> 0 - 1

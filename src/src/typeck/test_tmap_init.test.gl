@@ -1,8 +1,0 @@
-test_tmap_init u =
-  tm = tmap_init(5)
-  assert_eq(glyph_array_len(tm), 5)
-  assert_eq(tm[0], 0 - 1)
-  assert_eq(tm[4], 0 - 1)
-  ctx = mk_tctx(tm)
-  assert_eq(glyph_array_len(ctx.tc_tmap), 5)
-  0

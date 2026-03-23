@@ -1,6 +1,0 @@
-find_str_in arr target i =
-  match i >= glyph_array_len(arr)
-    true -> 0 - 1
-    _ -> match glyph_str_eq(arr[i], target)
-      true -> i
-      _ -> find_str_in(arr, target, i + 1)

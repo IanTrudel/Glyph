@@ -1,5 +1,0 @@
-ll_byte_hex b =
-  hex = "0123456789ABCDEF"
-  hi = b / 16
-  lo = b % 16
-  s3("\\", glyph_str_slice(hex, hi, hi + 1), glyph_str_slice(hex, lo, lo + 1))

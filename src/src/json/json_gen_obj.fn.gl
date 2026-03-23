@@ -1,6 +1,0 @@
-json_gen_obj pool node =
-  sb = sb_new()
-  sb_append(sb, "\{")
-  json_gen_obj_loop(pool, node.keys, node.items, 0, array_len(node.keys), sb)
-  sb_append(sb, "}")
-  sb_build(sb)

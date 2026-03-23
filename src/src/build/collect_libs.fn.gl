@@ -1,2 +1,0 @@
-collect_libs externs =
-  collect_libs_loop(externs, 0, [], "")

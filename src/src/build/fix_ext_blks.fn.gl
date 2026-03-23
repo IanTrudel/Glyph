@@ -1,6 +1,0 @@
-fix_ext_blks blocks externs bi =
-  match bi >= glyph_array_len(blocks)
-    true -> 0
-    _ ->
-      fix_ext_stmts(blocks[bi], externs, 0)
-      fix_ext_blks(blocks, externs, bi + 1)

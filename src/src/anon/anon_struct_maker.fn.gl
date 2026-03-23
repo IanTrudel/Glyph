@@ -1,2 +1,0 @@
-anon_struct_maker u =
-  {alpha: 1, beta: 99, gamma: 3}

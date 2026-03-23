@@ -1,8 +1,0 @@
-lower_lambda_params ctx ast params i =
-  match i >= glyph_array_len(params)
-    true -> 0
-    _ ->
-      pnode = ast[params[i]]
-      local_id = mir_alloc_local(ctx, pnode.sval)
-      mir_bind_var(ctx, pnode.sval, local_id)
-      lower_lambda_params(ctx, ast, params, i + 1)

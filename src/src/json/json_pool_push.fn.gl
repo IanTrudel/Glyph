@@ -1,4 +1,0 @@
-json_pool_push pool node =
-  idx = array_len(pool)
-  array_push(pool, node)
-  idx

@@ -1,8 +1,0 @@
-test_str_indirect_param_eq u =
-  arr = array_new(3)
-  _0 = array_push(arr, "foo")
-  _1 = array_push(arr, "bar")
-  _2 = array_push(arr, "baz")
-  assert_eq(search_wrapper(arr, "bar"), true)
-  assert_eq(search_wrapper(arr, "qux"), false)
-  0

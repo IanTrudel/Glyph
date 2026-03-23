@@ -1,4 +1,0 @@
-mk_engine =
-  {ty_pool: [], parent: [], bindings: [], next_var: [0],
-   env_names: [], env_types: [], env_marks: [], errors: [],
-   tmap: [[]]}

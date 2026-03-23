@@ -1,4 +1,0 @@
-str_lt a b =
-  la = glyph_str_len(a)
-  lb = glyph_str_len(b)
-  str_lt_loop(a, b, 0, la, lb)

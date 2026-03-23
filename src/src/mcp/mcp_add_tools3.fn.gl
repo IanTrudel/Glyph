@@ -1,8 +1,0 @@
-mcp_add_tools3 pool tools =
-  p3 = jb_obj(pool)
-  jb_put(pool, p3, "kind", mcp_str_prop(pool, "Filter by kind (fn, type, test)"))
-  jb_put(pool, p3, "pattern", mcp_str_prop(pool, "SQL LIKE pattern for name"))
-  jb_put(pool, p3, "gen", mcp_int_prop(pool, "Filter by generation"))
-  jb_put(pool, p3, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
-  jb_push(pool, tools, mcp_tool_schema(pool, "list_defs", "List definitions matching filters", p3, jb_arr(pool)))
-  mcp_add_tools4(pool, tools)

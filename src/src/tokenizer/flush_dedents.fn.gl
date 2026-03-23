@@ -1,7 +1,0 @@
-flush_dedents indent_stack tokens pos line =
-  match glyph_array_len(indent_stack) > 1
-    true ->
-      glyph_array_pop(indent_stack)
-      glyph_array_push(tokens, mk_token(tk_dedent(), pos, pos, line))
-      flush_dedents(indent_stack, tokens, pos, line)
-    _ -> 0

@@ -1,6 +1,0 @@
-main =
-  argv = glyph_args()
-  argc = glyph_array_len(argv)
-  match argc < 2
-    true -> print_usage
-    _ -> dispatch_cmd(argv, argc, argv[1])

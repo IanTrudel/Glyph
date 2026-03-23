@@ -1,6 +1,0 @@
-blt_collect_fa_blks blocks i fa =
-  match i >= glyph_array_len(blocks)
-    true -> 0
-    _ ->
-      blt_collect_fa_stmts(blocks[i], 0, fa)
-      blt_collect_fa_blks(blocks, i + 1, fa)

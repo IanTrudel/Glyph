@@ -1,7 +1,0 @@
-find_in_arr arr target i n =
-  match i >= n
-    true -> false
-    _ ->
-      match arr[i] == target
-        true -> true
-        _ -> find_in_arr(arr, target, i + 1, n)

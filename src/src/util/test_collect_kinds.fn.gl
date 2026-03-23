@@ -1,6 +1,0 @@
-test_collect_kinds toks i acc =
-  match i >= glyph_array_len(toks)
-    true -> acc
-    _ ->
-      glyph_array_push(acc, (toks[i]).kind)
-      test_collect_kinds(toks, i + 1, acc)

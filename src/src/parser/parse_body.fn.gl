@@ -1,5 +1,0 @@
-parse_body src tokens pos pool =
-  pos2 = skip_nl(tokens, pos)
-  match cur_kind(tokens, pos2) == tk_indent()
-    true -> parse_block(src, tokens, pos2 + 1, pool)
-    _ -> parse_expr(src, tokens, pos2, pool)

@@ -1,6 +1,0 @@
-test_tok_ident_keyword u =
-  toks = tokenize("match x")
-  kinds = test_collect_kinds(toks, 0, [])
-  assert(has_kind(kinds, tk_match()))
-  assert(has_kind(kinds, tk_ident()))
-  0

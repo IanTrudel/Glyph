@@ -1,5 +1,0 @@
-jb_put pool obj key val =
-  node = pool[obj]
-  array_push(node.keys, key)
-  array_push(node.items, val)
-  obj

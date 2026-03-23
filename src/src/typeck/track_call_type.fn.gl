@@ -1,6 +1,0 @@
-track_call_type ctx dest callee =
-  match callee.okind == ok_func_ref()
-    true -> match is_str_ret_fn(callee.ostr)
-      true -> mir_set_lt(ctx, dest, 4)
-      _ -> 0
-    _ -> 0

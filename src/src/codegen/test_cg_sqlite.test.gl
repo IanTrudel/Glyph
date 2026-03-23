@@ -1,6 +1,0 @@
-test_cg_sqlite u =
-  r = cg_runtime_sqlite()
-  assert(str_contains(r, "sqlite3"))
-  assert(str_contains(r, "glyph_db_open"))
-  assert(str_contains(r, "glyph_db_close"))
-  0

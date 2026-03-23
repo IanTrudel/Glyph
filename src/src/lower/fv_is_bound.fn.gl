@@ -1,7 +1,0 @@
-fv_is_bound name bound i =
-  match i >= glyph_array_len(bound)
-    true -> 0
-    _ ->
-      match glyph_str_eq(bound[i], name) == 1
-        true -> 1
-        _ -> fv_is_bound(name, bound, i + 1)

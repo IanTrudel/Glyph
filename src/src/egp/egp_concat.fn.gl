@@ -1,6 +1,0 @@
-egp_concat src dst i =
-  match i >= glyph_array_len(src)
-    true -> 0
-    _ ->
-      glyph_array_push(dst, src[i])
-      egp_concat(src, dst, i + 1)

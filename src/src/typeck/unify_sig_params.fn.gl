@@ -1,9 +1,0 @@
-unify_sig_params eng param_types parts i =
-  n = glyph_array_len(param_types)
-  match i >= n
-    true -> 0
-    _ ->
-      pt = param_types[n - 1 - i]
-      st = sig_part_ty(parts[i], eng.ty_pool)
-      unify(eng, pt, st)
-      unify_sig_params(eng, param_types, parts, i + 1)

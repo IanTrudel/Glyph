@@ -1,2 +1,0 @@
-mk_ty tag n1 n2 pool =
-  ty_push(pool, {tag: tag, n1: n1, n2: n2, ns: [], sval: ""})

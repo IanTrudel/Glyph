@@ -1,7 +1,0 @@
-test_parse_record_update_in_call u =
-  src = "f p = foo(p\{x: 1})"
-  tokens = tokenize(src)
-  ast = []
-  r = parse_fn_def(src, tokens, 0, ast)
-  assert_eq(is_err(r), 0)
-  0

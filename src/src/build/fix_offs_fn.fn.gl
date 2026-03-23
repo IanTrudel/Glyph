@@ -1,3 +1,0 @@
-fix_offs_fn mir reg =
-  la = coll_local_acc(mir)
-  fix_offs_blks(mir.fn_blocks_stmts, 0, reg, la)

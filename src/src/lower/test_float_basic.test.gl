@@ -1,8 +1,0 @@
-test_float_basic u =
-  x = 3.14
-  y = 2.0
-  z = x + y
-  assert_eq(float_to_int(z), 5)
-  assert_eq(float_to_int(x * y), 6)
-  assert_eq(float_to_int(10.0 / 3.0), 3)
-  0

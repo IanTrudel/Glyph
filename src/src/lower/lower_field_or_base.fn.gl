@@ -1,8 +1,0 @@
-lower_field_or_base ctx base_op fname update_names update_ops =
-  idx = lfob_find(update_names, fname, 0)
-  match idx >= 0
-    true -> update_ops[idx]
-    _ ->
-      dest = mir_alloc_local(ctx, "")
-      mir_emit(ctx, mk_stmt(dest, rv_field(), 0, fname, base_op, mk_op_nil(), []))
-      mk_op_local(dest)

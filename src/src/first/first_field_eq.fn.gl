@@ -1,3 +1,0 @@
-first_field_eq arr s =
-  a = arr[0]
-  a.val == s

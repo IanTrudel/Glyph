@@ -1,7 +1,0 @@
-test_mir_unary u =
-  mir = compile_fn("f x = 0 - x", [])
-  stmts = mir.fn_blocks_stmts[0]
-  assert(glyph_array_len(stmts) >= 1)
-  term = mir.fn_blocks_terms[0]
-  assert_eq(term.tkind, tm_return())
-  0

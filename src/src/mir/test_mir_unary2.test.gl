@@ -1,8 +1,0 @@
-test_mir_unary2 u =
-  mir = compile_fn("f x = 0 - x", [])
-  assert(mir.fn_local_count > 0)
-  stmts0 = mir.fn_blocks_stmts[0]
-  assert(glyph_array_len(stmts0) >= 1)
-  mir2 = compile_fn("f b = match b\n  true -> 0\n  _ -> 1", [])
-  assert(mir2.fn_block_count >= 2)
-  0

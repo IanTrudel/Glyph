@@ -1,4 +1,0 @@
-ctr_scan_new body gnames all_apps =
-  found = []
-  ctab_loop(body, gnames, 0, found)
-  ctr_add_new(found, all_apps, 0)

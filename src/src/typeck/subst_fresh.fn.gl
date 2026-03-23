@@ -1,3 +1,0 @@
-subst_fresh eng =
-  v = subst_fresh_var(eng)
-  mk_tvar(v, eng.ty_pool)

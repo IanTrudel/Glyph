@@ -1,3 +1,0 @@
-cg_null_check op ctx =
-  gv = s3("(", gval_t(), ")")
-  s6("#ifdef GLYPH_DEBUG\n  _glyph_null_check(", gv, s2(cg_operand(op), ", \""), ctx, "\");\n#endif\n", "")

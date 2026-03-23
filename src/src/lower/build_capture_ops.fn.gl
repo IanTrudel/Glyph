@@ -1,9 +1,0 @@
-build_capture_ops free_vars i =
-  n_caps = glyph_array_len(free_vars) / 2
-  match i >= n_caps
-    true -> []
-    _ ->
-      local_id = free_vars[i * 2]
-      rest = build_capture_ops(free_vars, i + 1)
-      glyph_array_push(rest, mk_op_local(local_id))
-      rest

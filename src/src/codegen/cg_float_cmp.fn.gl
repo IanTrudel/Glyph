@@ -1,4 +1,0 @@
-cg_float_cmp stmt =
-  a = s3("_glyph_i2f(", cg_operand(stmt.sop1), ")")
-  b = s3("_glyph_i2f(", cg_operand(stmt.sop2), ")")
-  s6("  ", cg_local(stmt.sdest), " = ", a, cg_binop_str(stmt.sival), s2(b, ";\n"))

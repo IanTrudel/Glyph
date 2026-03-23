@@ -1,9 +1,0 @@
-test_util_is_upper u =
-  assert(is_upper(65))
-  assert(is_upper(90))
-  assert(is_upper(77))
-  assert(is_upper(64) == 0)
-  assert(is_upper(91) == 0)
-  assert(is_upper(97) == 0)
-  assert(is_upper(122) == 0)
-  0

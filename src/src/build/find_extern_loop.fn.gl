@@ -1,8 +1,0 @@
-find_extern_loop externs name i =
-  match i >= glyph_array_len(externs)
-    true -> []
-    _ ->
-      row = externs[i]
-      match glyph_str_eq(row[0], name)
-        true -> row
-        _ -> find_extern_loop(externs, name, i + 1)

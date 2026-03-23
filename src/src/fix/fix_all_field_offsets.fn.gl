@@ -1,4 +1,0 @@
-fix_all_field_offsets mirs struct_map =
-  reg = build_type_reg(mirs)
-  seed_reg_from_smap(reg, struct_map, 0)
-  fix_offs_mirs(mirs, 0, reg)

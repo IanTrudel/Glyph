@@ -1,6 +1,0 @@
-test_parse_type_expr_nested u =
-  r = parse_type_expr_str("Pair<Stack<Int>,Str>")
-  assert_str_eq(r.te_name, "Pair")
-  assert_eq(glyph_array_len(r.te_args), 2)
-  assert_str_eq(r.te_args[0], "Stack<Int>")
-  assert_str_eq(r.te_args[1], "Str")

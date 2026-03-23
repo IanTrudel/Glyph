@@ -1,6 +1,0 @@
-read_generic_types db =
-  q = "SELECT name, body FROM def WHERE kind='type' ORDER BY name"
-  rows = glyph_db_query_rows(db, q)
-  acc = []
-  rgt_loop(rows, 0, acc)
-  acc

@@ -1,2 +1,0 @@
-jb_null pool =
-  json_pool_push(pool, mk_jnode(jn_null, 0, "", [], []))

@@ -1,9 +1,0 @@
-cg_record_aggregate stmt nops =
-  lb = cg_lbrace()
-  rb = cg_rbrace()
-  gv = gval_t()
-  names = split_comma(stmt.sstr)
-  stores = match glyph_array_len(names) == nops
-    true -> cg_store_ops_alpha(stmt.sops, names, 0, "__r")
-    _ -> cg_store_ops(stmt.sops, 0, "__r")
-  s7("  ", lb, s4(" ", gv, "* __r = (", gv), s3("*)glyph_alloc(", itos(nops * 8), "); "), stores, s5(cg_local(stmt.sdest), " = (", gv, ")__r; ", rb), "\n")

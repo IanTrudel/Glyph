@@ -1,4 +1,0 @@
-expand_all_generics generic_defs apps =
-  result = []
-  eag_loop(generic_defs, apps, 0, result)
-  result

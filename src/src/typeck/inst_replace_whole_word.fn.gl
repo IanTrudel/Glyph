@@ -1,2 +1,0 @@
-inst_replace_whole_word body param repl =
-  irw_scan(body, param, repl, 0, "")

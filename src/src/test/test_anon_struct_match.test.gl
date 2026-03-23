@@ -1,5 +1,0 @@
-test_anon_struct_match u =
-  s = anon_struct_maker(0)
-  r = anon_match_beta(s)
-  assert_str_eq(r, "correct")
-  0

@@ -1,3 +1,0 @@
-compile_fn_to_c src =
-  mir = compile_fn_vm(src, [], [])
-  cg_function(mir)

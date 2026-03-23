@@ -1,9 +1,0 @@
-mir_pp_ops ops i =
-  n = glyph_array_len(ops)
-  match i >= n
-    true -> ""
-    _ ->
-      cur = mir_pp_op(ops[i])
-      match i + 1 >= n
-        true -> cur
-        _ -> s3(cur, ", ", mir_pp_ops(ops, i + 1))

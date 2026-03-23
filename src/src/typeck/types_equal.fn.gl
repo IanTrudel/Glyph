@@ -1,4 +1,0 @@
-types_equal a b =
-  match glyph_array_len(a) == glyph_array_len(b)
-    true -> types_equal_loop(a, b, 0)
-    _ -> 0

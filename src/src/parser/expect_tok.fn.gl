@@ -1,4 +1,0 @@
-expect_tok tokens pos kind =
-  match cur_kind(tokens, pos) == kind
-    true -> pos + 1
-    _ -> 0 - 1

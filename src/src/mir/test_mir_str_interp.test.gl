@@ -1,7 +1,0 @@
-test_mir_str_interp u =
-  src = r"""f x = "hi {x}""""
-  mir = compile_fn(src, [])
-  stmts = mir.fn_blocks_stmts[0]
-  found = test_find_stmt_kind(stmts, rv_str_interp(), 0)
-  assert(found >= 0)
-  0

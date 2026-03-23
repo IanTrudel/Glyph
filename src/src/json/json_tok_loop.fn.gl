@@ -1,5 +1,0 @@
-json_tok_loop src len pos tokens =
-  p = json_skip_ws(src, pos)
-  match p < len
-    true -> json_tok_one(src, len, p, tokens, str_char_at(src, p))
-    _ -> tokens

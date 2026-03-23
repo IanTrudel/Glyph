@@ -1,5 +1,0 @@
-test_closure_mir u =
-  src = "add1 x =\n  base = 10\n  f = \\y -> base + y\n  f(x)"
-  mir = compile_fn(src, [])
-  n_subs = glyph_array_len(mir.fn_subs)
-  assert_eq(n_subs, 1)

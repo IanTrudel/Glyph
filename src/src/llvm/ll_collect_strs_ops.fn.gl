@@ -1,9 +1,0 @@
-ll_collect_strs_ops ops i strs =
-  match i >= glyph_array_len(ops)
-    true -> strs
-    _ ->
-      op = ops[i]
-      _ = match op.okind == ok_const_str()
-        true -> glyph_array_push(strs, op.ostr)
-        _ -> 0
-      ll_collect_strs_ops(ops, i + 1, strs)

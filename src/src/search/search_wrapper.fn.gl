@@ -1,2 +1,0 @@
-search_wrapper arr target =
-  find_in_arr(arr, target, 0, array_len(arr))

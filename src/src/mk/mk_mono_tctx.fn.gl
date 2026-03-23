@@ -1,5 +1,0 @@
-mk_mono_tctx tmap cmr =
-  {tc_tmap: tmap,
-   tctx_keys: cmr.tmm_call_keys,
-   tctx_specs: cmr.tmm_call_specs}
-

@@ -1,8 +1,0 @@
-cg_struct_fields fields types i =
-  match i >= glyph_array_len(fields)
-    true -> ""
-    _ ->
-      ftype = match glyph_array_len(types) > i
-        true -> types[i]
-        _ -> gval_t()
-      s4(ftype, " ", fields[i], s2("; ", cg_struct_fields(fields, types, i + 1)))

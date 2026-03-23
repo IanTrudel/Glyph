@@ -1,7 +1,0 @@
-ctn_loop args i acc =
-  match i >= glyph_array_len(args)
-    true -> acc
-    _ ->
-      arg = args[i]
-      suf = type_arg_to_suffix(arg)
-      ctn_loop(args, i + 1, s3(acc, "__", suf))

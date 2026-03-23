@@ -1,9 +1,0 @@
-pdf_loop src tokens pos pool names =
-  match cur_kind(tokens, pos) == tk_ident()
-    true ->
-      name = cur_text(src, tokens, pos)
-      glyph_array_push(names, name)
-      match cur_kind(tokens, pos + 1) == tk_comma()
-        true -> pdf_loop(src, tokens, pos + 2, pool, names)
-        _ -> {node: names, pos: pos + 1}
-    _ -> {node: names, pos: pos}

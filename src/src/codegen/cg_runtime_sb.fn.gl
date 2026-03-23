@@ -1,4 +1,0 @@
-cg_runtime_sb =
-  s2("GVal glyph_sb_new(void) \{ long long* sb=(long long*)malloc(24); char* buf=(char*)malloc(64); sb[0]=(long long)buf; sb[1]=0; sb[2]=64; return (GVal)sb; }\n",
-  s2("GVal glyph_sb_append(GVal sp, GVal ss) \{ long long* sb=(long long*)(void*)sp; const char* p=*(const char**)ss; long long sl=*(long long*)((char*)ss+8); long long nl=sb[1]+sl; if(nl>sb[2]) \{ long long c=sb[2]; while(c<nl) c*=2; char* nb=(char*)malloc(c); memcpy(nb,(char*)sb[0],(size_t)sb[1]); free((char*)sb[0]); sb[0]=(long long)nb; sb[2]=c; } memcpy((char*)sb[0]+sb[1],p,(size_t)sl); sb[1]=nl; return sp; }\n",
-  "GVal glyph_sb_build(GVal sp) \{ long long* sb=(long long*)(void*)sp; long long l=sb[1]; char* r=(char*)malloc(16+l); char* d=r+16; memcpy(d,(char*)sb[0],(size_t)l); *(const char**)r=d; *(long long*)(r+8)=l; free((char*)sb[0]); free(sb); return (GVal)r; }\n"))

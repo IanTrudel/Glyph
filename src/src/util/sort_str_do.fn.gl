@@ -1,6 +1,0 @@
-sort_str_do arr i =
-  match i >= glyph_array_len(arr)
-    true -> 0
-    _ ->
-      sort_str_insert(arr, i)
-      sort_str_do(arr, i + 1)

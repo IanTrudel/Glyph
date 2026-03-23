@@ -1,7 +1,0 @@
-test_tok_operators u =
-  toks = tokenize("a + b == c")
-  kinds = test_collect_kinds(toks, 0, [])
-  assert(has_kind(kinds, tk_plus()))
-  assert(has_kind(kinds, tk_eq_eq()))
-  assert(has_kind(kinds, tk_ident()))
-  0

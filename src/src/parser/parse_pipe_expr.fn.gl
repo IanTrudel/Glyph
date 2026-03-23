@@ -1,5 +1,0 @@
-parse_pipe_expr src tokens pos pool =
-  left = parse_compose(src, tokens, pos, pool)
-  match is_err(left)
-    true -> left
-    _ -> parse_pipe_loop(src, tokens, left.pos, pool, left.node)

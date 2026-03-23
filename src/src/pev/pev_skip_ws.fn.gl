@@ -1,8 +1,0 @@
-pev_skip_ws body i len =
-  match i >= len
-    true -> i
-    _ ->
-      c = glyph_str_char_at(body, i)
-      match c == 32 || c == 9 || c == 10
-        true -> pev_skip_ws(body, i + 1, len)
-        _ -> i

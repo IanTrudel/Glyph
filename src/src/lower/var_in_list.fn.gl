@@ -1,7 +1,0 @@
-var_in_list var_id list i =
-  match i >= glyph_array_len(list)
-    true -> 0
-    _ ->
-      match list[i] == var_id
-        true -> 1
-        _ -> var_in_list(var_id, list, i + 1)

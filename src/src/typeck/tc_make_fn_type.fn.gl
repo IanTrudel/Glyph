@@ -1,4 +1,0 @@
-tc_make_fn_type eng nparams =
-  match nparams == 0
-    true -> subst_fresh(eng)
-    _ -> tc_make_fn_type_loop(eng, nparams, 0, subst_fresh(eng))

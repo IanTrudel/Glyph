@@ -1,3 +1,0 @@
-infer_record eng ast node =
-  field_ns = infer_record_fields(eng, ast, node.ns, 0)
-  mk_trecord(field_ns, 0 - 1, eng.ty_pool)

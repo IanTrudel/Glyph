@@ -1,9 +1,0 @@
-test_util_is_digit u =
-  assert(is_digit(48))
-  assert(is_digit(57))
-  assert(is_digit(50))
-  assert(is_digit(47) == 0)
-  assert(is_digit(58) == 0)
-  assert(is_digit(65) == 0)
-  assert(is_digit(0) == 0)
-  0

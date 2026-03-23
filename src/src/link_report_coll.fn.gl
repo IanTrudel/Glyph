@@ -1,6 +1,0 @@
-link_report_coll acc i n =
-  match i >= n
-    true -> 0
-    _ ->
-      _ = eprintln(s2("  collision: ", acc[i]))
-      link_report_coll(acc, i + 1, n)

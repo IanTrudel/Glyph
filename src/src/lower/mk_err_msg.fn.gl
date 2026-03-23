@@ -1,1 +1,0 @@
-mk_err_msg pos msg = {node: 0 - 1, pos: pos, pr_err: msg}

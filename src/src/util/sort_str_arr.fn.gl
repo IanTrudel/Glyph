@@ -1,5 +1,0 @@
-sort_str_arr arr =
-  result = []
-  sort_str_copy(arr, result, 0)
-  sort_str_do(result, 0)
-  result

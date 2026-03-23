@@ -1,8 +1,0 @@
-psct_types_from_pairs pairs i types =
-  match i >= glyph_array_len(pairs)
-    true -> 0
-    _ ->
-      pair = pairs[i]
-      tspec = extract_type_after_colon(pair)
-      glyph_array_push(types, c_field_type(tspec))
-      psct_types_from_pairs(pairs, i + 1, types)

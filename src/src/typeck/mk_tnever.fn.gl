@@ -1,1 +1,0 @@
-mk_tnever pool = mk_ty_prim(ty_never(), pool)

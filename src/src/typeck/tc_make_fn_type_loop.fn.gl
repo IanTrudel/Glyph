@@ -1,7 +1,0 @@
-tc_make_fn_type_loop eng nparams i ret =
-  idx = nparams - 1 - i
-  match idx < 0
-    true -> ret
-    _ ->
-      rest = tc_make_fn_type_loop(eng, nparams, i + 1, ret)
-      mk_tfn(subst_fresh(eng), rest, eng.ty_pool)

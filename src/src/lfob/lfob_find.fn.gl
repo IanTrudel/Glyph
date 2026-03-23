@@ -1,7 +1,0 @@
-lfob_find names fname i =
-  match i >= glyph_array_len(names)
-    true -> 0 - 1
-    _ ->
-      match glyph_str_eq(names[i], fname)
-        true -> i
-        _ -> lfob_find(names, fname, i + 1)

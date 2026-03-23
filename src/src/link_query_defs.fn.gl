@@ -1,6 +1,0 @@
-link_query_defs lib_db ns_filter =
-  base = "SELECT name,kind,body,gen,COALESCE(ns,'') FROM def WHERE kind IN ('fn','type','const')"
-  sql = match glyph_str_len(ns_filter) > 0
-    true -> s5(base, " AND ns='", sql_escape(ns_filter), "'", " ORDER BY name")
-    _ -> s2(base, " ORDER BY name")
-  glyph_db_query_rows(lib_db, sql)

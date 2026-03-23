@@ -1,3 +1,0 @@
-read_externs db =
-  rows = glyph_db_query_rows(db, "SELECT name, symbol, sig, lib FROM extern_")
-  rows

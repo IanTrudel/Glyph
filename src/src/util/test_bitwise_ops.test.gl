@@ -1,9 +1,0 @@
-test_bitwise_ops u =
-  assert_eq(5 bitand 3, 1)
-  assert_eq(5 bitor 3, 7)
-  assert_eq(5 bitxor 3, 6)
-  assert_eq(1 shl 3, 8)
-  assert_eq(16 shr 2, 4)
-  assert_eq(255 bitand 15, 15)
-  assert_eq(255 bitand 240, 240)
-  0

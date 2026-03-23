@@ -1,2 +1,0 @@
-concrete_type_name name args =
-  ctn_loop(args, 0, name)

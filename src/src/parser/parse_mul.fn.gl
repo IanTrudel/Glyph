@@ -1,5 +1,0 @@
-parse_mul src tokens pos pool =
-  left = parse_unary(src, tokens, pos, pool)
-  match is_err(left)
-    true -> left
-    _ -> parse_mul_loop(src, tokens, left.pos, pool, left.node)

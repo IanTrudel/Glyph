@@ -1,6 +1,0 @@
-cdp_mirs mirs i pairs =
-  match i >= glyph_array_len(mirs)
-    true -> 0
-    _ ->
-      cdp_mir(mirs[i], pairs)
-      cdp_mirs(mirs, i + 1, pairs)

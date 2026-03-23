@@ -1,5 +1,0 @@
-test_record_update_all_fields u =
-  a = {x: 1, y: 2}
-  b = a{x: 10, y: 20}
-  assert_eq(b.x, 10)
-  assert_eq(b.y, 20)

@@ -1,4 +1,0 @@
-import_path_gen path =
-  match str_contains(path, "/gen2/") == 1
-    true -> 2
-    _ -> 1

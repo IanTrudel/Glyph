@@ -1,5 +1,0 @@
-mono_spec_add specs orig spec_name var_map caller_fn call_ni =
-  s = {ms_caller_fns: [caller_fn], ms_caller_nis: [call_ni],
-       ms_orig: orig, ms_spec: spec_name, ms_var_map: var_map}
-  glyph_array_push(specs, s)
-  specs

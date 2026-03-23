@@ -1,3 +1,0 @@
-read_type_defs db =
-  rows = glyph_db_query_rows(db, "SELECT name, body FROM def WHERE kind='type' ORDER BY name")
-  rows

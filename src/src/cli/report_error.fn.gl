@@ -1,3 +1,0 @@
-report_error def_name src offset line msg =
-  diag = format_diagnostic(def_name, src, offset, line, msg)
-  eprintln(diag)

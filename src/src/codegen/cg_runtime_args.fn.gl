@@ -1,3 +1,0 @@
-cg_runtime_args =
-  s2("static int g_argc = 0;\nstatic char** g_argv = 0;\nvoid glyph_set_args(int argc, char** argv) \{ g_argc = argc; g_argv = argv; }\n",
-  "GVal glyph_args(void) \{ long long c=(long long)g_argc; long long* d=(long long*)malloc(c*8); int i; for(i=0;i<g_argc;i++) \{ long long sl=(long long)strlen(g_argv[i]); char* s=(char*)malloc(16); *(const char**)s=g_argv[i]; *(long long*)(s+8)=sl; d[i]=(long long)s; } long long* h=(long long*)malloc(24); h[0]=(long long)d; h[1]=c; h[2]=c; return (GVal)h; }\n")

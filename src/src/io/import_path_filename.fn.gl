@@ -1,3 +1,0 @@
-import_path_filename path =
-  len = glyph_str_len(path)
-  import_filename_loop(path, len-1, len)

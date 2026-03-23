@@ -1,8 +1,0 @@
-print_ls_rows rows i n =
-  match i < n
-    true ->
-      row = rows[i]
-      line = s7(row[0], "	", row[1], "	", row[2], "	", s2(row[3], "tok"))
-      println(line)
-      print_ls_rows(rows, i + 1, n)
-    _ -> 0

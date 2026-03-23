@@ -1,9 +1,0 @@
-lower_idx ctx ast node =
-  arr = lower_expr(ctx, ast, node.n1)
-  idx = lower_expr(ctx, ast, node.n2)
-  dest = mir_alloc_local(ctx, "")
-  match op_type(ctx, arr) == 6
-    true -> mir_emit_call(ctx, dest, mk_op_func("hm_get"), [arr, idx])
-    _ -> mir_emit_index(ctx, dest, arr, idx)
-  mk_op_local(dest)
-

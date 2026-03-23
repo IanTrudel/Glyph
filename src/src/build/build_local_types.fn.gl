@@ -1,9 +1,0 @@
-build_local_types mir struct_map =
-  nlocals = glyph_array_len(mir.fn_locals)
-  lst = blt_init(nlocals, 0)
-  blt_scan_blks(mir.fn_blocks_stmts, 0, lst, struct_map)
-  blt_propagate_blks(mir.fn_blocks_stmts, 0, lst)
-  fa = blt_init_fa(nlocals, 0)
-  blt_collect_fa_blks(mir.fn_blocks_stmts, 0, fa)
-  blt_tag_by_fa(lst, fa, struct_map, 0)
-  lst

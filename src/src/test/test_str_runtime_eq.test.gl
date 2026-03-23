@@ -1,6 +1,0 @@
-test_str_runtime_eq u =
-  s1 = identity_str("hello")
-  s2 = identity_str("hello")
-  assert_eq(str_eq(s1, s2), 1)
-  assert_eq(s1 == s2, true)
-  0

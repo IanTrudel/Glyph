@@ -1,5 +1,0 @@
-walk_free_vars4 ctx ast node k bound seen result =
-  match k
-    _ ? k == ex_propagate() || k == ex_unwrap() -> walk_free_vars(ctx, ast, node.n1, bound, seen, result)
-    _ ? k == ex_array() || k == ex_record() || k == ex_str_interp() -> walk_fv_list(ctx, ast, node.ns, 0, bound, seen, result)
-    _ -> 0

@@ -1,6 +1,0 @@
-mono_spec_name orig_name eng var_map =
-  suffix = mono_var_suffix(eng, var_map, 0)
-  match glyph_str_len(suffix) == 0
-    true -> orig_name
-    _ -> s3(orig_name, "__", suffix)
-

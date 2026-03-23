@@ -1,6 +1,0 @@
-cg_test_forward_decls names i =
-  match i >= glyph_array_len(names)
-    true -> ""
-    _ ->
-      gt = gval_t()
-      s2(s5(gt, " ", names[i], s3("(", gt, ");\n"), ""), cg_test_forward_decls(names, i + 1))

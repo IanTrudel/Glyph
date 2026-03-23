@@ -1,8 +1,0 @@
-find_call_stmt stmts i =
-  match i >= glyph_array_len(stmts)
-    true -> 0 - 1
-    _ ->
-      match (stmts[i]).skind == rv_call()
-        true -> i
-        _ -> find_call_stmt(stmts, i + 1)
-

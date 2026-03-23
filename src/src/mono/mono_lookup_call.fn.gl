@@ -1,2 +1,0 @@
-mono_lookup_call tctx call_ni =
-  mono_lookup_loop(tctx.tctx_keys, tctx.tctx_specs, call_ni, 0)

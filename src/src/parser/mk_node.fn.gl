@@ -1,1 +1,0 @@
-mk_node kind ival sval n1 n2 n3 ns = {kind: kind, ival: ival, sval: sval, n1: n1, n2: n2, n3: n3, ns: ns}

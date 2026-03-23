@@ -1,7 +1,0 @@
-mcp_tools_list id =
-  pool = []
-  tools = jb_arr(pool)
-  mcp_add_tools(pool, tools)
-  result = jb_obj(pool)
-  jb_put(pool, result, "tools", tools)
-  mcp_respond(id, json_gen(pool, result))

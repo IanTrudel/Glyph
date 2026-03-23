@@ -1,5 +1,0 @@
-test_str_arr_param_eq u =
-  arr = array_new(1)
-  _0 = array_push(arr, "hello")
-  assert_eq(first_elem_eq(arr, "hello"), true)
-  0

@@ -1,6 +1,0 @@
-fix_offs_mirs mirs i reg =
-  match i >= glyph_array_len(mirs)
-    true -> 0
-    _ ->
-      fix_offs_fn(mirs[i], reg)
-      fix_offs_mirs(mirs, i + 1, reg)

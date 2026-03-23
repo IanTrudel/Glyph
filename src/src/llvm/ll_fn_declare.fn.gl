@@ -1,5 +1,0 @@
-ll_fn_declare mir_fn =
-  fname = cg_fn_name(mir_fn.fn_name)
-  n = glyph_array_len(mir_fn.fn_params)
-  params = ll_i64_params(n, 0)
-  s5("declare i64 @", fname, "(", params, ")\n")

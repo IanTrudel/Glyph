@@ -1,2 +1,0 @@
-mir_emit_unop ctx dest op operand =
-  mir_emit(ctx, mk_stmt(dest, rv_unop(), op, "", operand, mk_op_nil(), []))

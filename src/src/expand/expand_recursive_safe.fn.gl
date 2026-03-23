@@ -1,9 +1,0 @@
-expand_recursive_safe apps generic_defs seen =
-  prev_len = glyph_array_len(apps)
-  gnames = []
-  generic_def_names(generic_defs, 0, gnames)
-  ers_loop(apps, generic_defs, gnames, seen, 0)
-  new_len = glyph_array_len(apps)
-  match new_len > prev_len
-    true -> expand_recursive_safe(apps, generic_defs, seen)
-    _ -> 0

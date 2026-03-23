@@ -1,8 +1,0 @@
-find_generic_def defs name i =
-  match i >= glyph_array_len(defs)
-    true -> -1
-    _ ->
-      gtd = defs[i]
-      match glyph_str_eq(gtd.gtd_name, name)
-        true -> i
-        _ -> find_generic_def(defs, name, i + 1)

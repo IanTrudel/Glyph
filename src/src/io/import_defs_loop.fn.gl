@@ -1,6 +1,0 @@
-import_defs_loop db lines i n =
-  match i >= n
-    true -> 0
-    _ ->
-      import_one_file(db, lines[i])
-      import_defs_loop(db, lines, i+1, n)

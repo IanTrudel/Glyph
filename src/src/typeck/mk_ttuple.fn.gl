@@ -1,2 +1,0 @@
-mk_ttuple elem_types pool =
-  ty_push(pool, {tag: ty_tuple(), n1: 0 - 1, n2: 0 - 1, ns: elem_types, sval: ""})

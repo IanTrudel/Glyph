@@ -1,7 +1,0 @@
-parse_cover_lines content pos names hits =
-  len = glyph_str_len(content)
-  match pos >= len
-    true -> 0
-    _ ->
-      next = pcl_line(content, pos, names, hits)
-      parse_cover_lines(content, next, names, hits)

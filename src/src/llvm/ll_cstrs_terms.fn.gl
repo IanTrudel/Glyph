@@ -1,9 +1,0 @@
-ll_cstrs_terms terms i strs =
-  match i >= glyph_array_len(terms)
-    true -> 0
-    _ ->
-      term = terms[i]
-      _ = match term.top.okind == ok_const_str()
-        true -> glyph_array_push(strs, term.top.ostr)
-        _ -> 0
-      ll_cstrs_terms(terms, i + 1, strs)

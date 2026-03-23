@@ -1,3 +1,0 @@
-mir_stmt_count mir_fn block_id =
-  stmts = mir_fn.fn_blocks_stmts[block_id]
-  glyph_array_len(stmts)

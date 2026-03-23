@@ -1,2 +1,0 @@
-mir_emit_binop ctx dest op left right =
-  mir_emit(ctx, mk_stmt(dest, rv_binop(), op, "", left, right, []))

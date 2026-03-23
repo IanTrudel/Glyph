@@ -1,8 +1,0 @@
-type_app_to_concrete_arg te_str =
-  te = parse_type_expr_str(te_str)
-  match glyph_array_len(te.te_args) == 0
-    true -> type_arg_to_suffix(te.te_name)
-    _ ->
-      sub_args = []
-      taca_loop(te.te_args, 0, sub_args)
-      concrete_type_name(str_to_lower(te.te_name), sub_args)

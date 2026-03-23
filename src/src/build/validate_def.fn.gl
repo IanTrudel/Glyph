@@ -1,7 +1,0 @@
-validate_def body =
-  tokens = tokenize(body)
-  ast = []
-  r = parse_fn_def(body, tokens, 0, ast)
-  match is_err(r)
-    true -> {vr_ok: 0, vr_msg: r.pr_err, vr_pos: r.pos, vr_tokens: tokens}
-    _ -> {vr_ok: 1, vr_msg: "", vr_pos: 0, vr_tokens: tokens}

@@ -1,9 +1,0 @@
-test_mir_str_return u =
-  q = "\""
-  src = s3("f u = ", q, s2("hello", q))
-  mir = compile_fn(src, [])
-  term = mir.fn_blocks_terms[mir.fn_entry]
-  assert_eq(term.tkind, tm_return())
-  assert_eq(term.top.okind, ok_const_str())
-  assert_str_eq(term.top.ostr, "hello")
-  0

@@ -1,5 +1,0 @@
-infer_match eng ast node =
-  scrutinee_ty = infer_expr(eng, ast, node.n1)
-  result_ty = subst_fresh(eng)
-  infer_match_arms_ty(eng, ast, node.ns, scrutinee_ty, result_ty, 0)
-  result_ty

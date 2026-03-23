@@ -1,8 +1,0 @@
-test_mir_lower_bool u =
-  mir1 = compile_fn("f x = match x\n  true -> 1\n  _ -> 0", [])
-  assert(mir_block_count(mir1) >= 3)
-  mir2 = compile_fn("f x = match x\n  \"hi\" -> 1\n  _ -> 0", [])
-  assert(mir_block_count(mir2) >= 3)
-  mir3 = compile_fn("f x = match x\n  y -> y", [])
-  assert(mir_block_count(mir3) >= 1)
-  0

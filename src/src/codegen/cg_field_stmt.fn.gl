@@ -1,4 +1,0 @@
-cg_field_stmt stmt =
-  gvp = s3("((", gval_t(), "*)")
-  chk = cg_null_check(stmt.sop1, s2("field offset ", itos(stmt.sival)))
-  s2(chk, s6("  ", cg_local(stmt.sdest), s2(" = ", gvp), cg_operand(stmt.sop1), ")[", s3(itos(stmt.sival), "];\n", "")))

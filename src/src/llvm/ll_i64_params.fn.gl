@@ -1,8 +1,0 @@
-ll_i64_params n i =
-  match i >= n
-    true -> ""
-    _ ->
-      rest = ll_i64_params(n, i + 1)
-      match i < n - 1
-        true -> s2("i64, ", rest)
-        _ -> "i64"

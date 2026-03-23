@@ -1,5 +1,0 @@
-test_mir_pp u =
-  mir = compile_fn("f u = 42", [])
-  pp = mir_pp_fn(mir)
-  assert(glyph_str_len(pp) > 10)
-  0

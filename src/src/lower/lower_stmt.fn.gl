@@ -1,9 +1,0 @@
-lower_stmt ctx ast si =
-  node = ast[si]
-  k = node.kind
-  match k
-    _ ? k == st_expr() -> lower_expr(ctx, ast, node.n1)
-    _ ? k == st_let() -> lower_let(ctx, ast, node)
-    _ ? k == st_assign() -> lower_assign(ctx, ast, node)
-    _ ? k == st_let_destr() -> lower_let_destr(ctx, ast, node)
-    _ -> mk_op_unit()

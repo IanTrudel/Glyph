@@ -1,7 +1,0 @@
-ll_emit_block mir_fn block_id struct_map local_struct_types mir_local_types strs fn_name =
-  stmts = mir_fn.fn_blocks_stmts[block_id]
-  term = mir_fn.fn_blocks_terms[block_id]
-  label = s3(ll_block_label(block_id), ":\n", "")
-  body = ll_emit_block_stmts(stmts, 0, block_id, struct_map, local_struct_types, mir_local_types, strs, fn_name)
-  terminator = ll_emit_term(term, block_id, strs, fn_name)
-  s3(label, body, terminator)

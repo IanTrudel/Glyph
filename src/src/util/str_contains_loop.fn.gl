@@ -1,8 +1,0 @@
-str_contains_loop haystack needle hlen nlen i =
-  match i + nlen > hlen
-    true -> 0
-    _ ->
-      sub = glyph_str_slice(haystack, i, i + nlen)
-      match glyph_str_eq(sub, needle)
-        true -> 1
-        _ -> str_contains_loop(haystack, needle, hlen, nlen, i + 1)

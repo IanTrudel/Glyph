@@ -1,7 +1,0 @@
-blt_all_in arr fields i =
-  match i >= glyph_array_len(arr)
-    true -> true
-    _ ->
-      match blt_has_field(fields, arr[i], 0)
-        true -> blt_all_in(arr, fields, i + 1)
-        _ -> false

@@ -1,9 +1,0 @@
-json_skip_ws src pos =
-  len = str_len(src)
-  match pos < len
-    true ->
-      c = str_char_at(src, pos)
-      match c
-        32 | 9 | 10 | 13 -> json_skip_ws(src, pos + 1)
-        _ -> pos
-    _ -> pos

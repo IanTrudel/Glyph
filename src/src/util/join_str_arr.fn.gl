@@ -1,8 +1,0 @@
-join_str_arr arr i =
-  n = glyph_array_len(arr)
-  match i >= n
-    true -> ""
-    _ ->
-      match i == n - 1
-        true -> arr[i]
-        _ -> s3(arr[i], " ", join_str_arr(arr, i + 1))

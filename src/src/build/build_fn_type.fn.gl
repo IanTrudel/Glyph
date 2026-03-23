@@ -1,7 +1,0 @@
-build_fn_type eng param_types ret_ty i =
-  idx = glyph_array_len(param_types) - 1 - i
-  match idx < 0
-    true -> ret_ty
-    _ ->
-      rest = build_fn_type(eng, param_types, ret_ty, i + 1)
-      mk_tfn(param_types[idx], rest, eng.ty_pool)

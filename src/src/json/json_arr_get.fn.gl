@@ -1,3 +1,0 @@
-json_arr_get pool node_idx i =
-  node = pool[node_idx]
-  node.items[i]

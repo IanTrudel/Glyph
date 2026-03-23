@@ -1,8 +1,0 @@
-cg_wrap_call_args n i =
-  match i >= n
-    true -> ""
-    _ ->
-      arg = s2("_", itos(i))
-      match i + 1 >= n
-        true -> arg
-        _ -> s3(arg, ", ", cg_wrap_call_args(n, i + 1))

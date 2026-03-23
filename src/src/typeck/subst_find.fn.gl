@@ -1,8 +1,0 @@
-subst_find parent v =
-  p = parent[v]
-  match p == v
-    true -> v
-    _ ->
-      root = subst_find(parent, p)
-      glyph_array_set(parent, v, root)
-      root

@@ -1,4 +1,0 @@
-test_mcp_respond u =
-  r = mcp_respond(1, r"""{"x":1}""")
-  src = r"""{"jsonrpc":"2.0","id":1,"result":{"x":1}}"""
-  assert_str_eq(r, src)

@@ -1,3 +1,0 @@
-mir_switch_block ctx block_id =
-  glyph_array_set(ctx.cur_block, 0, block_id)
-  0

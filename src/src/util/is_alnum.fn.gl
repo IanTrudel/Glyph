@@ -1,1 +1,0 @@
-is_alnum c = is_alpha(c) || is_digit(c)

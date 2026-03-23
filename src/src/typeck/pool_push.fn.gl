@@ -1,4 +1,0 @@
-pool_push pool node =
-  idx = glyph_array_len(pool)
-  glyph_array_push(pool, node)
-  idx

@@ -1,6 +1,0 @@
-cdp_ops ops oi fn_name pairs =
-  match oi >= glyph_array_len(ops)
-    true -> 0
-    _ ->
-      cdp_check_op(ops[oi], fn_name, pairs)
-      cdp_ops(ops, oi + 1, fn_name, pairs)

@@ -1,6 +1,0 @@
-cg_runtime_float =
-  helpers = "static inline double _glyph_i2f(GVal v) \{ double d; memcpy(&d, &v, 8); return d; }\nstatic inline GVal _glyph_f2i(double d) \{ GVal v; memcpy(&v, &d, 8); return v; }\n"
-  fts = "GVal glyph_float_to_str(GVal v) \{ char buf[32]; int len = snprintf(buf, 32, \"%g\", _glyph_i2f(v)); char* r = (char*)malloc(16+len); char* d2 = r+16; memcpy(d2, buf, len); *(const char**)r = d2; *(long long*)(r+8) = len; return (GVal)r; }\n"
-  stf = "GVal glyph_str_to_float(GVal s) \{ const char* p=*(const char**)s; long long l=*(long long*)((char*)s+8); char buf[64]; if(l>63) l=63; memcpy(buf,p,(size_t)l); buf[l]=0; return _glyph_f2i(atof(buf)); }\n"
-  itf = "GVal glyph_int_to_float(GVal n) \{ return _glyph_f2i((double)n); }\nGVal glyph_float_to_int(GVal v) \{ return (GVal)(long long)_glyph_i2f(v); }\n"
-  s4(helpers, fts, stf, itf)

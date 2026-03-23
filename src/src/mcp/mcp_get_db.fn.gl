@@ -1,8 +1,0 @@
-mcp_get_db pool args default_db =
-  idx = json_get(pool, args, "db")
-  match idx >= 0
-    true ->
-      node = pool[idx]
-      _ = node.tag
-      node.sval
-    _ -> default_db

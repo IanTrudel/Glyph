@@ -1,2 +1,0 @@
-mk_stmt dest kind ival sstr op1 op2 ops =
-  {sdest: dest, skind: kind, sival: ival, sstr: sstr, sop1: op1, sop2: op2, sops: ops}

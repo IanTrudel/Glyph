@@ -1,3 +1,0 @@
-str_to_lower s =
-  len = glyph_str_len(s)
-  str_to_lower_loop(s, 0, len, "")

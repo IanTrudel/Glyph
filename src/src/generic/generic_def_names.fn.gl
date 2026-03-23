@@ -1,7 +1,0 @@
-generic_def_names defs i acc =
-  match i >= glyph_array_len(defs)
-    true -> acc
-    _ ->
-      gtd = defs[i]
-      glyph_array_push(acc, gtd.gtd_name)
-      generic_def_names(defs, i + 1, acc)

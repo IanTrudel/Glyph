@@ -1,7 +1,0 @@
-mir_lookup_var_at names locals name i =
-  match i < 0
-    true -> 0 - 1
-    _ ->
-      match glyph_str_eq(names[i], name) == 1
-        true -> locals[i]
-        _ -> mir_lookup_var_at(names, locals, name, i - 1)

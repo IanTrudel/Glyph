@@ -1,6 +1,0 @@
-types_equal_loop a b i =
-  match i >= glyph_array_len(a)
-    true -> 1
-    _ -> match glyph_str_eq(a[i], b[i])
-      true -> types_equal_loop(a, b, i + 1)
-      _ -> 0

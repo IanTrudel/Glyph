@@ -1,3 +1,0 @@
-mk_tmap key val pool =
-  mk_ty(ty_map(), key, val, pool)
-

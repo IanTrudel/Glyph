@@ -1,5 +1,0 @@
-mir_pp_fn mir =
-  params = mir_pp_params(mir.fn_locals, mir.fn_params, 0)
-  hdr = s5("fn ", mir.fn_name, "(", params, ") \{\n")
-  body = mir_pp_blocks(mir, 0)
-  s3(hdr, body, "}\n")

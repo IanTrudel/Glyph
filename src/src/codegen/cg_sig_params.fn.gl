@@ -1,7 +1,0 @@
-cg_sig_params n i =
-  match i >= n
-    true -> ""
-    _ ->
-      match i == 0
-        true -> s2(gval_t(), cg_sig_params(n, i + 1))
-        _ -> s3(", ", gval_t(), cg_sig_params(n, i + 1))

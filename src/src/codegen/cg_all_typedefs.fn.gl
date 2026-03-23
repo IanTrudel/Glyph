@@ -1,2 +1,0 @@
-cg_all_typedefs struct_map =
-  cg_all_typedefs_loop(struct_map, 0)

@@ -1,5 +1,0 @@
-json_parse_str src tokens pos pool =
-  tok = tokens[pos]
-  s = json_unescape(src, tok.start, tok.end)
-  idx = json_pool_push(pool, mk_jnode(jn_str, 0, s, [], []))
-  {node: idx, pos: pos + 1}

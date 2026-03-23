@@ -1,8 +1,0 @@
-test_instantiate_generic u =
-  params = []
-  glyph_array_push(params, "T")
-  gtd = {gtd_name: "Stack", gtd_params: params, gtd_body: "\{items:[T],size:I}"}
-  args = []
-  glyph_array_push(args, "Int")
-  result = instantiate_generic(gtd, args)
-  assert_str_eq(result, "\{items:[I],size:I}")

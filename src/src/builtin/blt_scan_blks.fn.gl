@@ -1,6 +1,0 @@
-blt_scan_blks blocks i lst struct_map =
-  match i >= glyph_array_len(blocks)
-    true -> 0
-    _ ->
-      blt_scan_stmts(blocks[i], 0, lst, struct_map)
-      blt_scan_blks(blocks, i + 1, lst, struct_map)

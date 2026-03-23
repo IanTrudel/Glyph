@@ -1,6 +1,0 @@
-classify_point p =
-  -- p.y is at offset 1; if bug reads offset 0 (p.x), result is wrong
-  match p.y
-    0 -> "origin"
-    1 -> "unit"
-    _ -> "other"

@@ -1,7 +1,0 @@
-line_col_loop src i offset col =
-  match i >= offset
-    true -> col
-    _ ->
-      match glyph_str_char_at(src, i) == 10
-        true -> line_col_loop(src, i + 1, offset, 1)
-        _ -> line_col_loop(src, i + 1, offset, col + 1)

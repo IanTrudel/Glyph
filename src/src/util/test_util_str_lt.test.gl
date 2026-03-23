@@ -1,9 +1,0 @@
-test_util_str_lt u =
-  assert(str_lt("abc", "abd"))
-  assert(str_lt("abc", "abcd"))
-  assert(str_lt("", "a"))
-  assert(str_lt("abc", "abc") == 0)
-  assert(str_lt("abd", "abc") == 0)
-  assert(str_lt("b", "a") == 0)
-  assert(str_lt("", "") == 0)
-  0

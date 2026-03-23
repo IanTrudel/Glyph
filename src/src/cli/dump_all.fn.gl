@@ -1,8 +1,0 @@
-dump_all db sigs_only =
-  sql = match sigs_only == 1
-    true -> "SELECT kind, name, COALESCE(sig,'-') FROM def ORDER BY kind, name"
-    _ -> "SELECT kind, name, body FROM def ORDER BY kind, name"
-  rows = glyph_db_query_rows(db, sql)
-  glyph_db_close(db)
-  dump_print_all(rows, 0, glyph_array_len(rows), sigs_only)
-  0

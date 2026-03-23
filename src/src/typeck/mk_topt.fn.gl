@@ -1,2 +1,0 @@
-mk_topt inner pool =
-  mk_ty(ty_opt(), inner, 0 - 1, pool)

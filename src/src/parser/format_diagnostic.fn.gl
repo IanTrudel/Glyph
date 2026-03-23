@@ -1,7 +1,0 @@
-format_diagnostic def_name src offset line msg =
-  col = line_col(src, offset)
-  src_line = extract_source_line(src, offset)
-  line_str = itos(line)
-  col_str = itos(col)
-  caret = make_caret(col)
-  s7("error in '", def_name, "' at ", line_str, s2(":", col_str), s2(": ", msg), s5("\n  ", line_str, " | ", src_line, s3("\n    | ", caret, "")))

@@ -1,8 +1,0 @@
-tc_rc_loop eng vmap struct_map i =
-  match i >= glyph_array_len(vmap)
-    true -> 0
-    _ ->
-      entry = vmap[i]
-      ctor_type = tc_rc_ctor_type(eng, entry.ve_pnames, struct_map)
-      env_insert(eng, entry.ve_name, ctor_type)
-      tc_rc_loop(eng, vmap, struct_map, i + 1)

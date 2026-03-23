@@ -1,9 +1,0 @@
-mcp_add_tools4 pool tools =
-  rp = jb_arr(pool)
-  jb_push(pool, rp, jb_str(pool, "pattern"))
-  p4 = jb_obj(pool)
-  jb_put(pool, p4, "pattern", mcp_str_prop(pool, "SQL LIKE pattern to search in definition bodies"))
-  jb_put(pool, p4, "kind", mcp_str_prop(pool, "Filter by kind"))
-  jb_put(pool, p4, "db", mcp_str_prop(pool, "Database path. Default: CLI arg"))
-  jb_push(pool, tools, mcp_tool_schema(pool, "search_defs", "Search definition bodies", p4, rp))
-  mcp_add_tools5(pool, tools)

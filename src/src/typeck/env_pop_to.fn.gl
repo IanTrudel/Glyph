@@ -1,7 +1,0 @@
-env_pop_to names types target =
-  match glyph_array_len(names) > target
-    true ->
-      glyph_array_pop(names)
-      glyph_array_pop(types)
-      env_pop_to(names, types, target)
-    _ -> 0

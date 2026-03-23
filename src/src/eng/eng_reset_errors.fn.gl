@@ -1,3 +1,0 @@
-eng_reset_errors eng =
-  glyph_raw_set(eng, 4, [])
-  0

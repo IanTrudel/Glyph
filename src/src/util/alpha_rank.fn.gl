@@ -1,2 +1,0 @@
-alpha_rank names target =
-  alpha_rank_loop(names, target, 0, 0)

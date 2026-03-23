@@ -1,6 +1,0 @@
-mono_copy_loop src dst i n =
-  match i >= n
-    true -> dst
-    _ ->
-      glyph_array_push(dst, src[i])
-      mono_copy_loop(src, dst, i + 1, n)

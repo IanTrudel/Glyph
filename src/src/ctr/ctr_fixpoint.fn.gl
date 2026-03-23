@@ -1,7 +1,0 @@
-ctr_fixpoint generic_defs gnames all_apps =
-  prev_len = glyph_array_len(all_apps)
-  ctr_scan_concrete(generic_defs, gnames, all_apps, 0)
-  new_len = glyph_array_len(all_apps)
-  match new_len > prev_len
-    true -> ctr_fixpoint(generic_defs, gnames, all_apps)
-    _ -> 0

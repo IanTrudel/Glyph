@@ -1,4 +1,0 @@
-ll_emit_use stmt bid strs fn_name =
-  pair = ll_load_op1(stmt.sop1, bid, strs, fn_name)
-  store = s5("  store i64 ", pair[1], ", ptr ", ll_local(stmt.sdest), "\n")
-  s2(pair[0], store)

@@ -1,7 +1,0 @@
-test_ty_engine_init u =
-  eng = mk_engine()
-  assert_eq(glyph_array_len(eng.ty_pool), 0)
-  assert_eq(eng.next_var[0], 0)
-  assert_eq(glyph_array_len(eng.errors), 0)
-  assert_eq(glyph_array_len(eng.env_names), 0)
-  0

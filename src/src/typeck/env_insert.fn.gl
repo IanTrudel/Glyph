@@ -1,4 +1,0 @@
-env_insert eng name ty =
-  glyph_array_push(eng.env_names, name)
-  glyph_array_push(eng.env_types, ty)
-  0

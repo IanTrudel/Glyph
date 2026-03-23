@@ -1,6 +1,0 @@
-cur_text src tokens pos =
-  match pos < glyph_array_len(tokens)
-    true ->
-      t = tokens[pos]
-      glyph_str_slice(src, t.start, t.end)
-    _ -> ""

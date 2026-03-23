@@ -1,8 +1,0 @@
-mono_bvm_has_root acc root i =
-  match i >= glyph_array_len(acc)
-    true -> false
-    _ ->
-      match acc[i] == root
-        true -> true
-        _ -> mono_bvm_has_root(acc, root, i + 2)
-

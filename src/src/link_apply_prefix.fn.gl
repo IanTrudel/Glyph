@@ -1,7 +1,0 @@
-link_apply_prefix rows old_pfx new_pfx ns_new i n acc =
-  match i >= n
-    true -> acc
-    _ ->
-      renamed = link_rename_row(rows[i], old_pfx, new_pfx, ns_new)
-      _ = glyph_array_push(acc, renamed)
-      link_apply_prefix(rows, old_pfx, new_pfx, ns_new, i + 1, n, acc)

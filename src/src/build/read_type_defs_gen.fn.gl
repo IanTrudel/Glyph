@@ -1,3 +1,0 @@
-read_type_defs_gen db gen_str =
-  q = s3("SELECT d.name, d.body FROM def d INNER JOIN (SELECT name, kind, MAX(gen) as max_gen FROM def WHERE gen <= ", gen_str, " GROUP BY name, kind) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen WHERE d.kind='type' ORDER BY d.name")
-  glyph_db_query_rows(db, q)

@@ -1,8 +1,0 @@
-mcp_add_tools10 pool tools =
-  rp = jb_arr(pool)
-  jb_push(pool, rp, jb_str(pool, "target"))
-  p10 = jb_obj(pool)
-  jb_put(pool, p10, "target", mcp_str_prop(pool, "Path to the .glyph database to migrate"))
-  jb_put(pool, p10, "db", mcp_str_prop(pool, "Source database with migration table. Default: CLI arg"))
-  jb_push(pool, tools, mcp_tool_schema(pool, "migrate", "Apply pending schema migrations to a database", p10, rp))
-  mcp_add_tools11(pool, tools)

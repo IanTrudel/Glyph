@@ -1,2 +1,0 @@
-compile_fn_parsed pf za_fns tctx vmap =
-  lower_fn_def(pf.pf_ast, pf.pf_fn_idx, za_fns, tctx, "", vmap)

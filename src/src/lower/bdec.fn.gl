@@ -1,4 +1,0 @@
-bdec bd =
-  match bd > 0
-    true -> bd - 1
-    _ -> 0

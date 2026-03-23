@@ -1,8 +1,0 @@
-cg_wrap_params n i =
-  match i >= n
-    true -> ""
-    _ ->
-      param = s3(gval_t(), " _", itos(i))
-      match i + 1 >= n
-        true -> param
-        _ -> s3(param, ", ", cg_wrap_params(n, i + 1))

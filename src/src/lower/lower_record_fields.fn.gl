@@ -1,4 +1,0 @@
-lower_record_fields ctx ast ns i =
-  acc_names = ""
-  acc_ops = []
-  lower_record_fields_acc(ctx, ast, ns, 0, acc_names, acc_ops)

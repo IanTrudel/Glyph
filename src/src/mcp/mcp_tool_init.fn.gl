@@ -1,6 +1,0 @@
-mcp_tool_init db_path id pool args =
-  glyph_system(s2("mkdir -p ", path_dir(db_path)))
-  db = glyph_db_open(db_path)
-  glyph_db_exec(db, init_schema())
-  glyph_db_close(db)
-  mcp_text_result(id, s2("Created ", db_path))

@@ -1,5 +1,0 @@
-cmd_mcp argv argc =
-  db_path = match argc >= 3
-    true -> argv[2]
-    _ -> ""
-  mcp_loop(db_path)

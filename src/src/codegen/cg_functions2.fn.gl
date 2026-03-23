@@ -1,4 +1,0 @@
-cg_functions2 mirs i struct_map =
-  match i >= glyph_array_len(mirs)
-    true -> ""
-    _ -> s2(cg_function2(mirs[i], struct_map), cg_functions2(mirs, i + 1, struct_map))

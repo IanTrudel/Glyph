@@ -1,3 +1,0 @@
-cmd_version argv argc =
-  println(s2("glyph ", glyph_version(0)))
-  0

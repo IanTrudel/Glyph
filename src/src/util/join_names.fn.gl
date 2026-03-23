@@ -1,9 +1,0 @@
-join_names rows i n acc =
-  match i < n
-    true ->
-      row = rows[i]
-      new_acc = match glyph_str_len(acc) == 0
-        true -> row[0]
-        _ -> s3(acc, ", ", row[0])
-      join_names(rows, i + 1, n, new_acc)
-    _ -> acc

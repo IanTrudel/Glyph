@@ -1,1 +1,0 @@
-cg_local id = s2("_", itos(id))

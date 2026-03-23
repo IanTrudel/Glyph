@@ -1,4 +1,0 @@
-cg_unop_str op =
-  match op == mir_neg()
-    true -> "-"
-    _ -> "!"

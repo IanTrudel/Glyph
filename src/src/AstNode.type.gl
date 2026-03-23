@@ -1,1 +1,0 @@
-AstNode = {kind:I ival:I sval:S n1:I n2:I n3:I ns:[I]}

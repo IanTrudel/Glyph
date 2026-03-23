@@ -1,3 +1,0 @@
-lower_expand_update ctx base_op base_fields_str update_names update_ops =
-  base_fields = split_comma(base_fields_str)
-  leu_loop(ctx, base_op, base_fields, update_names, update_ops, 0, "", [])

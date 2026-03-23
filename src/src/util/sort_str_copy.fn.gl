@@ -1,6 +1,0 @@
-sort_str_copy arr result i =
-  match i >= glyph_array_len(arr)
-    true -> 0
-    _ ->
-      glyph_array_push(result, arr[i])
-      sort_str_copy(arr, result, i + 1)

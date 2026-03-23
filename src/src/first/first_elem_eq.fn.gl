@@ -1,1 +1,0 @@
-first_elem_eq arr s = arr[0] == s

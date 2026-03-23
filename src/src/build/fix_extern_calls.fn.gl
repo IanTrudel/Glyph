@@ -1,2 +1,0 @@
-fix_extern_calls mirs externs =
-  fix_ext_mirs(mirs, externs, 0)

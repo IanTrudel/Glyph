@@ -1,5 +1,0 @@
-test_concrete_type_name_multi u =
-  args2 = []
-  glyph_array_push(args2, "Int")
-  glyph_array_push(args2, "Str")
-  assert_str_eq(concrete_type_name("Pair", args2), "Pair__int__str")

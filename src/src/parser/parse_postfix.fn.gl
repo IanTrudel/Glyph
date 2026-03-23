@@ -1,5 +1,0 @@
-parse_postfix src tokens pos pool =
-  r = parse_atom(src, tokens, pos, pool)
-  match is_err(r)
-    true -> r
-    _ -> parse_postfix_loop(src, tokens, r.pos, pool, r.node)

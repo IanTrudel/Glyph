@@ -1,8 +1,0 @@
-mir_pp_term term =
-  k = term.tkind
-  match k
-    _ ? k == 1 -> s3("    goto bb", itos(term.tgt1), "\n")
-    _ ? k == 2 -> s6("    branch ", mir_pp_op(term.top), " bb", itos(term.tgt1), " bb", s2(itos(term.tgt2), "\n"))
-    _ ? k == 4 -> s3("    return ", mir_pp_op(term.top), "\n")
-    _ ? k == 5 -> "    unreachable\n"
-    _ -> s3("    ?term:", itos(k), "\n")

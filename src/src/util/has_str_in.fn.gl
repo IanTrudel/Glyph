@@ -1,2 +1,0 @@
-has_str_in arr target =
-  find_str_in(arr, target, 0) >= 0

@@ -1,6 +1,0 @@
-test_closure_nested u =
-  x = 5
-  outer = \y -> \z -> x + y + z
-  inner = outer(10)
-  result = inner(20)
-  assert_eq(result, 35)

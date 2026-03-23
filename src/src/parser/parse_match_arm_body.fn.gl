@@ -1,4 +1,0 @@
-parse_match_arm_body src tokens pos pool =
-  match cur_kind(tokens, pos) == tk_indent()
-    true -> parse_block(src, tokens, pos + 1, pool)
-    _ -> parse_expr(src, tokens, pos, pool)

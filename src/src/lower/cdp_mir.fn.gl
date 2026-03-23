@@ -1,3 +1,0 @@
-cdp_mir mir pairs =
-  fn_name = mir.fn_name
-  cdp_blks(mir.fn_blocks_stmts, 0, fn_name, pairs)

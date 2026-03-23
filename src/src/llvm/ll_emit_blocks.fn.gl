@@ -1,4 +1,0 @@
-ll_emit_blocks mir_fn i struct_map local_struct_types mir_local_types strs fn_name =
-  match i >= mir_block_count(mir_fn)
-    true -> ""
-    _ -> s2(ll_emit_block(mir_fn, i, struct_map, local_struct_types, mir_local_types, strs, fn_name), ll_emit_blocks(mir_fn, i + 1, struct_map, local_struct_types, mir_local_types, strs, fn_name))

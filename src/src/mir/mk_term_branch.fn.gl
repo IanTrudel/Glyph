@@ -1,1 +1,0 @@
-mk_term_branch cond then_b else_b = mk_term(tm_branch(), cond, then_b, else_b)

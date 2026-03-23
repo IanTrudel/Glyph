@@ -1,2 +1,0 @@
-cg_indirect_sig n_params =
-  s3(gval_t(), "(*)(", s2(cg_sig_params(n_params, 0), ")"))

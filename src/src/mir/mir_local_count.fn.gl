@@ -1,2 +1,0 @@
-mir_local_count mir_fn =
-  glyph_array_len(mir_fn.fn_locals)

@@ -1,8 +1,0 @@
-tctx_is_float_bin tctx n1 n2 ctx left right =
-  lt = tctx_query(tctx, n1)
-  rt = tctx_query(tctx, n2)
-  match lt == 3
-    true -> 1
-    _ -> match rt == 3
-      true -> 1
-      _ -> is_float_op(ctx, left, right)

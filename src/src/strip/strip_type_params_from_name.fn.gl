@@ -1,3 +1,0 @@
-strip_type_params_from_name name =
-  len = glyph_str_len(name)
-  stpfn_scan(name, 0, len)

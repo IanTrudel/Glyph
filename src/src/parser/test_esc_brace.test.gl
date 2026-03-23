@@ -1,5 +1,0 @@
-test_esc_brace u =
-  result = process_escapes("\{")
-  assert_eq(glyph_str_len(result), 1)
-  assert_eq(glyph_str_char_at(result, 0), 123)
-  0
