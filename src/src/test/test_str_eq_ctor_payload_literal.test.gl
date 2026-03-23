@@ -1,0 +1,8 @@
+test_str_eq_ctor_payload_literal u =
+  src = r"""f o = match o
+  Some(c) -> c == "x"
+  _ -> 0"""
+  mir = compile_fn(src, [])
+  c = cg_function(mir)
+  assert_eq(str_contains(c, "glyph_str_eq"), 1)
+  0

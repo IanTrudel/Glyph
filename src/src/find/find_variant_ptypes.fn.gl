@@ -1,0 +1,2 @@
+find_variant_ptypes vmap name =
+  fvpt_loop(vmap, 0, name)

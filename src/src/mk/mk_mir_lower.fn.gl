@@ -1,4 +1,4 @@
-mk_mir_lower fn_name za_fns tctx =
+mk_mir_lower fn_name za_fns tctx vmap =
   {block_stmts: [],
    block_terms: [],
    local_names: [],
@@ -16,4 +16,5 @@ mk_mir_lower fn_name za_fns tctx =
    tctx: tctx,
    lifted_fns: [],
    lambda_ctr: [0],
-   outer_fn_name: fn_name}
+   outer_fn_name: fn_name,
+   vmap: vmap}

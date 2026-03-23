@@ -1,4 +1,4 @@
-mono_pass parsed tc_results za_fns eng =
+mono_pass parsed tc_results za_fns eng vmap =
   specs = mono_collect(parsed, tc_results, eng)
-  spec_mirs = mono_compile_specs(specs, parsed, tc_results, za_fns, eng)
+  spec_mirs = mono_compile_specs(specs, parsed, tc_results, za_fns, eng, vmap)
   {mp_mirs: spec_mirs, mp_specs: specs}

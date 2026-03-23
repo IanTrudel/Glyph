@@ -24,5 +24,12 @@ register_builtins eng =
   ags_arr = mk_tarray(ags_elem, p)
   ags_ty = mk_tfn(ags_arr, mk_tfn(i, s, p), p)
   env_insert(eng, "glyph_arr_get_str", generalize(eng, ags_ty))
+  anew_elem = subst_fresh(eng)
+  anew_arr = mk_tarray(anew_elem, p)
+  anew_ty = mk_tfn(i, anew_arr, p)
+  env_insert(eng, "array_new", generalize(eng, anew_ty))
+  apush_elem = subst_fresh(eng)
+  apush_arr = mk_tarray(apush_elem, p)
+  apush_ty = mk_tfn(apush_arr, mk_tfn(apush_elem, i, p), p)
+  env_insert(eng, "array_push", generalize(eng, apush_ty))
   0
-

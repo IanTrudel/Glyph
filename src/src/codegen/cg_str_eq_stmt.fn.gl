@@ -1,0 +1,6 @@
+cg_str_eq_stmt stmt =
+  a = cg_operand(stmt.sop1)
+  b = cg_operand(stmt.sop2)
+  match stmt.sival == mir_eq()
+    true -> s7("  ", cg_local(stmt.sdest), " = glyph_str_eq(", a, ", ", b, ");\n")
+    _ -> s7("  ", cg_local(stmt.sdest), " = !glyph_str_eq(", a, ", ", b, ");\n")

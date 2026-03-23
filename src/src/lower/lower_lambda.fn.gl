@@ -3,7 +3,7 @@ lower_lambda ctx ast node =
   ctr = ctx.lambda_ctr[0]
   glyph_array_set(ctx.lambda_ctr, 0, ctr + 1)
   lam_name = s3(ctx.outer_fn_name, "_lam_", itos(ctr))
-  lam_ctx = mk_mir_lower(lam_name, ctx.za_fns, ctx.tctx)
+  lam_ctx = mk_mir_lower(lam_name, ctx.za_fns, ctx.tctx, ctx.vmap)
   entry = mir_new_block(lam_ctx)
   glyph_array_set(lam_ctx.fn_entry, 0, entry)
   env_local = mir_alloc_local(lam_ctx, "__env")

@@ -2,6 +2,7 @@ compile_db db_path output_path mode gen_str =
   db = glyph_db_open(db_path)
   _ = migrate_lib_dep(db)
   sources = read_fn_defs_gen(db, gen_str)
+  sigs = read_fn_sigs_gen(db, gen_str)
   externs = read_externs(db)
   type_rows = read_type_defs_gen(db, gen_str)
   generic_defs = read_generic_types(db)
@@ -13,8 +14,8 @@ compile_db db_path output_path mode gen_str =
   n = glyph_array_len(sources)
   println(s3("Compiling ", itos(n), " definitions..."))
   mirs = match mode >= 10
-    true -> build_program_llvm(sources, externs, output_path, struct_map, mode)
-    _ -> build_program(sources, externs, output_path, struct_map, mode)
+    true -> build_program_llvm(sources, sigs, externs, output_path, struct_map, mode, type_rows)
+    _ -> build_program(sources, sigs, externs, output_path, struct_map, mode, type_rows)
   pairs = collect_dep_pairs(mirs)
   insert_deps(db_path, pairs)
   println(s2("Built ", output_path))

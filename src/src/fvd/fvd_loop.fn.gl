@@ -1,0 +1,8 @@
+fvd_loop vmap i name =
+  match i >= glyph_array_len(vmap)
+    true -> variant_discriminant(name)
+    _ ->
+      entry = vmap[i]
+      match glyph_str_eq(entry.ve_name, name)
+        true -> entry.ve_disc
+        _ -> fvd_loop(vmap, i + 1, name)

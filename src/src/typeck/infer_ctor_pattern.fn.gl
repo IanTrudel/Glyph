@@ -1,5 +1,19 @@
 infer_ctor_pattern eng ast node =
-  ctor_ty = env_lookup(eng, node.sval)
-  match ctor_ty < 0
-    true -> subst_fresh(eng)
-    _ -> ctor_ty
+  sub_pats = node.ns
+  match glyph_str_eq(node.sval, "Some")
+    true ->
+      inner = subst_fresh(eng)
+      match glyph_array_len(sub_pats) > 0
+        true ->
+          sp = ast[sub_pats[0]]
+          match sp.kind == pat_ident()
+            true -> env_insert(eng, sp.sval, inner)
+            _ -> 0
+        _ -> 0
+      mk_topt(inner, eng.ty_pool)
+    _ ->
+      ctor_ty = env_lookup(eng, node.sval)
+      infer_ctor_bind_fresh(eng, ast, sub_pats, 0)
+      match ctor_ty < 0
+        true -> subst_fresh(eng)
+        _ -> ctor_ty

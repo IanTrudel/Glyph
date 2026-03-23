@@ -1,0 +1,4 @@
+build_variant_map type_rows =
+  result = []
+  bvm_loop(type_rows, 0, result)
+  result

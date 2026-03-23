@@ -1,4 +1,5 @@
 lower_type_ident st pool node =
   dest = mir_alloc_local(st, "_nullvar")
-  mir_emit_aggregate(st, dest, ag_variant(), node.sval, [])
+  disc = find_variant_disc(st.vmap, node.sval)
+  mir_emit_variant(st, dest, node.sval, [], disc)
   mk_op_local(dest)

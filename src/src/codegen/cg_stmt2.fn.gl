@@ -16,7 +16,15 @@ cg_stmt2 stmt struct_map local_struct_types mir_local_types =
                   _ = glyph_array_set(mir_local_types, stmt.sdest, 3)
                   cg_float_binop(stmt)
                 _ -> cg_float_cmp(stmt)
-            _ -> cg_stmt(stmt)
+            _ ->
+              str1 = is_op_str(mir_local_types, stmt.sop1)
+              str2 = is_op_str(mir_local_types, stmt.sop2)
+              match str1 == 1 || str2 == 1
+                true ->
+                  match stmt.sival == mir_eq() || stmt.sival == mir_neq()
+                    true -> cg_str_eq_stmt(stmt)
+                    _ -> cg_stmt(stmt)
+                _ -> cg_stmt(stmt)
     _ ? k == rv_unop() ->
       match mir_local_types[stmt.sdest] == 3
         true -> cg_float_unop(stmt)

@@ -1,0 +1,6 @@
+test_str_add_literal_param u =
+  src = "f s = s + \"x\""
+  mir = compile_fn(src, [])
+  c = cg_function(mir)
+  assert_eq(str_contains(c, "glyph_str_concat"), 1)
+  0

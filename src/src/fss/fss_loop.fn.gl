@@ -8,6 +8,6 @@ fss_loop update_fields struct_map i best_name best_size =
       match all_fields_in(entry_fields, update_fields, 0)
         true ->
           match best_size < 0 || sz < best_size
-            true -> fss_loop(update_fields, struct_map, i + 1, entry[0], sz)
+            true -> fss_loop(update_fields, struct_map, i + 1, glyph_arr_get_str(entry, 0), sz)
             _ -> fss_loop(update_fields, struct_map, i + 1, best_name, best_size)
         _ -> fss_loop(update_fields, struct_map, i + 1, best_name, best_size)

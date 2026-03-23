@@ -1,0 +1,15 @@
+pev_loop body i len result =
+  match i >= len
+    true -> result
+    _ ->
+      c = glyph_str_char_at(body, i)
+      match c == 124
+        true ->
+          j = pev_skip_ws(body, i + 1, len)
+          end_j = pev_name_end(body, j, len)
+          name = glyph_str_slice(body, j, end_j)
+          match glyph_str_len(name) > 0
+            true -> glyph_array_push(result, name)
+            _ -> 0
+          pev_loop(body, end_j, len, result)
+        _ -> pev_loop(body, i + 1, len, result)

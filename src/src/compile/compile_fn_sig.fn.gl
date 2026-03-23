@@ -1,0 +1,14 @@
+compile_fn_sig src sig =
+  tokens = tokenize(src)
+  ast = []
+  r = parse_fn_def(src, tokens, 0, ast)
+  eng = mk_engine()
+  register_builtins(eng)
+  ast_len = glyph_array_len(ast)
+  eng_set_tmap(eng, ast_len)
+  parts = split_arrow(sig)
+  infer_fn_def_sig(eng, ast, r.node, parts)
+  tm = eng.tmap[0]
+  resolve_tmap(eng, tm)
+  tctx = mk_tctx(tm)
+  lower_fn_def(ast, r.node, [], tctx, "", [])

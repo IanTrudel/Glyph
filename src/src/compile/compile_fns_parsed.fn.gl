@@ -1,4 +1,4 @@
-compile_fns_parsed parsed i za_fns tc_results verbose =
+compile_fns_parsed parsed i za_fns tc_results verbose vmap =
   match i >= glyph_array_len(parsed)
     true -> []
     _ ->
@@ -10,9 +10,9 @@ compile_fns_parsed parsed i za_fns tc_results verbose =
         true -> mk_tctx((tc_results[i]).fn_tmap)
         _ -> mk_null_tctx(0)
       mir = match pf.pf_fn_idx >= 0
-        true -> compile_fn_parsed(pf, za_fns, tctx)
-        _ -> compile_fn(pf.pf_src, za_fns)
-      rest = compile_fns_parsed(parsed, i + 1, za_fns, tc_results, verbose)
+        true -> compile_fn_parsed(pf, za_fns, tctx, vmap)
+        _ -> compile_fn_vm(pf.pf_src, za_fns, vmap)
+      rest = compile_fns_parsed(parsed, i + 1, za_fns, tc_results, verbose, vmap)
       match verbose
         true -> eprintln(s2("  collect: ", pf.pf_name))
         _ -> 0
@@ -22,4 +22,3 @@ compile_fns_parsed parsed i za_fns tc_results verbose =
         _ -> 0
       glyph_array_push(rest, mir)
       rest
-

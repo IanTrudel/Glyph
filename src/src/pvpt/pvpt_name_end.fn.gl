@@ -1,0 +1,8 @@
+pvpt_name_end body i len =
+  match i >= len
+    true -> i
+    _ ->
+      c = glyph_str_char_at(body, i)
+      match c == 41 || c == 44 || c == 32 || c == 9 || c == 10 || c == 40
+        true -> i
+        _ -> pvpt_name_end(body, i + 1, len)

@@ -1,0 +1,2 @@
+tc_register_ctors eng vmap =
+  tc_rc_loop(eng, vmap, 0)

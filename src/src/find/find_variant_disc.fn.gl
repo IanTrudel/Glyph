@@ -1,0 +1,2 @@
+find_variant_disc vmap name =
+  fvd_loop(vmap, 0, name)

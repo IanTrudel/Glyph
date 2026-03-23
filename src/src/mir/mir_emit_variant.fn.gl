@@ -1,0 +1,2 @@
+mir_emit_variant ctx dest name args disc =
+  mir_emit(ctx, mk_stmt(dest, rv_aggregate(), ag_variant(), name, mk_op_int(disc), mk_op_nil(), args))

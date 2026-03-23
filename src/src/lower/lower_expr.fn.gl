@@ -1,7 +1,7 @@
 lower_expr ctx ast ni =
   node = ast[ni]
   k = node.kind
-  match k
+  op = match k
     _ ? k == ex_int_lit() -> mk_op_int(node.ival)
     _ ? k == ex_str_lit() -> mk_op_str(node.sval)
     _ ? k == ex_bool_lit() -> mk_op_bool(node.ival)
@@ -12,3 +12,8 @@ lower_expr ctx ast ni =
     _ ? k == ex_type_ident() -> lower_type_ident(ctx, ast, node)
     _ ? k == ex_str_interp() -> lower_str_interp(ctx, ast, node)
     _ -> lower_expr2(ctx, ast, node, k)
+  tt = tctx_query(ctx.tctx, ni)
+  _ = match (tt == 3 || tt == 4) && op.okind == ok_local()
+    true -> mir_set_lt(ctx, op.oval, tt)
+    _ -> 0
+  op

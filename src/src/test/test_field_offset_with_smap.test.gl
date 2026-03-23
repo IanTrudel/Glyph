@@ -1,0 +1,15 @@
+test_field_offset_with_smap u =
+  fields1 = sort_str_arr(["tag", "atom", "comp"])
+  e1 = []
+  glyph_array_push(e1, "Term")
+  glyph_array_push(e1, fields1)
+  glyph_array_push(e1, [])
+  smap = []
+  glyph_array_push(smap, e1)
+  reg = []
+  seed_reg_from_smap(reg, smap, 0)
+  offset = resolve_fld_off(reg, "tag", ["tag"])
+  assert_eq(offset, 2)
+  offset2 = resolve_fld_off(reg, "atom", ["atom"])
+  assert_eq(offset2, 0)
+  0

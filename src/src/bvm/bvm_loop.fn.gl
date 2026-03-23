@@ -1,0 +1,9 @@
+bvm_loop rows i result =
+  match i >= glyph_array_len(rows)
+    true -> 0
+    _ ->
+      row = rows[i]
+      body = row[1]
+      variants = parse_enum_variants(body)
+      bvm_add_variants(variants, 0, result, body)
+      bvm_loop(rows, i + 1, result)

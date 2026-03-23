@@ -1,0 +1,16 @@
+test_seed_reg_from_smap u =
+  fields1 = sort_str_arr(["tag", "atom", "comp"])
+  e1 = []
+  glyph_array_push(e1, "Term")
+  glyph_array_push(e1, fields1)
+  glyph_array_push(e1, [])
+  smap = []
+  glyph_array_push(smap, e1)
+  reg = []
+  seed_reg_from_smap(reg, smap, 0)
+  assert_eq(glyph_array_len(reg), 1)
+  entry = reg[0]
+  assert_eq(glyph_array_len(entry), 3)
+  assert_str_eq(entry[0], "atom")
+  assert_str_eq(entry[2], "tag")
+  0

@@ -2,9 +2,13 @@ binop_arith_num eng lt rt =
   match lt == ty_int()
     true -> match rt == ty_int()
       true -> mk_tint(eng.ty_pool)
-      _ -> 0 - 1
+      _ -> match rt == ty_float()
+        true -> mk_ty_prim(ty_float(), eng.ty_pool)
+        _ -> 0 - 1
     _ -> match lt == ty_float()
       true -> match rt == ty_float()
         true -> mk_ty_prim(ty_float(), eng.ty_pool)
-        _ -> 0 - 1
+        _ -> match rt == ty_int()
+          true -> mk_ty_prim(ty_float(), eng.ty_pool)
+          _ -> 0 - 1
       _ -> 0 - 1

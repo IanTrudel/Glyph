@@ -1,9 +1,8 @@
-mono_compile_specs_loop specs parsed tc_results za_fns eng i mirs =
+mono_compile_specs_loop specs parsed tc_results za_fns eng i mirs vmap =
   match i >= glyph_array_len(specs)
     true -> mirs
     _ ->
       spec = specs[i]
-      mir = mono_compile_one_spec(spec, parsed, tc_results, za_fns, eng)
+      mir = mono_compile_one_spec(spec, parsed, tc_results, za_fns, eng, vmap)
       glyph_array_push(mirs, mir)
-      mono_compile_specs_loop(specs, parsed, tc_results, za_fns, eng, i + 1, mirs)
-
+      mono_compile_specs_loop(specs, parsed, tc_results, za_fns, eng, i + 1, mirs, vmap)

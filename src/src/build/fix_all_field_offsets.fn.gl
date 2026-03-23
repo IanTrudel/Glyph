@@ -1,3 +1,0 @@
-fix_all_field_offsets mirs =
-  reg = build_type_reg(mirs)
-  fix_offs_mirs(mirs, 0, reg)

@@ -1,4 +1,4 @@
-build_program_llvm sources externs output_path struct_map mode =
+build_program_llvm sources sigs externs output_path struct_map mode type_rows =
   parsed = parse_all_fns(sources, 0)
   n_errs = check_parse_errors(parsed)
   match n_errs > 0
@@ -10,11 +10,14 @@ build_program_llvm sources externs output_path struct_map mode =
   eng = mk_engine()
   register_builtins(eng)
   tc_pre_register(eng, parsed, 0)
-  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  _ = tc_infer_loop_warm(eng, parsed, sigs, 0)
+  eng_reset_errors(eng)
+  tc_results = tc_infer_loop_sigs(eng, parsed, sigs, 0, [])
   tc_report_errors(eng)
   za_fns = build_za_fns(parsed, 0, [])
-  mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose)
-  fix_all_field_offsets(mirs)
+  vmap = build_variant_map(type_rows)
+  mirs = compile_fns_parsed(parsed, 0, za_fns, tc_results, verbose, vmap)
+  fix_all_field_offsets(mirs, struct_map)
   fix_extern_calls(mirs, externs)
   tco_optimize(mirs)
   ll_code = cg_llvm_program(mirs, struct_map, externs)
@@ -34,4 +37,3 @@ build_program_llvm sources externs output_path struct_map mode =
   link_flags = s3(" -lm", lib_flags, s2(" ", opt_flags))
   glyph_system(s7(clang_base, " ", rt_path, " ", ll_path, s3(" -o ", output_path, " -no-pie"), link_flags))
   mirs
-

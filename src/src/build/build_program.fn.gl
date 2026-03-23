@@ -1,4 +1,4 @@
-build_program sources externs output_path struct_map mode =
+build_program sources sigs externs output_path struct_map mode type_rows =
   parsed = parse_all_fns(sources, 0)
   n_errs = check_parse_errors(parsed)
   match n_errs > 0
@@ -7,16 +7,20 @@ build_program sources externs output_path struct_map mode =
       glyph_exit(1)
     _ -> 0
   verbose = mode == 1
+  vmap = build_variant_map(type_rows)
   eng = mk_engine()
   register_builtins(eng)
+  tc_register_ctors(eng, vmap)
   tc_pre_register(eng, parsed, 0)
-  tc_results = tc_infer_loop(eng, parsed, 0, [])
+  _ = tc_infer_loop_warm(eng, parsed, sigs, 0)
+  eng_reset_errors(eng)
+  tc_results = tc_infer_loop_sigs(eng, parsed, sigs, 0, [])
   tc_report_errors(eng)
   za_fns = build_za_fns(parsed, 0, [])
-  mp = mono_pass(parsed, tc_results, za_fns, eng)
-  mirs = compile_fns_parsed_mono(parsed, za_fns, tc_results, mp.mp_specs, verbose, 0)
+  mp = mono_pass(parsed, tc_results, za_fns, eng, vmap)
+  mirs = compile_fns_parsed_mono(parsed, za_fns, tc_results, mp.mp_specs, verbose, 0, vmap)
   mono_concat_mirs(mirs, mp.mp_mirs)
-  fix_all_field_offsets(mirs)
+  fix_all_field_offsets(mirs, struct_map)
   fix_extern_calls(mirs, externs)
   tco_optimize(mirs)
   preamble = cg_preamble()

@@ -1,0 +1,7 @@
+tc_rc_loop eng vmap i =
+  match i >= glyph_array_len(vmap)
+    true -> 0
+    _ ->
+      entry = vmap[i]
+      env_insert(eng, entry.ve_name, subst_fresh(eng))
+      tc_rc_loop(eng, vmap, i + 1)

@@ -4,4 +4,7 @@ sig_part_ty part pool =
     _ ? glyph_str_eq(part, "S") -> mk_tstr(pool)
     _ ? glyph_str_eq(part, "B") -> mk_tbool(pool)
     _ ? glyph_str_eq(part, "V") -> mk_tvoid(pool)
+    _ ? glyph_str_eq(part, "?S") -> mk_topt(mk_tstr(pool), pool)
+    _ ? glyph_str_eq(part, "?I") -> mk_topt(mk_tint(pool), pool)
+    _ ? glyph_str_eq(part, "?B") -> mk_topt(mk_tbool(pool), pool)
     _ -> mk_tint(pool)

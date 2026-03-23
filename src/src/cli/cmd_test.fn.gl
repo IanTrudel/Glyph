@@ -34,7 +34,7 @@ cmd_test argv argc =
           cover_path = match cover_flag == 1
             true -> s2(db_path, ".cover")
             _ -> ""
-          build_test_program(fn_sources, test_sources, test_names, externs, bin_path, struct_map, mode, cover_path)
+          build_test_program(fn_sources, test_sources, test_names, externs, bin_path, struct_map, mode, cover_path, type_rows)
           test_args = filter_test_args(argv, 3, argc)
           cmd = match glyph_array_len(test_args) > 0
             true -> s3(bin_path, " ", join_str_arr(test_args, 0))

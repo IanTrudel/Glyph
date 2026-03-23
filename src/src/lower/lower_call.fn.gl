@@ -4,7 +4,8 @@ lower_call ctx ast node call_ni =
     true ->
       args = lower_call_args(ctx, ast, node.ns, 0)
       dest = mir_alloc_local(ctx, "")
-      mir_emit_aggregate(ctx, dest, ag_variant(), callee_node.sval, args)
+      disc = find_variant_disc(ctx.vmap, callee_node.sval)
+      mir_emit_variant(ctx, dest, callee_node.sval, args, disc)
       mk_op_local(dest)
     _ ->
       callee = lower_callee_expr(ctx, ast, node.n1)
@@ -17,4 +18,3 @@ lower_call ctx ast node call_ni =
       mir_emit_call(ctx, dest, callee2, args)
       track_call_type(ctx, dest, callee2)
       mk_op_local(dest)
-

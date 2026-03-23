@@ -2,6 +2,4 @@ compile_fn src za_fns =
   tokens = tokenize(src)
   ast = []
   r = parse_fn_def(src, tokens, 0, ast)
-  mir = lower_fn_def(ast, r.node, za_fns, mk_null_tctx(0), "")
-  mir
-
+  lower_fn_def(ast, r.node, za_fns, mk_null_tctx(0), "", [])

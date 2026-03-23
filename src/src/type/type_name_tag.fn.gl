@@ -1,0 +1,6 @@
+type_name_tag name =
+  match glyph_str_eq(name, "S") || glyph_str_eq(name, "Str")
+    true -> 4
+    _ -> match glyph_str_eq(name, "F") || glyph_str_eq(name, "Float")
+      true -> 3
+      _ -> 0

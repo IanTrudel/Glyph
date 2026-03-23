@@ -1,0 +1,3 @@
+parse_enum_variants body =
+  len = glyph_str_len(body)
+  pev_loop(body, 0, len, [])
