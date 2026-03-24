@@ -71,8 +71,15 @@ rule self_test
 
 build self_tests: self_test | glyph
 
+# Run documentation.glyph test suite (runtime + language feature regression)
+rule doc_test
+  command = ./glyph test documentation.glyph 2>&1
+  description = Running documentation.glyph tests
+
+build doc_tests: doc_test | glyph
+
 # Run all tests
-build test: phony rust_tests self_tests
+build test: phony rust_tests self_tests doc_tests
 
 # Run self-hosted compiler tests with coverage instrumentation
 rule cover_test
@@ -87,7 +94,7 @@ build cover: phony glyph.glyph.cover
 # Override prefix:  PREFIX=/usr ninja install
 # Override destdir: DESTDIR=/tmp/pkg ninja install
 rule do_install
-  command = install -Dm755 glyph $${DESTDIR}$${PREFIX:-/usr/local}/bin/glyph && install -Dm644 glyph.glyph $${DESTDIR}$${PREFIX:-/usr/local}/share/glyph/glyph.glyph
+  command = install -Dm755 glyph $${DESTDIR}$${PREFIX:-/usr/local}/bin/glyph && install -Dm644 glyph.glyph $${DESTDIR}$${PREFIX:-/usr/local}/share/glyph/glyph.glyph && install -Dm644 documentation.glyph $${DESTDIR}$${PREFIX:-/usr/local}/share/glyph/documentation.glyph
   description = Installing glyph → $${PREFIX:-/usr/local}
 
 build install: do_install | glyph

@@ -24,6 +24,7 @@ curl -fSL "$URL" -o "$TMPDIR/$TARBALL"
 mkdir -p "$BIN_DIR"
 tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR"
 install -m755 "$TMPDIR/glyph" "$BIN_DIR/glyph"
+install -m644 "$TMPDIR/documentation.glyph" "$INSTALL_DIR/documentation.glyph"
 
 # Install Claude Code skill
 mkdir -p "$SKILL_DIR"
@@ -55,11 +56,12 @@ if os.path.exists(config_path):
     with open(config_path) as f:
         config = json.load(f)
 
+doc_db = os.path.join(os.path.dirname(os.path.dirname(glyph_bin)), "documentation.glyph")
 servers = config.setdefault("mcpServers", {})
 if "glyph" in servers:
     print("  MCP server already configured in " + config_path)
 else:
-    servers["glyph"] = {"command": glyph_bin, "args": ["mcp"]}
+    servers["glyph"] = {"command": glyph_bin, "args": ["mcp", doc_db]}
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
         f.write("\n")
@@ -67,12 +69,13 @@ else:
 PYEOF
 else
   echo "  python3 not found — add MCP server manually to ~/.claude/settings.json:"
-  printf '    "glyph": {"command": "%s", "args": ["mcp"]}\n' "$BIN_DIR/glyph"
+  printf '    "glyph": {"command": "%s", "args": ["mcp", "%s/documentation.glyph"]}\n' "$BIN_DIR/glyph" "$INSTALL_DIR"
 fi
 
 echo ""
 echo "Installed: $GLYPH_VER"
 echo "Binary:    $BIN_DIR/glyph"
+echo "Docs:      $INSTALL_DIR/documentation.glyph"
 echo "Skill:     $SKILL_DIR"
 echo ""
 echo "Reload your shell or run: source ~/.zshrc"

@@ -959,6 +959,41 @@ str_concat("a", "b")           -- "ab" (prefer + operator)
 str_eq("a", "b")               -- 0 (prefer == operator)
 ```
 
+### Extended String Functions
+
+```
+str_index_of("hello world", "world")  -- 6 (position of first match)
+str_index_of("hello", "xyz")          -- -1 (not found)
+
+str_starts_with("hello", "hel")       -- 1
+str_ends_with("hello", "llo")         -- 1
+
+str_trim("  hello  ")                 -- "hello"
+str_trim("\n text \t")                -- "text"
+
+str_to_upper("hello")                 -- "HELLO"
+
+str_split("a,b,c", ",")              -- ["a", "b", "c"]
+str_split("hello", "")               -- ["h", "e", "l", "l", "o"]
+```
+
+**Note:** `str_contains` and `str_to_lower` are not runtime builtins (they conflict with compiler-internal names). Use `str_index_of(s, needle) >= 0` for containment checks. For lowercase conversion, iterate bytes with `str_char_at` and `str_from_code`.
+
+### Character Handling
+
+Glyph has no character type. Characters are handled as integer byte codes:
+
+```
+code = str_char_at("A", 0)           -- 65
+ch = str_from_code(65)                -- "A"
+ch = str_from_code(10)                -- newline character
+
+-- Character classification by byte range:
+is_digit c = c >= 48 && c <= 57      -- '0'=48, '9'=57
+is_upper c = c >= 65 && c <= 90      -- 'A'=65, 'Z'=90
+is_lower c = c >= 97 && c <= 122     -- 'a'=97, 'z'=122
+```
+
 ---
 
 ## 13. Arrays
@@ -983,6 +1018,23 @@ array_set(arr, i, val)  -- set element at index (bounds-checked)
 array_pop(arr)          -- remove and return last element
 array_new(cap)          -- create empty array with initial capacity
 ```
+
+### Extended Array Operations
+
+```
+-- Reverse array in place (mutates, returns same array)
+arr = [1, 2, 3, 4]
+array_reverse(arr)            -- arr is now [4, 3, 2, 1]
+
+-- Extract subarray [start, end) — returns new array
+sub = array_slice(arr, 1, 3)  -- [3, 2]
+
+-- Find index of integer element (-1 if not found)
+array_index_of(arr, 3)        -- 1
+array_index_of(arr, 99)       -- -1
+```
+
+**Note:** `array_index_of` uses GVal (integer/pointer) equality. For string arrays, it compares pointers, not string content. Use a manual loop with `str_eq` for string search.
 
 ### Iterating Arrays
 
@@ -1037,6 +1089,22 @@ point.x                 -- 10
 person.name             -- "Alice"
 ```
 
+### Record Updates (Functional)
+
+Create a new record from an existing one with modified fields:
+
+```
+p = {x: 10, y: 20}
+p2 = p{x: 30}             -- {x: 30, y: 20}
+p3 = p{x: 5, y: 50}       -- {x: 5, y: 50}
+
+-- Original is unchanged (functional update):
+p.x                        -- still 10
+
+-- Useful in recursive helpers:
+move_right p = p{x: p.x + 1}
+```
+
 ### Records as Return Values
 
 ```
@@ -1071,8 +1139,19 @@ Records are heap-allocated via `glyph_alloc`.
 
 ### Defining Enums
 
+Two syntax forms are supported:
+
 ```bash
+# Leading pipe (recommended for multi-line):
 ./glyph put app.glyph type -b 'Color = | Red | Green | Blue'
+
+# No leading pipe (also valid):
+./glyph put app.glyph type -b 'Color = Red | Green | Blue'
+```
+
+Both forms are equivalent. Examples with payloads:
+
+```bash
 ./glyph put app.glyph type -b 'Shape = | Circle(I) | Rect(I, I)'
 ./glyph put app.glyph type -b 'Option = | None | Some(I)'
 ```
@@ -1415,6 +1494,13 @@ All functions are available in every compiled program. The C runtime is embedded
 | `str_to_int` | `S -> I` | Parse integer (0 on failure) |
 | `str_to_cstr` | `S -> *V` | To null-terminated C string |
 | `cstr_to_str` | `*V -> S` | From null-terminated C string |
+| `str_index_of` | `S -> S -> I` | Position of first occurrence (-1 if not found) |
+| `str_starts_with` | `S -> S -> B` | 1 if string starts with prefix |
+| `str_ends_with` | `S -> S -> B` | 1 if string ends with suffix |
+| `str_trim` | `S -> S` | Remove leading/trailing whitespace |
+| `str_to_upper` | `S -> S` | ASCII uppercase conversion |
+| `str_split` | `S -> S -> [S]` | Split by separator (empty sep splits chars) |
+| `str_from_code` | `I -> S` | Single-character string from byte code |
 
 ### String Builder
 
@@ -1435,6 +1521,19 @@ O(n) string concatenation. String interpolation compiles to these automatically.
 | `int_to_float` | `I -> F` | Integer to float |
 | `float_to_int` | `F -> I` | Float to integer (truncates) |
 
+### Math
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `sqrt` | `F -> F` | Square root |
+| `sin` | `F -> F` | Sine (radians) |
+| `cos` | `F -> F` | Cosine (radians) |
+| `atan2` | `F -> F -> F` | Two-argument arctangent |
+| `fabs` | `F -> F` | Absolute value |
+| `pow` | `F -> F -> F` | Exponentiation |
+| `floor` | `F -> F` | Floor (round down) |
+| `ceil` | `F -> F` | Ceiling (round up) |
+
 ### Array
 
 | Function | Signature | Description |
@@ -1444,6 +1543,9 @@ O(n) string concatenation. String interpolation compiles to these automatically.
 | `array_len` | `[I] -> I` | Element count |
 | `array_set` | `[I] -> I -> I -> V` | Set element at index (bounds-checked) |
 | `array_pop` | `[I] -> I` | Remove and return last element |
+| `array_reverse` | `[T] -> [T]` | Reverse in place, returns array |
+| `array_slice` | `[T] -> I -> I -> [T]` | Extract subarray `[start, end)` |
+| `array_index_of` | `[I] -> I -> I` | Find integer element index (-1 if not found) |
 
 ### I/O
 
@@ -1453,6 +1555,22 @@ O(n) string concatenation. String interpolation compiles to these automatically.
 | `write_file` | `S -> S -> I` | Write string to file (0 = success) |
 | `args` | `-> [S]` | Command-line arguments |
 | `system` | `S -> I` | Execute shell command, return exit code |
+| `read_line` | `I -> S` | Read line from stdin (takes dummy arg, strips newline, empty on EOF) |
+| `flush` | `I -> V` | Flush stdout (takes dummy arg) |
+
+### HashMap
+
+String-keyed hash map with integer/pointer values.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `hm_new` | `-> {K:V}` | Create empty map (zero-arg, call as `hm_new()`) |
+| `hm_set` | `{K:V} -> S -> I -> {K:V}` | Set key to value, returns map |
+| `hm_get` | `{K:V} -> S -> I` | Get value by key (0 if missing) |
+| `hm_del` | `{K:V} -> S -> {K:V}` | Delete key, returns map |
+| `hm_has` | `{K:V} -> S -> B` | 1 if key exists |
+| `hm_keys` | `{K:V} -> [S]` | All keys as array |
+| `hm_len` | `{K:V} -> I` | Number of entries |
 
 ### Result
 

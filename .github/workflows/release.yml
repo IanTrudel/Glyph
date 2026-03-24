@@ -41,14 +41,17 @@ jobs:
         run: ninja bootstrap
 
       - name: Test
-        run: ./glyph test glyph.glyph
+        run: |
+          ./glyph test glyph.glyph
+          ./glyph test documentation.glyph
 
       - name: Package
         run: |
           mkdir -p dist/skills
           cp glyph dist/
+          cp documentation.glyph dist/
           cp .claude/skills/glyph/* dist/skills/
-          tar -czf dist/glyph-linux-x86_64.tar.gz -C dist glyph skills/
+          tar -czf dist/glyph-linux-x86_64.tar.gz -C dist glyph documentation.glyph skills/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
