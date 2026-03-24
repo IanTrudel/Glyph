@@ -23,7 +23,8 @@ examples/life/life
 examples/glint/glint
 examples/gled/gled
 examples/api/api
-examples/gtk_hello/hello
+examples/gtk/hello/hello
+examples/gtk/calculator/calc
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover

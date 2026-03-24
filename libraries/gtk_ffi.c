@@ -279,6 +279,206 @@ GVal gtk_ffi_on_key_pressed(GVal ctrl, GVal closure) {
     return 0;
 }
 
+/* ── Entry (single-line text input) ─────────────────────────────────────── */
+
+GVal gtk_ffi_entry_new(GVal _d) { (void)_d;
+    return (GVal)gtk_entry_new();
+}
+
+GVal gtk_ffi_entry_get_text(GVal entry) {
+    GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY((void *)entry));
+    return _gstr(gtk_entry_buffer_get_text(buf));
+}
+
+GVal gtk_ffi_entry_set_text(GVal entry, GVal text) {
+    const char *t = _gs(text);
+    GtkEntryBuffer *buf = gtk_entry_get_buffer(GTK_ENTRY((void *)entry));
+    gtk_entry_buffer_set_text(buf, t, -1);
+    free((void *)t);
+    return 0;
+}
+
+GVal gtk_ffi_entry_set_placeholder(GVal entry, GVal text) {
+    const char *t = _gs(text);
+    gtk_entry_set_placeholder_text(GTK_ENTRY((void *)entry), t);
+    free((void *)t);
+    return 0;
+}
+
+GVal gtk_ffi_on_entry_activate(GVal entry, GVal closure) {
+    g_signal_connect((void *)entry, "activate",
+                     G_CALLBACK(_tramp_void_widget), (gpointer)closure);
+    return 0;
+}
+
+/* ── TextView (multi-line text) ────────────────────────────────────────── */
+
+GVal gtk_ffi_textview_new(GVal _d) { (void)_d;
+    return (GVal)gtk_text_view_new();
+}
+
+GVal gtk_ffi_textview_get_text(GVal tv) {
+    GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW((void *)tv));
+    GtkTextIter start, end;
+    gtk_text_buffer_get_bounds(buf, &start, &end);
+    char *text = gtk_text_buffer_get_text(buf, &start, &end, FALSE);
+    GVal result = _gstr(text);
+    g_free(text);
+    return result;
+}
+
+GVal gtk_ffi_textview_set_text(GVal tv, GVal text) {
+    const char *t = _gs(text);
+    GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW((void *)tv));
+    gtk_text_buffer_set_text(buf, t, -1);
+    free((void *)t);
+    return 0;
+}
+
+GVal gtk_ffi_textview_set_editable(GVal tv, GVal editable) {
+    gtk_text_view_set_editable(GTK_TEXT_VIEW((void *)tv), (gboolean)editable);
+    return 0;
+}
+
+GVal gtk_ffi_textview_set_wrap(GVal tv, GVal mode) {
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW((void *)tv), (GtkWrapMode)(int)mode);
+    return 0;
+}
+
+GVal gtk_ffi_wrap_none(GVal _d)      { (void)_d; return (GVal)GTK_WRAP_NONE; }
+GVal gtk_ffi_wrap_char(GVal _d)      { (void)_d; return (GVal)GTK_WRAP_CHAR; }
+GVal gtk_ffi_wrap_word(GVal _d)      { (void)_d; return (GVal)GTK_WRAP_WORD; }
+GVal gtk_ffi_wrap_word_char(GVal _d) { (void)_d; return (GVal)GTK_WRAP_WORD_CHAR; }
+
+/* ── CheckButton ───────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_check_button_new(GVal label) {
+    const char *l = _gs(label);
+    GtkWidget *cb = gtk_check_button_new_with_label(l);
+    free((void *)l);
+    return (GVal)cb;
+}
+
+GVal gtk_ffi_check_button_get_active(GVal cb) {
+    return (GVal)gtk_check_button_get_active(GTK_CHECK_BUTTON((void *)cb));
+}
+
+GVal gtk_ffi_check_button_set_active(GVal cb, GVal active) {
+    gtk_check_button_set_active(GTK_CHECK_BUTTON((void *)cb), (gboolean)active);
+    return 0;
+}
+
+GVal gtk_ffi_on_toggled(GVal cb, GVal closure) {
+    g_signal_connect((void *)cb, "toggled",
+                     G_CALLBACK(_tramp_void_widget), (gpointer)closure);
+    return 0;
+}
+
+/* ── ToggleButton ──────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_toggle_button_new(GVal label) {
+    const char *l = _gs(label);
+    GtkWidget *tb = gtk_toggle_button_new_with_label(l);
+    free((void *)l);
+    return (GVal)tb;
+}
+
+GVal gtk_ffi_toggle_button_get_active(GVal tb) {
+    return (GVal)gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON((void *)tb));
+}
+
+GVal gtk_ffi_toggle_button_set_active(GVal tb, GVal active) {
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON((void *)tb), (gboolean)active);
+    return 0;
+}
+
+/* ── SpinButton ────────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_spin_button_new(GVal min_val, GVal max_val, GVal step) {
+    double dmin, dmax, dstep;
+    memcpy(&dmin, &min_val, sizeof(double));
+    memcpy(&dmax, &max_val, sizeof(double));
+    memcpy(&dstep, &step, sizeof(double));
+    return (GVal)gtk_spin_button_new_with_range(dmin, dmax, dstep);
+}
+
+GVal gtk_ffi_spin_button_get_value(GVal sb) {
+    double v = gtk_spin_button_get_value(GTK_SPIN_BUTTON((void *)sb));
+    GVal r;
+    memcpy(&r, &v, sizeof(double));
+    return r;
+}
+
+GVal gtk_ffi_spin_button_get_value_int(GVal sb) {
+    return (GVal)gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON((void *)sb));
+}
+
+GVal gtk_ffi_spin_button_set_value(GVal sb, GVal val) {
+    double v;
+    memcpy(&v, &val, sizeof(double));
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON((void *)sb), v);
+    return 0;
+}
+
+GVal gtk_ffi_spin_button_set_range(GVal sb, GVal min_val, GVal max_val) {
+    double dmin, dmax;
+    memcpy(&dmin, &min_val, sizeof(double));
+    memcpy(&dmax, &max_val, sizeof(double));
+    gtk_spin_button_set_range(GTK_SPIN_BUTTON((void *)sb), dmin, dmax);
+    return 0;
+}
+
+GVal gtk_ffi_spin_button_set_digits(GVal sb, GVal digits) {
+    gtk_spin_button_set_digits(GTK_SPIN_BUTTON((void *)sb), (guint)digits);
+    return 0;
+}
+
+/* ── Grid layout ───────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_grid_new(GVal _d) { (void)_d;
+    return (GVal)gtk_grid_new();
+}
+
+GVal gtk_ffi_grid_attach(GVal grid, GVal child, GVal col, GVal row, GVal width, GVal height) {
+    gtk_grid_attach(GTK_GRID((void *)grid), GTK_WIDGET((void *)child),
+                    (int)col, (int)row, (int)width, (int)height);
+    return 0;
+}
+
+GVal gtk_ffi_grid_set_row_spacing(GVal grid, GVal spacing) {
+    gtk_grid_set_row_spacing(GTK_GRID((void *)grid), (guint)spacing);
+    return 0;
+}
+
+GVal gtk_ffi_grid_set_col_spacing(GVal grid, GVal spacing) {
+    gtk_grid_set_column_spacing(GTK_GRID((void *)grid), (guint)spacing);
+    return 0;
+}
+
+/* ── Separator ─────────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_separator_new(GVal orientation) {
+    return (GVal)gtk_separator_new((GtkOrientation)(int)orientation);
+}
+
+/* ── ScrolledWindow ────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_scrolled_window_new(GVal _d) { (void)_d;
+    return (GVal)gtk_scrolled_window_new();
+}
+
+GVal gtk_ffi_scrolled_window_set_child(GVal sw, GVal child) {
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW((void *)sw),
+                                  GTK_WIDGET((void *)child));
+    return 0;
+}
+
+GVal gtk_ffi_scrolled_window_set_min_size(GVal sw, GVal w, GVal h) {
+    gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW((void *)sw), (int)w);
+    gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW((void *)sw), (int)h);
+    return 0;
+}
+
 /* ── CSS styling ───────────────────────────────────────────────────────── */
 
 GVal gtk_ffi_widget_add_css_class(GVal w, GVal cls) {
