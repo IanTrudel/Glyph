@@ -5,6 +5,7 @@
 *.glyph
 !stdlib.glyph
 !glyph.glyph
+!documentation.glyph
 !examples/**/*.glyph
 /Archives
 /Archives.7z
