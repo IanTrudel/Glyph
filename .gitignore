@@ -25,6 +25,7 @@ examples/gled/gled
 examples/api/api
 examples/gtk/hello/hello
 examples/gtk/calculator/calc
+examples/gtk/editor/editor
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover

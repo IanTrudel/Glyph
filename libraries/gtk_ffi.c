@@ -133,6 +133,11 @@ GVal gtk_ffi_window_set_child(GVal win, GVal child) {
     return 0;
 }
 
+GVal gtk_ffi_window_set_titlebar(GVal win, GVal titlebar) {
+    gtk_window_set_titlebar(GTK_WINDOW((void *)win), GTK_WIDGET((void *)titlebar));
+    return 0;
+}
+
 GVal gtk_ffi_window_present(GVal win) {
     gtk_window_present(GTK_WINDOW((void *)win));
     return 0;
@@ -498,4 +503,373 @@ GVal gtk_ffi_css_load(GVal css_str) {
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     free((void *)css);
     return (GVal)prov;
+}
+
+GVal gtk_ffi_widget_queue_draw(GVal w) {
+    gtk_widget_queue_draw(GTK_WIDGET((void *)w));
+    return 0;
+}
+
+/* ── Tier 3: HeaderBar ─────────────────────────────────────────────────── */
+
+GVal gtk_ffi_header_bar_new(GVal _d) { (void)_d;
+    return (GVal)gtk_header_bar_new();
+}
+
+GVal gtk_ffi_header_bar_pack_start(GVal hb, GVal child) {
+    gtk_header_bar_pack_start(GTK_HEADER_BAR((void *)hb),
+                              GTK_WIDGET((void *)child));
+    return 0;
+}
+
+GVal gtk_ffi_header_bar_pack_end(GVal hb, GVal child) {
+    gtk_header_bar_pack_end(GTK_HEADER_BAR((void *)hb),
+                            GTK_WIDGET((void *)child));
+    return 0;
+}
+
+GVal gtk_ffi_header_bar_set_title_widget(GVal hb, GVal widget) {
+    gtk_header_bar_set_title_widget(GTK_HEADER_BAR((void *)hb),
+                                    GTK_WIDGET((void *)widget));
+    return 0;
+}
+
+GVal gtk_ffi_header_bar_set_show_title(GVal hb, GVal show) {
+    gtk_header_bar_set_show_title_buttons(GTK_HEADER_BAR((void *)hb),
+                                          (gboolean)show);
+    return 0;
+}
+
+/* ── Tier 3: Stack + StackSwitcher ─────────────────────────────────────── */
+
+GVal gtk_ffi_stack_new(GVal _d) { (void)_d;
+    return (GVal)gtk_stack_new();
+}
+
+GVal gtk_ffi_stack_add_named(GVal stack, GVal child, GVal name) {
+    const char *n = _gs(name);
+    gtk_stack_add_named(GTK_STACK((void *)stack),
+                        GTK_WIDGET((void *)child), n);
+    free((void *)n);
+    return 0;
+}
+
+GVal gtk_ffi_stack_add_titled(GVal stack, GVal child, GVal name, GVal title) {
+    const char *n = _gs(name);
+    const char *t = _gs(title);
+    gtk_stack_add_titled(GTK_STACK((void *)stack),
+                         GTK_WIDGET((void *)child), n, t);
+    free((void *)n);
+    free((void *)t);
+    return 0;
+}
+
+GVal gtk_ffi_stack_set_visible_child_name(GVal stack, GVal name) {
+    const char *n = _gs(name);
+    gtk_stack_set_visible_child_name(GTK_STACK((void *)stack), n);
+    free((void *)n);
+    return 0;
+}
+
+GVal gtk_ffi_stack_get_visible_child_name(GVal stack) {
+    const char *n = gtk_stack_get_visible_child_name(GTK_STACK((void *)stack));
+    return _gstr(n);
+}
+
+GVal gtk_ffi_stack_set_transition_type(GVal stack, GVal ttype) {
+    gtk_stack_set_transition_type(GTK_STACK((void *)stack),
+                                  (GtkStackTransitionType)ttype);
+    return 0;
+}
+
+GVal gtk_ffi_stack_switcher_new(GVal _d) { (void)_d;
+    return (GVal)gtk_stack_switcher_new();
+}
+
+GVal gtk_ffi_stack_switcher_set_stack(GVal sw, GVal stack) {
+    gtk_stack_switcher_set_stack(GTK_STACK_SWITCHER((void *)sw),
+                                GTK_STACK((void *)stack));
+    return 0;
+}
+
+/* Stack transition type constants */
+GVal gtk_ffi_stack_transition_none(GVal _d)       { (void)_d; return (GVal)GTK_STACK_TRANSITION_TYPE_NONE; }
+GVal gtk_ffi_stack_transition_crossfade(GVal _d)  { (void)_d; return (GVal)GTK_STACK_TRANSITION_TYPE_CROSSFADE; }
+GVal gtk_ffi_stack_transition_slide_right(GVal _d){ (void)_d; return (GVal)GTK_STACK_TRANSITION_TYPE_SLIDE_RIGHT; }
+GVal gtk_ffi_stack_transition_slide_left(GVal _d) { (void)_d; return (GVal)GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT; }
+
+/* ── Tier 3: Image ─────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_image_new(GVal _d) { (void)_d;
+    return (GVal)gtk_image_new();
+}
+
+GVal gtk_ffi_image_new_from_file(GVal path) {
+    const char *p = _gs(path);
+    GtkWidget *img = gtk_image_new_from_file(p);
+    free((void *)p);
+    return (GVal)img;
+}
+
+GVal gtk_ffi_image_new_from_icon(GVal icon_name) {
+    const char *n = _gs(icon_name);
+    GtkWidget *img = gtk_image_new_from_icon_name(n);
+    free((void *)n);
+    return (GVal)img;
+}
+
+GVal gtk_ffi_image_set_pixel_size(GVal img, GVal size) {
+    gtk_image_set_pixel_size(GTK_IMAGE((void *)img), (int)size);
+    return 0;
+}
+
+/* ── Tier 3: ProgressBar ───────────────────────────────────────────────── */
+
+GVal gtk_ffi_progress_bar_new(GVal _d) { (void)_d;
+    return (GVal)gtk_progress_bar_new();
+}
+
+GVal gtk_ffi_progress_bar_set_fraction(GVal pb, GVal fraction) {
+    double f;
+    memcpy(&f, &fraction, sizeof(double));
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR((void *)pb), f);
+    return 0;
+}
+
+GVal gtk_ffi_progress_bar_get_fraction(GVal pb) {
+    double f = gtk_progress_bar_get_fraction(GTK_PROGRESS_BAR((void *)pb));
+    GVal r;
+    memcpy(&r, &f, sizeof(double));
+    return r;
+}
+
+GVal gtk_ffi_progress_bar_set_text(GVal pb, GVal text) {
+    const char *t = _gs(text);
+    gtk_progress_bar_set_text(GTK_PROGRESS_BAR((void *)pb), t);
+    free((void *)t);
+    return 0;
+}
+
+GVal gtk_ffi_progress_bar_set_show_text(GVal pb, GVal show) {
+    gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR((void *)pb),
+                                   (gboolean)show);
+    return 0;
+}
+
+GVal gtk_ffi_progress_bar_pulse(GVal pb) {
+    gtk_progress_bar_pulse(GTK_PROGRESS_BAR((void *)pb));
+    return 0;
+}
+
+/* ── Tier 3: MenuButton + PopoverMenu ──────────────────────────────────── */
+
+GVal gtk_ffi_menu_button_new(GVal _d) { (void)_d;
+    return (GVal)gtk_menu_button_new();
+}
+
+GVal gtk_ffi_menu_button_set_icon_name(GVal btn, GVal name) {
+    const char *n = _gs(name);
+    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON((void *)btn), n);
+    free((void *)n);
+    return 0;
+}
+
+GVal gtk_ffi_menu_button_set_label(GVal btn, GVal label) {
+    const char *l = _gs(label);
+    gtk_menu_button_set_label(GTK_MENU_BUTTON((void *)btn), l);
+    free((void *)l);
+    return 0;
+}
+
+GVal gtk_ffi_menu_button_set_menu_model(GVal btn, GVal model) {
+    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON((void *)btn),
+                                   G_MENU_MODEL((void *)model));
+    return 0;
+}
+
+/* ── Tier 3: GMenu (declarative menu model) ────────────────────────────── */
+
+GVal gtk_ffi_menu_new(GVal _d) { (void)_d;
+    return (GVal)g_menu_new();
+}
+
+GVal gtk_ffi_menu_append(GVal menu, GVal label, GVal action) {
+    const char *l = _gs(label);
+    const char *a = _gs(action);
+    g_menu_append(G_MENU((void *)menu), l, a);
+    free((void *)l);
+    free((void *)a);
+    return 0;
+}
+
+GVal gtk_ffi_menu_append_section(GVal menu, GVal label, GVal section) {
+    const char *l = label ? _gs(label) : NULL;
+    g_menu_append_section(G_MENU((void *)menu), l,
+                          G_MENU_MODEL((void *)section));
+    if (l) free((void *)l);
+    return 0;
+}
+
+GVal gtk_ffi_menu_append_submenu(GVal menu, GVal label, GVal submenu) {
+    const char *l = _gs(label);
+    g_menu_append_submenu(G_MENU((void *)menu), l,
+                          G_MENU_MODEL((void *)submenu));
+    free((void *)l);
+    return 0;
+}
+
+/* ── Tier 3: GSimpleAction ─────────────────────────────────────────────── */
+
+/* Trampoline for action "activate" signal */
+static void _tramp_action_activate(GSimpleAction *action,
+                                    GVariant *param, gpointer data) {
+    (void)action; (void)param;
+    GVal *cl = (GVal *)data;
+    ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, (GVal)0);
+}
+
+GVal gtk_ffi_action_new(GVal name) {
+    const char *n = _gs(name);
+    GSimpleAction *a = g_simple_action_new(n, NULL);
+    free((void *)n);
+    return (GVal)a;
+}
+
+GVal gtk_ffi_action_on_activate(GVal action, GVal closure) {
+    g_signal_connect((void *)action, "activate",
+                     G_CALLBACK(_tramp_action_activate), (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_app_add_action(GVal app, GVal action) {
+    g_action_map_add_action(G_ACTION_MAP((void *)app),
+                            G_ACTION((void *)action));
+    return 0;
+}
+
+GVal gtk_ffi_window_add_action(GVal win, GVal action) {
+    g_action_map_add_action(G_ACTION_MAP((void *)win),
+                            G_ACTION((void *)action));
+    return 0;
+}
+
+/* ── Tier 3: idle_add ──────────────────────────────────────────────────── */
+
+GVal gtk_ffi_idle_add(GVal closure) {
+    return (GVal)g_idle_add(_tramp_timeout, (gpointer)closure);
+}
+
+/* ── Tier 5: File Dialogs (GTK 4.10+) ─────────────────────────────────── */
+
+/* Glyph string helper (defined later in glyph runtime, forward-declare) */
+extern GVal glyph_cstr_to_str(const char *s);
+
+/* Async callback for file_dialog_open */
+static void _cb_file_open(GObject *src, GAsyncResult *res, gpointer data) {
+    GVal *cl = (GVal *)data;
+    GError *err = NULL;
+    GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(src), res, &err);
+    if (file) {
+        char *path = g_file_get_path(file);
+        GVal gpath = glyph_cstr_to_str(path);
+        ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, gpath);
+        g_free(path);
+        g_object_unref(file);
+    } else {
+        /* User cancelled or error — call with empty string */
+        GVal empty = glyph_cstr_to_str("");
+        ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, empty);
+        if (err) g_error_free(err);
+    }
+}
+
+/* Async callback for file_dialog_save */
+static void _cb_file_save(GObject *src, GAsyncResult *res, gpointer data) {
+    GVal *cl = (GVal *)data;
+    GError *err = NULL;
+    GFile *file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(src), res, &err);
+    if (file) {
+        char *path = g_file_get_path(file);
+        GVal gpath = glyph_cstr_to_str(path);
+        ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, gpath);
+        g_free(path);
+        g_object_unref(file);
+    } else {
+        GVal empty = glyph_cstr_to_str("");
+        ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, empty);
+        if (err) g_error_free(err);
+    }
+}
+
+GVal gtk_ffi_file_dialog_open(GVal win, GVal closure) {
+    GtkFileDialog *dlg = gtk_file_dialog_new();
+    gtk_file_dialog_open(dlg, GTK_WINDOW((void *)win), NULL,
+                         _cb_file_open, (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_file_dialog_save(GVal win, GVal closure) {
+    GtkFileDialog *dlg = gtk_file_dialog_new();
+    gtk_file_dialog_save(dlg, GTK_WINDOW((void *)win), NULL,
+                         _cb_file_save, (gpointer)closure);
+    return 0;
+}
+
+/* ── Tier 5: Alert Dialog ──────────────────────────────────────────────── */
+
+/* Async callback for alert_dialog_choose */
+static void _cb_alert_choose(GObject *src, GAsyncResult *res, gpointer data) {
+    GVal *cl = (GVal *)data;
+    GError *err = NULL;
+    int choice = gtk_alert_dialog_choose_finish(GTK_ALERT_DIALOG(src), res, &err);
+    if (err) { g_error_free(err); choice = -1; }
+    ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, (GVal)choice);
+}
+
+GVal gtk_ffi_alert_dialog_new(GVal message) {
+    const char *m = _gs(message);
+    GtkAlertDialog *dlg = gtk_alert_dialog_new("%s", m);
+    free((void *)m);
+    return (GVal)dlg;
+}
+
+GVal gtk_ffi_alert_dialog_set_detail(GVal dlg, GVal detail) {
+    const char *d = _gs(detail);
+    gtk_alert_dialog_set_detail(GTK_ALERT_DIALOG((void *)dlg), d);
+    free((void *)d);
+    return 0;
+}
+
+GVal gtk_ffi_alert_dialog_set_buttons(GVal dlg, GVal btn1, GVal btn2, GVal btn3) {
+    const char *b1 = _gs(btn1);
+    const char *b2 = btn2 ? _gs(btn2) : NULL;
+    const char *b3 = btn3 ? _gs(btn3) : NULL;
+    const char *buttons[4] = { b1, b2, b3, NULL };
+    /* Count actual buttons */
+    int n = 1;
+    if (b2) n = 2;
+    if (b3) n = 3;
+    const char *btns[4];
+    btns[0] = b1;
+    if (n >= 2) btns[1] = b2;
+    if (n >= 3) btns[2] = b3;
+    btns[n] = NULL;
+    gtk_alert_dialog_set_buttons(GTK_ALERT_DIALOG((void *)dlg), btns);
+    free((void *)b1);
+    if (b2) free((void *)b2);
+    if (b3) free((void *)b3);
+    return 0;
+}
+
+GVal gtk_ffi_alert_dialog_choose(GVal dlg, GVal win, GVal closure) {
+    gtk_alert_dialog_choose(GTK_ALERT_DIALOG((void *)dlg),
+                            GTK_WINDOW((void *)win), NULL,
+                            _cb_alert_choose, (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_alert_dialog_show(GVal dlg, GVal win) {
+    gtk_alert_dialog_show(GTK_ALERT_DIALOG((void *)dlg),
+                          GTK_WINDOW((void *)win));
+    return 0;
 }
