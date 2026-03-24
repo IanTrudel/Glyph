@@ -654,6 +654,26 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     flush_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("flush", runtime::RT_FLUSH, &flush_sig);
 
+    // glyph_bitset_new(capacity: i64) -> i64
+    let mut bitset_new_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    bitset_new_sig.params.push(AbiParam::new(types::I64));
+    bitset_new_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("bitset_new", runtime::RT_BITSET_NEW, &bitset_new_sig);
+
+    // glyph_bitset_set(bs: i64, idx: i64) -> i64
+    let mut bitset_set_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    bitset_set_sig.params.push(AbiParam::new(types::I64));
+    bitset_set_sig.params.push(AbiParam::new(types::I64));
+    bitset_set_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("bitset_set", runtime::RT_BITSET_SET, &bitset_set_sig);
+
+    // glyph_bitset_test(bs: i64, idx: i64) -> i64
+    let mut bitset_test_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    bitset_test_sig.params.push(AbiParam::new(types::I64));
+    bitset_test_sig.params.push(AbiParam::new(types::I64));
+    bitset_test_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("bitset_test", runtime::RT_BITSET_TEST, &bitset_test_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }

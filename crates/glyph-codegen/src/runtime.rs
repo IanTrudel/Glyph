@@ -40,6 +40,9 @@ pub const RT_SB_BUILD: &str = "glyph_sb_build";
 pub const RT_RAW_SET: &str = "glyph_raw_set";
 pub const RT_READ_LINE: &str = "glyph_read_line";
 pub const RT_FLUSH: &str = "glyph_flush";
+pub const RT_BITSET_NEW: &str = "glyph_bitset_new";
+pub const RT_BITSET_SET: &str = "glyph_bitset_set";
+pub const RT_BITSET_TEST: &str = "glyph_bitset_test";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -515,6 +518,22 @@ void* glyph_read_line(long long dummy) {
 long long glyph_flush(long long dummy) {
     fflush(stdout);
     return 0;
+}
+
+/* Bitset: calloc-based bit array for O(1) integer set membership. */
+long long glyph_bitset_new(long long capacity) {
+    long long words = (capacity + 63) / 64;
+    if (words < 1) words = 1;
+    unsigned long long* bits = (unsigned long long*)calloc(words, 8);
+    if (!bits) glyph_panic("out of memory");
+    return (long long)bits;
+}
+long long glyph_bitset_set(long long bs, long long idx) {
+    ((unsigned long long*)bs)[idx / 64] |= (1ULL << (idx % 64));
+    return 0;
+}
+long long glyph_bitset_test(long long bs, long long idx) {
+    return (((unsigned long long*)bs)[idx / 64] >> (idx % 64)) & 1;
 }
 
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */
