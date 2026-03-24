@@ -7,6 +7,7 @@
 !glyph.glyph
 !documentation.glyph
 !examples/**/*.glyph
+!libraries/**/*.glyph
 /Archives
 /Archives.7z
 glyph0
@@ -22,6 +23,7 @@ examples/life/life
 examples/glint/glint
 examples/gled/gled
 examples/api/api
+examples/gtk_hello/hello
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
