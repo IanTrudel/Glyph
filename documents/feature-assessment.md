@@ -74,7 +74,7 @@ From `glyph-spec.md` Section 8 (Standard Library) and Section 10 (Future Work):
 - **Dependent types** — not implemented
 - **WASM target** — not implemented
 - **Garbage collection / ownership** — not implemented
-- **Row polymorphism** in self-hosted type checker — partial (Rust compiler has it, self-hosted does not)
+- **Row polymorphism** in self-hosted type checker — implemented (unify_records, unify_row_vars, open record types)
 - **Trait system** — parser tokens exist, no semantics
 - **FFI safety (`@unsafe` annotations)** — not implemented
 - **Multi-DB `ATTACH`** — not implemented (library linking uses copy, not attach)
@@ -122,7 +122,8 @@ From `glyph-spec.md` Section 8 (Standard Library) and Section 10 (Future Work):
 - Hindley-Milner with let-polymorphism and generalization
 - Pool-based type nodes, union-find substitution
 - 16 registered builtins with polymorphic signatures
-- **Gaps**: No row polymorphism (Rust compiler has it), `?`/`!` not fully type-checked, no trait support, type errors are advisory (don't gate builds for small programs but do for <200 defs)
+- Row polymorphism implemented (`unify_records`, `unify_row_vars`, `fields_not_in`, open record types with rest variables)
+- **Gaps**: `?`/`!` not fully type-checked, no trait support, type errors are advisory (don't gate builds for small programs but do for <200 defs), generalization bug (BUG-007) prevents polymorphic utility functions
 
 #### MIR Lowering — **Mature**
 - 92 definitions in `lower` namespace + 104 in `mir` namespace
@@ -172,7 +173,7 @@ From `glyph-spec.md` Section 8 (Standard Library) and Section 10 (Future Work):
 |-----------|--------|-------|
 | Tokenizer | A | Production-quality |
 | Parser | A | Production-quality, good errors |
-| Type Checker | C+ | Works for inference, missing row poly and traits |
+| Type Checker | B- | HM + row polymorphism working, no traits, generalization bug (BUG-007) |
 | MIR Lowering | A- | Comprehensive, one dead arm (compose) |
 | C Codegen | B+ | Works well, but embedded-C-in-strings is fragile |
 | LLVM Codegen | B+ | Complete but text-mode IR (not LLVM C API) |
@@ -252,13 +253,13 @@ The compiler successfully compiles itself and real applications (including a GUI
 
 **Estimated scope:** ~20 lines of modification to `cmd_build` and dispatch
 
-#### 4.7 Type Checker: Row Polymorphism
+#### 4.7 Type Checker: Generalization Bug (BUG-007)
 
-**Why:** The Rust compiler has row polymorphism for records (`{name:S ..}` means "has at least a name field"). The self-hosted compiler lacks it. This means the self-hosted type checker rejects valid code that accesses a record field when the full record shape isn't known.
+**Why:** Row polymorphism is already implemented (`unify_records`, `unify_row_vars`, `fields_not_in`, open record types with rest variables). However, the type checker has a generalization bug (BUG-007) where `tc_collect_fv` fails to find free type variables in polymorphic functions, preventing generalization. This is likely caused by C codegen field offset disambiguation errors when reading TyNode `.tag` values from the type pool. See `documents/type-checker-generalization-bug.md` for full analysis.
 
-**Recommendation:** Add `ty_row_extend` and `ty_row_empty` type tags, unification for row types, and a `..` syntax in record type annotations. The Rust implementation in `crates/glyph-typeck/src/unify.rs` is a reference.
+**Recommendation:** Fix the field offset disambiguation in C codegen (Option A/C in BUG-007), or migrate the type checker to gen=2 struct codegen which eliminates the ambiguity entirely.
 
-**Estimated scope:** ~20-30 new type checker definitions
+**Estimated scope:** Depends on approach — gen=2 migration is ~96 definitions
 
 #### 4.8 For-Loops with Range
 
@@ -375,7 +376,7 @@ This is a large feature but would unlock generic `sort`, `==` on records, and `p
 | **P2** | HashMap performance | 1 day | Medium — only matters for data-heavy programs |
 | **P2** | For-loops with range | 2 days | Medium — ergonomic improvement |
 | **P2** | Const definitions | 1 day | Medium — eliminates zero-arg gotcha |
-| **P3** | Row polymorphism in self-hosted TC | 3-5 days | Medium — type checker completeness |
+| **P3** | Fix generalization bug (BUG-007) | 3-5 days | Medium — enables polymorphic utility functions |
 | **P3** | Better runtime error messages | 2 days | Medium — developer experience |
 | **P4** | Minimal trait system | 1-2 weeks | High but very expensive |
 | **P4** | True incremental compilation | 1 week | Medium — build speed at scale |
