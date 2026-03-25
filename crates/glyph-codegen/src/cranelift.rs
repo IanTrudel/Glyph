@@ -395,7 +395,22 @@ impl CodegenContext {
                             .or_else(|| self.func_ids.get(&format!("glyph_{name}")).copied());
                         if let Some(func_id) = resolved_id {
                             let func_ref = self.module.declare_func_in_func(func_id, builder.func);
-                            let call = builder.ins().call(func_ref, &arg_vals);
+                            // Coerce args to match callee's declared parameter types (I8↔I64)
+                            let sig = builder.func.dfg.ext_funcs[func_ref].signature;
+                            let coerced_args: Vec<Value> = arg_vals.iter().enumerate().map(|(i, &v)| {
+                                let v_ty = builder.func.dfg.value_type(v);
+                                let p_ty = builder.func.dfg.signatures[sig].params[i].value_type;
+                                if v_ty == p_ty {
+                                    v
+                                } else if v_ty.bits() < p_ty.bits() {
+                                    builder.ins().uextend(p_ty, v)
+                                } else if v_ty.bits() > p_ty.bits() {
+                                    builder.ins().ireduce(p_ty, v)
+                                } else {
+                                    v
+                                }
+                            }).collect();
+                            let call = builder.ins().call(func_ref, &coerced_args);
                             let results = builder.inst_results(call);
                             if results.is_empty() {
                                 builder.ins().iconst(types::I64, 0)

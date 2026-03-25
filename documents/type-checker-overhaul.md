@@ -271,10 +271,17 @@ storing strings in `ns` field instead of AST node indices. Fixed in
 
 ### Tier 3 — Significant effort, architectural (planned)
 
-**3a. Bool/Int/Void separation** — Remove `int_like` from `unify_tags`.
-Expect ~99 new type errors in self-compilation (matching Rust compiler).
-Each error is a real type inconsistency that needs a code fix. High effort
-but fundamentally improves type safety.
+**3a. Bool/Int/Void separation** — Phase 1 DONE. Phase 2+ deferred.
+
+Phase 1 (DONE): Changed 55 definitions so predicate functions return
+`true`/`false` instead of `1`/`0`, and removed redundant `== 1` after
+`glyph_str_eq` calls. Eliminated all 99 `B vs I` / `I vs B` type errors
+reported by the Rust compiler. Also fixed Cranelift codegen to coerce
+I8↔I64 at function call sites (was only done at assignment/return).
+
+Phase 2 (deferred): Remove `int_like` from `unify_tags` in self-hosted
+type checker. Phase 3 (deferred): Separate Bool from Int in `V vs I`
+contexts (requires `Never` type for diverging functions).
 
 **3b. Gen=2 migration for type checker** — Move 20+ type checker functions
 to gen=2 struct codegen. Eliminates BUG-005 class (field offset
@@ -330,3 +337,43 @@ tc_err `S vs I` warnings: **ELIMINATED** (0 errors during build and test)
 
 Definitions modified:
 - `tc_type_detail` — added `subst_walk` on `node.n1` and `node.n2` before `pool_get`, so type error messages show resolved types instead of stale `?` variables
+
+**2026-03-25 — Tier 3a Phase 1 applied (315/315 tests + 4-stage bootstrap)**
+
+B vs I / I vs B type errors: **99 → 0** (eliminated entirely)
+Total Rust type checker errors: **117 → 26** (remaining are V vs I, S vs [S], enum variant, row type)
+
+Two categories of changes:
+
+1. Removed redundant `== 1` after `glyph_str_eq` calls (37 functions):
+   `ns_from_prefix`, `nfp2`–`nfp7`, `has_flag`, `fv_is_bound`, `fv_is_seen`,
+   `is_za_fn`, `find_flag`, `ffc_idx`, `ffc_search`, `env_lookup_at`,
+   `mir_lookup_var_at`, `ll_fidx_loop`, `ll_find_str_idx`, `ll_field_lltype`,
+   `strip_ext`, `str_replace_loop`, `cg_cov_increment`, `migrate_history`,
+   `migrate_lib_dep`, `migrate_ns_col`, `import_path_ns`, `filter_test_args`,
+   `cmd_ls`, `cmd_sql`, `cdp_check_op`, `cg_cov_collect_loop`,
+   `cg_cov_collect_subs`, `fix_ext_stmts`, `lower_ident`, `walk_free_vars`
+
+2. Changed predicate returns from `0`/`1` to `false`/`true` (24 functions):
+   `has_flag`, `fv_is_bound`, `fv_is_seen`, `is_za_fn`, `has_glyph_prefix`,
+   `is_float_ctype`, `fsn_fields_eq_loop`, `is_runtime_fn`–`is_runtime_fn6`,
+   `cg_needs_dummy_arg`, `lib_seen`, `needs_sqlite_loop`, `scan_args_for_str`,
+   `scan_stmts_for_str`, `str_lt_loop`, `types_equal`, `types_equal_loop`,
+   `all_fields_in`, `fsn_fields_eq`, `scan_str_has_interp`, `is_str_ret_fn`,
+   `is_float_ret_fn`, `is_arith_op`, `tco_is_ret_blk`
+
+3. Fixed callers that stored predicate results with `== 1` comparisons (6 functions):
+   `cmd_dump` (`has_budget == 0` → `!has_budget`), `cmd_sql` (`is_select`
+   changed to Bool), `filter_test_args` (`skip` changed to Bool),
+   `cdp_check_op`, `ll_extern_declares` (`skip` changed to Bool),
+   `fix_ext_stmts` (`== 0` → `!`)
+
+4. Cranelift codegen fix: added I8↔I64 coercion at function call sites
+   (`cranelift.rs:386`). The existing coercion only handled variable
+   assignment and function return — call arguments were not coerced,
+   causing Cranelift verifier errors when Bool values were passed as Int
+   parameters or vice versa.
+
+New test: `test_bool_predicates` — 30 assertions covering `has_flag`,
+`is_runtime_fn`, `has_glyph_prefix`, `is_float_ctype`, `is_arith_op`,
+`types_equal`, `str_lt_loop`, `fv_is_bound`, `fv_is_seen`, `lib_seen`
