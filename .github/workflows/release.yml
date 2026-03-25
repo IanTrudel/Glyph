@@ -18,7 +18,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build llvm clang sqlite3
+          sudo apt-get install -y ninja-build llvm clang sqlite3 libgc-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
