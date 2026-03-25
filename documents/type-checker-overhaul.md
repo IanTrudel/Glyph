@@ -227,11 +227,17 @@ list between warm and sigs passes. The sigs pass tc_err messages are printed
 but the types are used as-is (partially resolved). The C codegen doesn't
 depend on exact types for most operations.
 
-**Fix approach:** These errors would be eliminated by either:
-- Adding type signatures to the ~4 affected functions (targeted)
-- Fixing Bool/Int/Void conflation in `unify_tags` (Issue #6, broad impact)
-- Making the sigs pass inherit resolved types from the warm pass instead of
-  re-inferring from scratch (architectural change)
+**Root cause found and FIXED:** `st_let_destr` was the only AST node kind
+where the `ns` field stored raw strings (field names) instead of AST node
+indices. `lld_loop` treated `node.ns` elements as strings, while every other
+lowering function treated them as int indices. The HM type checker unified
+the AstNode record type across all usages and hit `[S] vs [I]` on the `ns`
+field's element type.
+
+**Fix:** `pdf_loop` now creates `ex_ident` AST nodes for each field name and
+stores their pool indices in `ns`. `lld_loop` reads `ast[names[i]].sval` to
+get the field name. This makes `st_let_destr` consistent with all other AST
+node kinds.
 
 ---
 
@@ -259,9 +265,9 @@ resolution.
 error messages show resolved types instead of stale variables. Also consider
 recursive detail for nested types.
 
-**2b. Eliminate tc_err warnings** — Add type signatures to the ~4 functions
-that produce `S vs I` errors during sigs pass. This is the targeted fix;
-the broad fix (Issue #6) is Tier 3.
+**2b. ~~Eliminate tc_err warnings~~** — DONE. Root cause was `st_let_destr`
+storing strings in `ns` field instead of AST node indices. Fixed in
+`pdf_loop` and `lld_loop`. All `S vs I` errors eliminated.
 
 ### Tier 3 — Significant effort, architectural (planned)
 
@@ -311,3 +317,11 @@ Definitions modified:
 - `resolve_tuple_elems` — now delegates to `rte_loop` (fixes reversed element list)
 - `instantiate` — added `subst_walk` at entry (defensive, eliminates fragile assumption)
 - `infer_ctor_pattern` — added `subst_walk` on `ctor_ty_idx` (defensive)
+- `infer_fn_params` — forward-accumulating via `ifp_loop`
+- `infer_lambda_params_ty` — forward-accumulating via `ilpt_loop`
+- `build_fn_type` — forward iteration (matching new forward-order param arrays)
+- `pdf_loop` — stores `ex_ident` AST node indices instead of raw strings in `ns`
+- `lld_loop` — reads `ast[names[i]].sval` instead of treating `names[i]` as string
+- `lower_let_destr` — passes `ast` to `lld_loop`
+
+tc_err `S vs I` warnings: **ELIMINATED** (0 errors during build and test)
