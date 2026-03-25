@@ -261,9 +261,9 @@ resolution.
 
 ### Tier 2 — Medium effort, high value (next session)
 
-**2a. Fix `tc_type_detail`** — Add `subst_walk` on `node.n1`/`node.n2` so
-error messages show resolved types instead of stale variables. Also consider
-recursive detail for nested types.
+**2a. ~~Fix `tc_type_detail`~~** — DONE. Added `subst_walk` on `node.n1`/`node.n2`
+so error messages show resolved types instead of stale variables. Before:
+`[?] vs I`, `Fn(? -> ?)`. After: `[S] vs I`, `Fn(S -> I)`.
 
 **2b. ~~Eliminate tc_err warnings~~** — DONE. Root cause was `st_let_destr`
 storing strings in `ns` field instead of AST node indices. Fixed in
@@ -325,3 +325,8 @@ Definitions modified:
 - `lower_let_destr` — passes `ast` to `lld_loop`
 
 tc_err `S vs I` warnings: **ELIMINATED** (0 errors during build and test)
+
+**2026-03-25 — Tier 2a fix applied (316/316 tests + 4-stage bootstrap)**
+
+Definitions modified:
+- `tc_type_detail` — added `subst_walk` on `node.n1` and `node.n2` before `pool_get`, so type error messages show resolved types instead of stale `?` variables
