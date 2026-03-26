@@ -40,18 +40,31 @@ jobs:
       - name: Build (full bootstrap)
         run: ninja bootstrap
 
-      - name: Test
+      - name: Test compiler
         run: |
           ./glyph test glyph.glyph
           ./glyph test documentation.glyph
 
+      - name: Test libraries
+        run: |
+          for lib in libraries/*.glyph; do
+            count=$(sqlite3 "$lib" "SELECT COUNT(*) FROM def WHERE kind='test'")
+            if [ "$count" -gt 0 ]; then
+              echo "Testing $lib ($count tests)"
+              ./glyph test "$lib"
+            else
+              echo "Skipping $lib (no tests)"
+            fi
+          done
+
       - name: Package
         run: |
-          mkdir -p dist/skills
+          mkdir -p dist/skills dist/libraries
           cp glyph dist/
           cp documentation.glyph dist/
           cp .claude/skills/glyph/* dist/skills/
-          tar -czf dist/glyph-linux-x86_64.tar.gz -C dist glyph documentation.glyph skills/
+          cp libraries/* dist/libraries/
+          tar -czf dist/glyph-linux-x86_64.tar.gz -C dist glyph documentation.glyph skills/ libraries/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
