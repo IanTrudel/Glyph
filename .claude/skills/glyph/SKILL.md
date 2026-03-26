@@ -252,11 +252,11 @@ Records the library path in `app.glyph`'s `lib_dep` table. At build time, the co
 
 | Library | Defs | Description | FFI |
 |---------|------|-------------|-----|
-| `libraries/stdlib.glyph` | ~30 | Core utilities: `map`, `filter`, `fold`, `join`, `sort`, `range` | None |
-| `libraries/json.glyph` | ~49 | JSON parser/generator. `json_parse`, `json_gen`, `json_get`, `jb_*` builders | None |
-| `libraries/network.glyph` | ~23 | TCP server: `net_listen`, `net_accept`, `net_respond`, HTTP parsing | `network_ffi.c` |
-| `libraries/web.glyph` | ~60 | Web framework: routing, middleware, CRUD helpers, state store | `web_ffi.c` |
-| `libraries/gtk.glyph` | ~20 | GTK4 bindings: windows, buttons, labels, text views, signals | `gtk_ffi.c` |
+| `libraries/stdlib.glyph` | 56 | Core utilities: `map`, `filter`, `fold`, `join`, `sort`, `range` | None |
+| `libraries/json.glyph` | 82 | JSON parser/generator. `json_parse`, `json_gen`, `json_get`, `jb_*` builders | None |
+| `libraries/network.glyph` | 15 | TCP server: `net_listen`, `net_accept`, `net_respond`, HTTP parsing | `network_ffi.c` |
+| `libraries/web.glyph` | 61 | Web framework: routing, middleware, CRUD helpers, state store | `web_ffi.c` |
+| `libraries/gtk.glyph` | 12 | GTK4 bindings: windows, buttons, labels, text views, signals | `gtk_ffi.c` |
 
 **Usage:**
 ```bash

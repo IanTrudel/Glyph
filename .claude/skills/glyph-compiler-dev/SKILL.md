@@ -37,7 +37,7 @@ glyph2 build glyph.glyph --emit=llvm → glyph (final LLVM-compiled binary)
 | Language syntax/parsing | `glyph.glyph` (self-hosted); Rust only if bootstrap needs it | `ninja` |
 | Type system | `glyph.glyph` (self-hosted); Rust `glyph-typeck` only for bootstrap | `ninja` |
 | MIR lowering | `glyph.glyph` primarily | `ninja` |
-| C codegen (gen=1/gen=2) | `glyph.glyph` only | `ninja` |
+| C codegen (incl. struct codegen) | `glyph.glyph` only | `ninja` |
 | Cranelift codegen | Rust: `glyph-codegen` (maintenance only) | `cargo test -p glyph-codegen` |
 | Runtime functions | Both: `runtime.rs` + `cg_runtime_*` (must stay in sync for bootstrap) | See [recipes](modification-recipes.md) |
 | CLI commands | `glyph.glyph` | `ninja` |
@@ -52,7 +52,7 @@ glyph2 build glyph.glyph --emit=llvm → glyph (final LLVM-compiled binary)
 # Rust compiler
 cargo build && cargo test              # Build + 73 tests
 cargo run -- build app.glyph           # Test against a program
-cargo run -- build app.glyph --gen=2   # Build with gen=2 struct codegen
+cargo run -- build app.glyph --gen=N   # Build with specific generation
 
 # Self-hosted compiler (full bootstrap)
 ninja                                   # 4-stage: glyph0 → glyph1 → glyph2 → glyph
@@ -60,7 +60,7 @@ ninja test                              # Rust tests + self-hosted regression
 
 # Quick iteration on self-hosted changes (MCP preferred — see recipes)
 ./glyph0 build glyph.glyph --full --gen=1    # Rebuild gen=1 only
-./glyph0 build glyph.glyph --full --gen=2    # Rebuild with gen=2 overrides
+./glyph0 build glyph.glyph --full             # Full rebuild
 ./glyph test glyph.glyph                     # Run full self-hosted test suite (315 tests)
 
 # MCP workflow (primary — no shell escaping, structured errors)
@@ -115,7 +115,7 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 |---------|-----|-----------|
 | `{` in string literals | Triggers Rust compiler's string interpolation | Use `cg_lbrace()`/`cg_rbrace()` or `"\{"` in self-hosted |
 | Zero-arg side-effect fn | Evaluated eagerly (treated as constant) | Add dummy param: `usage u = ...` |
-| Self-hosted can't self-build gen=2 | Sees both gen=1 and gen=2 overrides with same names | Use `./glyph0 build --gen=2` |
+| Gen=2 historical | All gen=2 overrides merged into gen=1; `--gen=2` flag no longer needed | Struct codegen is now default at gen=1 |
 | `tokens=0` from self-hosted | Self-hosted doesn't compute BLAKE3 hash or BPE tokens | Run `cargo run -- build --full` for correct values |
 | Runtime fn names in Cranelift | Runtime functions (e.g., `int_to_str`) are resolved with or without `glyph_` prefix | User code can call `int_to_str(x)` directly; Cranelift resolves to `glyph_int_to_str` |
 | MIR has no type info | Build pipeline skips type system (available via `glyph check`) | Runtime errors only; `local_types` tracks strings heuristically |
@@ -161,7 +161,7 @@ segfault in count_nl
 
 **MIR:** `cargo run -- build app.glyph --emit-mir` dumps MIR from the Rust compiler. The self-hosted compiler has no MIR dump.
 
-**Field offsets:** If struct access gives wrong values, check alphabetical field order (fields are sorted A-Z, 0-indexed). Verify gen=2 `build_local_types` tagged the local.
+**Field offsets:** If struct access gives wrong values, check alphabetical field order (fields are sorted A-Z, 0-indexed). Verify `build_local_types` tagged the local.
 
 **Type system:** `./glyph check app.glyph` runs inference. Known issue: crashes on some record patterns.
 

@@ -6,7 +6,7 @@
 
 The self-hosted compiler is stored as rows in `glyph.glyph` (a SQLite database). It reimplements the Rust compiler's pipeline in Glyph itself, using C code generation instead of Cranelift.
 
-**Pipeline (gen=2):**
+**Pipeline:**
 ```
 glyph_db_open → read_fn_defs + read_type_defs + read_externs
   → parse_all_fns (batch tokenize+parse)
@@ -42,7 +42,7 @@ Color       = {r:I, g:I, b:I}                          -- 3 fields (RGB)
 Light       = {ldir:[F], lint:F}                       -- 2 fields (light source)
 ```
 
-Fields sorted alphabetically (BTreeMap convention). At C level: `typedef struct` (gen=2) or offset-based `((long long*)p)[N]` (gen=1).
+Fields sorted alphabetically (BTreeMap convention). At C level: named types use `typedef struct`, anonymous records use offset-based `((long long*)p)[N]`.
 
 ## Subsystem Map
 
@@ -92,7 +92,7 @@ Each level has a `*_loop` companion for left-recursive iteration.
 
 ### 3. Type System (~171 functions)
 
-**Available via `glyph check` but not called during `glyph build`.** The `cmd_check` (gen=2) override runs `tc_pre_register` → `tc_infer_all` → `tc_report_errors`. Record type unification has known bugs (crashes on some record patterns), so typecheck is advisory only.
+**Available via `glyph check` but not called during `glyph build`.** `cmd_check` runs `tc_pre_register` → `tc_infer_all` → `tc_report_errors`. Record type unification has known bugs (crashes on some record patterns), so typecheck is advisory only.
 
 **Engine:** `mk_engine()` → record with `bindings, env_marks, env_names, env_types, errors, next_var, parent, ty_pool`
 **TyNode:** `{tag:I, n1:I, n2:I, ns:[I], sval:S}` stored in flat pool array
@@ -140,7 +140,7 @@ Renames `ok_func_ref` operands from user name to `glyph_`-prefixed wrapper name.
 
 ### 6. C Code Generation (~115 functions)
 
-**Entry:** `cg_program(mirs)` (gen=1) or `cg_program(mirs, struct_map)` (gen=2)
+**Entry:** `cg_program(mirs, struct_map)`
 
 **Program structure:** `cg_preamble()` + `cg_forward_decls` + `cg_functions` + `cg_main_wrapper()`
 
@@ -167,16 +167,16 @@ Renames `ok_func_ref` operands from user name to `glyph_`-prefixed wrapper name.
 
 **Runtime detection chain:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6` — 6 chained functions checking if a name is a built-in runtime function.
 
-### 7. Gen=2 Struct Codegen (47 definitions)
+### 7. Struct Codegen (~47 definitions)
 
-Gen=2 overrides gen=1 counterparts for struct-aware codegen. Built with `glyph0 --gen=2`.
+Named record types get `typedef struct` in generated C (formerly gen=2 overrides, now merged into gen=1).
 
 **Type reading:** `read_type_defs(db)`, `parse_struct_fields`/`psf_*` — read type defs from DB
 **Struct map:** `build_struct_map(type_rows)`, `find_struct_name`/`fsn_*` — map sorted field sets to type names
 **Typedef gen:** `cg_all_typedefs` → `typedef struct { long long f1; ... } Glyph_Name;`
 **Local type tracking:** `build_local_types(mir, struct_map)` → scan MIR for record aggregates matching types, propagate through `rv_use` copies. **Field-access tagging:** `blt_collect_fa_*` scans all `rv_field` accesses per local; `blt_tag_by_fa` matches accessed field sets against struct map to tag parameters and other untagged locals.
 **Codegen chain:** `cg_function2 → cg_blocks2 → cg_block2 → cg_stmt2 → cg_field_stmt2/cg_aggregate_stmt2`
-**Pipeline overrides:** `compile_db`, `build_program`, `build_test_program`, `cg_program`, `cmd_build`, `cmd_test`, `cmd_check`
+**Pipeline:** `compile_db`, `build_program`, `build_test_program`, `cg_program`, `cmd_build`, `cmd_test`, `cmd_check`
 
 ### 8. Extern System (~24 functions)
 
@@ -247,8 +247,8 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 
 ### 9. CLI Dispatch (~45 functions)
 
-**Entry:** `main → dispatch_cmd → dispatch_cmd2 → dispatch_cmd3 → dispatch_cmd4`
-**21 commands:** init, build, run, test, cover, get, put, rm, ls, find, deps, rdeps, stat, dump, sql, extern, check, undo, history, export, import, migrate, link, mcp
+**Entry:** `main → dispatch_cmd → dispatch_cmd2 → dispatch_cmd3`
+**30 commands:** init, build, run, test, cover, get, put, rm, ls, find, deps, rdeps, stat, dump, sql, extern, check, undo, history, export, import, migrate, link, mcp, version, update, unlink, use, unuse, libs
 **DB pattern:** `glyph_db_open(path) → glyph_db_exec/query_rows/query_one → glyph_db_close`
 **Put upserts:** DELETE+INSERT (avoids UPDATE triggers that call unavailable custom functions)
 
@@ -296,7 +296,7 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 | `s2()` nesting limit ~7 | Stack overflow in Cranelift binary | Combine at same nesting level |
 | No stdin support | `read_file` uses fseek | Use `-b` flag or temp files |
 | Boehm GC | `malloc`/`realloc`/`free` → `GC_malloc`/`GC_realloc`/`GC_free` via preprocessor macros | Link with `-lgc`; Rust-compiled binaries (glyph0/glyph1) do NOT have GC |
-| Self-hosted can't self-build gen=2 | Sees both gen=1 and gen=2 overrides | Use `glyph0 --gen=2` |
+| Gen=2 historical | All gen=2 overrides merged into gen=1; `--gen=2` flag no longer needed | All struct codegen is now default at gen=1 |
 | `tokens=0` from self-hosted | No BPE computation | `cargo run -- build --full` for correct values |
 
 ## Function Index by Subsystem

@@ -16,7 +16,7 @@ Both compilers embed the C runtime, so both must be updated.
 5. Add C implementation to the appropriate `cg_runtime_*` function in glyph.glyph
 6. Add to `is_runtime_fn` chain (extend the last `fn6`, or add `fn7` and chain it)
 7. Add to `cg_fn_name` mapping if the name needs `glyph_` prefix
-8. Rebuild: `./glyph0 build glyph.glyph --full --gen=2`
+8. Rebuild: `./glyph0 build glyph.glyph --full`
 9. Test: `./glyph test glyph.glyph`
 
 **Runtime chain note:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6`. Each handles ~5-8 names. The last function in the chain returns 0 (not runtime). To add fn7: write `is_runtime_fn7 name = ...`, update fn6's default case to call `is_runtime_fn7(name)` instead of returning 0.
@@ -62,7 +62,7 @@ Both compilers embed the C runtime, so both must be updated.
    ./glyph put glyph.glyph fn -f /tmp/cmd_name.gl
    ```
 
-5. Rebuild: `./glyph0 build glyph.glyph --full --gen=2`
+5. Rebuild: `./glyph0 build glyph.glyph --full`
 
 6. Test: `./glyph name test.glyph`
 
@@ -103,7 +103,7 @@ Both compilers embed the C runtime, so both must be updated.
 
 6. **Rebuild the compiler:**
    ```bash
-   ./glyph0 build glyph.glyph --full --gen=2
+   ./glyph0 build glyph.glyph --full
    ```
 
 7. **Verify:**
@@ -112,31 +112,19 @@ Both compilers embed the C runtime, so both must be updated.
    ./glyph test glyph.glyph    # full test suite (315 tests)
    ```
 
-## Recipe 5: Add a Gen=2 Override
+## Recipe 5: Generational Versioning
 
-Gen=2 overrides replace gen=1 functions when building with `--gen=2`.
+The `--gen N` flag selects the highest `gen <= N` per (name, kind). Currently all compiler defs are gen=1. The gen system exists for application programs that want to overlay definitions.
 
-1. **Read the gen=1 function** to understand what to override:
+1. **Insert with explicit generation:**
    ```bash
-   ./glyph get glyph.glyph fn_name
+   ./glyph put app.glyph fn -f /tmp/fn_name.gl --gen 2
    ```
+   Without `--gen`, auto-detects the highest existing gen for that name/kind (or defaults to 1 for new definitions).
 
-2. **Write the gen=2 version.** If it calls gen=2-only functions, those must also exist.
-
-3. **Insert with gen=2:**
+2. **Build with specific generation:**
    ```bash
-   ./glyph put glyph.glyph fn -f /tmp/fn_name.gl --gen 2
-   ```
-   The `--gen N` flag sets the generation directly on insert. Without `--gen`, it auto-detects the highest existing gen for that name/kind (or defaults to 1 for new definitions).
-
-4. **Rebuild with gen=2:**
-   ```bash
-   ./glyph0 build glyph.glyph --full --gen=2
-   ```
-
-5. **Verify gen=1 still works:**
-   ```bash
-   ./glyph0 build glyph.glyph --full --gen=1
+   ./glyph build app.glyph --gen=2
    ```
 
 ## Recipe 6: Verify the Bootstrap Chain
@@ -144,24 +132,29 @@ Gen=2 overrides replace gen=1 functions when building with `--gen=2`.
 After any compiler change, verify the full bootstrap:
 
 ```bash
-# Stage 0: Build Rust compiler
-cargo build --release && cp target/release/glyph glyph0
-
-# Stage 1: glyph0 compiles glyph.glyph (gen=2) via Cranelift → glyph
-./glyph0 build glyph.glyph --full --gen=2
-
-# Verify the self-hosted compiler works
-./glyph build test_comprehensive.glyph /tmp/test_comp && /tmp/test_comp
-./glyph stat test_comprehensive.glyph
-```
-
-Or use ninja for the standard chain:
-```bash
 ninja                    # 4-stage: glyph0 → glyph1 → glyph2 → glyph
 ninja test               # Runs all tests
 ```
 
-**Note:** The bootstrap is 4-stage: `glyph0` (Rust/Cranelift) → `glyph1` (Cranelift binary) → `glyph2` (C-codegen binary) → `glyph` (LLVM-compiled final binary). The self-hosted compiler cannot self-build with `--gen=2` because it sees both gen=1 and gen=2 overrides with the same names.
+Or manually:
+```bash
+# Stage 0: Build Rust compiler
+cargo build --release && cp target/release/glyph glyph0
+
+# Stage 1: glyph0 compiles glyph.glyph via Cranelift → glyph1
+./glyph0 build glyph.glyph --full && mv glyph glyph1
+
+# Stage 2: glyph1 self-builds via C codegen → glyph2
+./glyph1 build glyph.glyph glyph2
+
+# Stage 3: glyph2 re-builds via LLVM → glyph (final)
+./glyph2 build glyph.glyph glyph --emit=llvm
+
+# Verify
+./glyph stat glyph.glyph
+```
+
+**Note:** The bootstrap is 4-stage: `glyph0` (Rust/Cranelift) → `glyph1` (Cranelift binary) → `glyph2` (C-codegen binary) → `glyph` (LLVM-compiled final binary).
 
 ## Recipe 7: Add a New Type Definition (Self-Hosted)
 
@@ -175,9 +168,9 @@ ninja test               # Runs all tests
    - Use unique field names to avoid offset ambiguity across types
    - If sharing field names with existing types, use unique prefixes (e.g., `xfield` instead of `field`)
 
-3. **Rebuild with gen=2** to get struct codegen:
+3. **Rebuild:**
    ```bash
-   ./glyph0 build glyph.glyph --full --gen=2
+   ./glyph0 build glyph.glyph --full
    ```
 
 4. **Usage in functions:**
@@ -225,7 +218,7 @@ ninja test               # Runs all tests
 
 3. **Update C codegen** — add case in `cg_stmt`/`cg_stmt2` for the new `skind`
 
-4. **Update gen=2 codegen** if applicable — add case in `cg_stmt2`
+4. **Update struct codegen** if applicable — add case in `cg_stmt2`
 
 5. **Rust side:** Add `Rvalue` variant in `ir.rs`, emit in `lower.rs`, handle in `cranelift.rs`
 
@@ -252,11 +245,11 @@ ninja test               # Runs all tests
    # (avoids shell escaping issues with {, !, ", \)
    ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
 
-   # Gen=2 override — use --gen flag
+   # Specific generation — use --gen flag
    ./glyph put glyph.glyph fn -f /tmp/my_fn.gl --gen 2
    ```
 
-5. **Rebuild + test:** `./glyph0 build glyph.glyph --full --gen=2`
+5. **Rebuild + test:** `./glyph0 build glyph.glyph --full`
 
 **Pitfall:** The `parse_atom` function uses a chain of `match k == tk_X` with `true ->` / `_ ->` branches. Each subsequent case is indented one more level. If you insert a new case, all subsequent cases must be re-indented. Getting this wrong causes silent misparsing or segfaults.
 
@@ -281,7 +274,7 @@ mcp__glyph__put_def(db="glyph.glyph", name="fn_name", kind="fn",
 # 2. Insert from file
 ./glyph put glyph.glyph fn -f /tmp/fn_name.gl
 
-# 3. For gen=2 overrides, use --gen flag
+# 3. For specific generation, use --gen flag
 ./glyph put glyph.glyph fn -f /tmp/fn_name.gl --gen 2
 ```
 
@@ -291,7 +284,7 @@ mcp__glyph__put_def(db="glyph.glyph", name="fn_name", kind="fn",
 - For inline `-b`, single quotes protect most characters; use `'\''` for literal single quotes
 - `\{` in Glyph source is a literal brace (not interpolation) — safe in files, tricky in shell strings
 
-**Gen flag:** `./glyph put --gen 2` inserts directly at gen=2 (no manual SQL UPDATE needed). Without `--gen`, auto-detects the highest existing gen for that name/kind, or defaults to gen=1 for new definitions.
+**Gen flag:** `./glyph put --gen N` inserts directly at the specified generation. Without `--gen`, auto-detects the highest existing gen for that name/kind, or defaults to gen=1 for new definitions.
 
 **Batch inserts:** Write each definition to its own temp file and run `./glyph put -f` for each. Or use `sqlite3` with `.read` on a SQL file for bulk operations.
 
@@ -336,9 +329,9 @@ The self-hosted compiler has no MIR dump, but you can inspect the generated C to
 ### Debugging field offset issues
 If struct field access gives wrong values:
 1. Check `/tmp/glyph_out.c` for the field access pattern
-2. Look for `((long long*)_N)[K]` (gen=1) or `((Glyph_Type*)_N)->field` (gen=2)
+2. Look for `((long long*)_N)[K]` (offset-based) or `((Glyph_Type*)_N)->field` (struct codegen)
 3. Verify field offset: fields are sorted alphabetically, 0-indexed
-4. If gen=2, verify `build_local_types` tagged the local correctly
+4. For struct codegen, verify `build_local_types` tagged the local correctly
 
 ### Debugging type system (`glyph check`)
 ```bash
@@ -482,7 +475,7 @@ mcp__glyph__sql(db="glyph.glyph", query="SELECT name FROM def WHERE kind='fn' AN
 # Write from file (for multi-line functions)
 ./glyph put glyph.glyph fn -f /tmp/my_fn.gl
 
-# Write with explicit generation (gen=2 override)
+# Write with explicit generation
 ./glyph put glyph.glyph fn -f /tmp/my_fn.gl --gen 2
 
 # List definitions matching a pattern
