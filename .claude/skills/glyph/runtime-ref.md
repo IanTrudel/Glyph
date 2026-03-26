@@ -90,6 +90,7 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `array_set` | `[I] -> I -> I -> V` | Set element at index |
 | `array_pop` | `[I] -> I` | Remove and return last (panics if empty) |
 | `array_bounds_check` | `I -> I -> V` | Check `[0..len)`, panic if OOB |
+| `raw_set` | `*V -> I -> I -> V` | Set value at raw pointer offset |
 | `array_reverse` | `[I] -> [I]` | Reverse array in-place, returns same array |
 | `array_slice` | `[I] -> I -> I -> [I]` | New array from `[start..end)` (clamps) |
 | `array_index_of` | `[I] -> I -> I` | Find element index (-1 if not found) |
@@ -107,8 +108,10 @@ Hash map with string keys. All values are `I` (GVal) internally.
 | `hm_del` | `*V -> S -> V` | Remove entry |
 | `hm_keys` | `*V -> [S]` | Extract all keys as array |
 | `hm_len` | `*V -> I` | Number of entries |
+| `hm_get_float` | `*V -> S -> F` | Lookup float value (0.0 if absent) |
+| `hm_set_float` | `*V -> S -> F -> V` | Insert or update float entry |
 
-Note: Current implementation uses string keys only (`hm_keq` does string equality). Values are stored as `I` (GVal/intptr_t) — store pointers or integers.
+Note: Current implementation uses string keys only (`hm_keq` does string equality). Values are stored as `I` (GVal/intptr_t) — store pointers or integers. Use `hm_get_float`/`hm_set_float` for float values (avoids bitcast issues).
 
 ```
 -- Example: word frequency counter

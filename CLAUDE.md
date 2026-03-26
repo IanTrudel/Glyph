@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Glyph is an LLM-native programming language where **programs are SQLite3 databases** (`.glyph` files), not source files. The unit of storage is the *definition*, and SQL queries replace the traditional module/import system. The language is designed for token-minimal syntax to minimize BPE token count for LLM generation and consumption.
 
 **Current status:** Working compiler (v0.2). Two compilers exist:
-- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,363 definitions, C codegen backend, LLVM IR backend (`--emit=llvm`), 24 CLI commands, MCP server (15 tools). This is the primary compiler.
+- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,651 definitions, C codegen backend, LLVM IR backend (`--emit=llvm`), 27 CLI commands, MCP server (18 tools). This is the primary compiler.
 - **Rust compiler** (`cargo run -- ...`): Cranelift backend, used as bootstrap tool (`glyph0`) to rebuild `glyph.glyph`.
 
 ## Build Commands
@@ -56,6 +56,9 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 ./glyph import program.glyph src/              # import defs from file tree
 ./glyph migrate target.glyph                   # apply pending schema migrations
 ./glyph link lib.glyph program.glyph           # link library defs into app
+./glyph use app.glyph lib.glyph                # register library as build-time dep
+./glyph unuse app.glyph lib.glyph              # remove a registered library dep
+./glyph libs app.glyph                         # list registered library deps
 ./glyph undo program.glyph fn_name             # undo last change
 ./glyph history program.glyph fn_name          # show change history
 ./glyph mcp program.glyph                      # start MCP server
@@ -77,7 +80,7 @@ glyph0 test program.glyph                     # run test definitions
 
 ```
 Cargo.toml (workspace)
-glyph.glyph             # self-hosted compiler source (SQLite database, ~1,363 definitions)
+glyph.glyph             # self-hosted compiler source (SQLite database, ~1,651 definitions)
 build.ninja              # bootstrap build rules
 crates/
   glyph-db/              # SQLite schema, custom functions (glyph_hash, glyph_tokens), DB access
@@ -87,12 +90,20 @@ crates/
   glyph-codegen/         # Cranelift codegen, ABI, system linker invocation, minimal C runtime
   glyph-cli/             # `glyph` binary — init/build/run/check/test commands
 examples/
+  api/                   # REST API server
+  asteroids/             # Asteroids game
+  benchmark/             # Performance comparison (Glyph vs C)
   calculator/            # Expression calculator REPL
+  countdown/             # Countdown timer
+  fibonacci/             # Fibonacci example
+  gled/                  # Terminal text editor (ncurses FFI)
   glint/                 # Project analyzer (SQLite FFI)
   gstats/                # Statistical analyzer (named record types)
-  gled/                  # Terminal text editor (ncurses FFI)
+  gtk/                   # GTK4 GUI application
+  hello/                 # Hello world
   life/                  # Conway's Game of Life (X11 GUI)
-  benchmark/             # Performance comparison (Glyph vs C)
+  vulkan/                # Vulkan graphics
+  web-api/               # Web API with CRUD operations
 documents/
   glyph-self-hosted-programming-manual.md  # comprehensive language manual
   glyph-spec.md          # formal language specification
