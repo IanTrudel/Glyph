@@ -47,7 +47,14 @@ jobs:
 
       - name: Test libraries
         run: |
+          # Libraries needing headers not available in CI
+          SKIP="x11.glyph gtk.glyph"
           for lib in libraries/*.glyph; do
+            base=$(basename "$lib")
+            if echo "$SKIP" | grep -qw "$base"; then
+              echo "Skipping $lib (needs native headers)"
+              continue
+            fi
             count=$(sqlite3 "$lib" "SELECT COUNT(*) FROM def WHERE kind='test'")
             if [ "$count" -gt 0 ]; then
               echo "Testing $lib ($count tests)"
