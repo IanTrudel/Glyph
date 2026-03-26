@@ -1,6 +1,6 @@
 # Glyph Web Framework Specification
 
-**Status:** Proposal
+**Status:** Implemented
 **Date:** 2026-03-25
 **Libraries:** `libraries/web.glyph` + `libraries/web_ffi.c` + `libraries/json.glyph`
 
@@ -194,15 +194,15 @@ web_del path handler = web_route("DELETE", path, handler)
 
 ### 5.2 Route Table
 
-Routes are a plain array:
+Routes are a plain array. **Important:** handler references must be wrapped in lambdas to create proper closure structs. Raw function references (e.g., `handle_list`) are bare pointers and will crash when the dispatch loop uses the closure calling convention to invoke them.
 
 ```glyph
-routes = [
-  web_get("/users", handle_list),
-  web_post("/users", handle_create),
-  web_get("/users/:id", handle_get),
-  web_put("/users/:id", handle_update),
-  web_del("/users/:id", handle_delete),
+routes u = [
+  web_get("/users", \req -> handle_list(req)),
+  web_post("/users", \req -> handle_create(req)),
+  web_get("/users/:id", \req -> handle_get(req)),
+  web_put("/users/:id", \req -> handle_update(req)),
+  web_del("/users/:id", \req -> handle_delete(req)),
 ]
 ```
 
@@ -397,25 +397,31 @@ middleware : (WebReq -> I) -> (WebReq -> I)
 
 A function that takes a closure and returns a closure.
 
-### 8.2 Logging Middleware
+### 8.2 Implementation Pattern
+
+Glyph only supports single-line lambdas (`\x -> expr`). Multi-line middleware bodies require a helper function:
 
 ```glyph
-web_log handler =
-  \req ->
-    _ = eprintln("{req.wmethod} {req.wpath}")
-    handler(req)
+web_log_handle handler req =
+  _ = eprintln(req.wmethod + " " + req.wpath)
+  handler(req)
+
+web_log handler = \req -> web_log_handle(handler, req)
 ```
+
+**Note:** Use explicit string concatenation (`+`) for request fields, not string interpolation. The type checker may infer record fields as integers, causing interpolation to call `int_to_str` on string values.
 
 ### 8.3 CORS Middleware
 
 CORS requires writing additional HTTP headers. Since `net_respond` controls header output at the C level, this requires a `web_respond_cors` FFI function in `web_ffi.c`:
 
 ```glyph
-web_cors handler =
-  \req ->
-    match req.wmethod == "OPTIONS"
-      true -> web_cors_preflight(req)
-      _ -> handler(req)
+web_cors_handle handler req =
+  match req.wmethod == "OPTIONS"
+    true -> web_cors_preflight(req)
+    _ -> handler(req)
+
+web_cors handler = \req -> web_cors_handle(handler, req)
 
 web_cors_preflight req =
   web_respond_cors(req.whandle, 204, "", "", "*")
@@ -426,29 +432,29 @@ web_cors_preflight req =
 For handlers that return `Result` types:
 
 ```glyph
-web_catch handler =
-  \req ->
-    match handler(req)
-      Err(msg) -> web_error(req, msg)
-      Ok(v) -> v
+web_catch_handle handler req =
+  match handler(req)
+    Err(msg) -> web_error(req, msg)
+    Ok(v) -> v
+
+web_catch handler = \req -> web_catch_handle(handler, req)
 ```
 
 ### 8.5 Middleware Composition
 
-Apply a stack of middleware to a handler using `fold` from stdlib:
+Middleware is composed by direct function application (no `fold` or arrays of function references — these trigger the closure calling convention issue):
 
 ```glyph
-web_wrap middlewares handler =
-  fold(\h mw -> mw(h), handler, middlewares)
+handler = web_log(web_cors(web_app(routes(0))))
 ```
 
-Usage:
+The `web_app` helper wraps a route table into a dispatch handler:
 
 ```glyph
-app = web_wrap([web_log, web_cors], \req -> web_dispatch(routes, req))
+web_app routes = \req -> web_dispatch(routes, req)
 ```
 
-Middleware applies right-to-left: `web_log` wraps `web_cors` which wraps the dispatch handler.
+Middleware applies outside-in: `web_log` wraps `web_cors` which wraps the dispatch handler.
 
 ---
 
@@ -623,16 +629,17 @@ web_default_config u = web_config(8080)
 
 ### 11.2 Server Entry Point
 
+`web_serve` takes a config and a pre-composed handler (not routes + middlewares):
+
 ```glyph
-web_serve cfg routes middlewares =
-  handler = web_wrap(middlewares, \req -> web_dispatch(routes, req))
+web_serve cfg handler =
   server = net_listen(cfg.wc_port)
   match server < 0
     true ->
       _ = eprintln("Failed to bind port")
       1
     _ ->
-      _ = eprintln("Listening on :{int_to_str(cfg.wc_port)}")
+      _ = eprintln("Listening on :" + int_to_str(cfg.wc_port))
       web_loop(server, handler)
 
 web_loop server handler =
@@ -649,7 +656,15 @@ web_loop server handler =
 
 ```glyph
 main =
-  web_serve(web_default_config(0), routes, [])
+  web_serve(web_default_config(0), web_app(routes(0)))
+```
+
+### 11.4 Server with Middleware
+
+```glyph
+main =
+  handler = web_log(web_app(routes(0)))
+  web_serve(web_default_config(0), handler)
 ```
 
 ---
@@ -673,7 +688,7 @@ glyph use app.glyph libraries/web.glyph
 ```glyph
 init_app u =
   _ = web_collection_init("items")
-  _ = web_state_set("next_id", 1)
+  _ = web_state_set("next_id", 0)
   0
 
 item_json pool id name value =
@@ -685,10 +700,7 @@ item_json pool id name value =
 
 handle_list req =
   items = web_collection_get("items")
-  pool = []
-  arr = jb_arr(pool)
-  _ = each(\item -> jb_push(pool, arr, item), items)
-  web_ok(req, json_gen(pool, arr))
+  web_ok(req, "[" + join(",", items) + "]")
 
 handle_create req =
   match web_require_json(req)
@@ -707,7 +719,7 @@ handle_get req =
   id_str = web_param(req, "id")
   target = "\"id\":" + id_str
   items = web_collection_get("items")
-  idx = find_index(\item -> contains(item, target), items)
+  idx = find_index(\item -> str_index_of(item, target) >= 0, items)
   match idx >= 0
     true -> web_ok(req, items[idx])
     _ -> web_not_found(req)
@@ -716,7 +728,7 @@ handle_update req =
   id_str = web_param(req, "id")
   target = "\"id\":" + id_str
   items = web_collection_get("items")
-  idx = find_index(\item -> contains(item, target), items)
+  idx = find_index(\item -> str_index_of(item, target) >= 0, items)
   match idx >= 0
     true ->
       match web_require_json(req)
@@ -735,7 +747,7 @@ handle_delete req =
   id_str = web_param(req, "id")
   target = "\"id\":" + id_str
   items = web_collection_get("items")
-  idx = find_index(\item -> contains(item, target), items)
+  idx = find_index(\item -> str_index_of(item, target) >= 0, items)
   match idx >= 0
     true ->
       pool = []
@@ -746,17 +758,17 @@ handle_delete req =
     _ -> web_not_found(req)
 
 routes u = [
-  web_get("/", \req -> web_ok(req, "{\"service\":\"items-api\",\"version\":\"2.0\"}")),
-  web_get("/items", handle_list),
-  web_post("/items", handle_create),
-  web_get("/items/:id", handle_get),
-  web_put("/items/:id", handle_update),
-  web_del("/items/:id", handle_delete),
+  web_get("/items", \req -> handle_list(req)),
+  web_post("/items", \req -> handle_create(req)),
+  web_get("/items/:id", \req -> handle_get(req)),
+  web_put("/items/:id", \req -> handle_update(req)),
+  web_del("/items/:id", \req -> handle_delete(req)),
 ]
 
 main =
   _ = init_app(0)
-  web_serve(web_default_config(0), routes(0), [web_log])
+  handler = web_log(web_app(routes(0)))
+  web_serve(web_default_config(0), handler)
 ```
 
 ### 12.3 Build & Run
@@ -773,7 +785,7 @@ No `build.sh`. No `sed`. No `cat`. The `glyph use` + `cc_prepend`/`cc_args` meta
 
 | Metric | Current (`examples/api/`) | With framework |
 |--------|--------------------------|----------------|
-| App definitions | ~30 fn | ~10 fn |
+| App definitions | ~30 fn | 9 fn |
 | Routing | Nested match chains (3 levels deep) | Declarative route table |
 | JSON building | Manual string concat (`net_json_*`) | Structured builder (`jb_*`) |
 | JSON parsing | Manual string scanning (`api_str_field`) | Pool-based parser (`json_get_str`) |
@@ -795,22 +807,23 @@ No `build.sh`. No `sed`. No `cat`. The `glyph use` + `cc_prepend`/`cc_args` meta
 | `json_decode`, `json_encode` | 2 fn | Convenience wrappers |
 | `JNode` | 1 type | Node record type |
 
-### 13.2 web.glyph (~42 definitions)
+### 13.2 web.glyph (60 definitions: 50 fn + 9 test + 1 type)
 
 | Category | Definitions |
 |----------|-------------|
 | Routing (5) | `web_route`, `web_get`, `web_post`, `web_put`, `web_del` |
-| Path matching (4) | `web_split_path`, `web_match_route`, `web_match_segs`, `web_split_path_loop` |
-| Dispatch (2) | `web_dispatch`, `web_dispatch_loop` |
+| Path matching (3) | `web_split_path`, `web_match_route`, `web_match_segs` |
+| Dispatch (3) | `web_dispatch`, `web_dispatch_loop`, `web_app` |
 | Request (5) | `web_make_req`, `web_param`, `web_param_int`, `web_query`, `web_query_get` |
 | Response (8) | `web_ok`, `web_created`, `web_no_content`, `web_bad_request`, `web_not_found`, `web_method_na`, `web_error`, `web_err_json` |
 | JSON (1) | `web_json` |
-| Middleware (4) | `web_wrap`, `web_log`, `web_cors`, `web_cors_preflight` |
+| Middleware (7) | `web_log`, `web_log_handle`, `web_cors`, `web_cors_handle`, `web_cors_preflight`, `web_catch`, `web_catch_handle` |
 | State (4) | `web_state_get`, `web_state_set`, `web_state_init`, `web_next_id` |
-| Collections (6) | `web_collection_init`, `web_collection_get`, `web_collection_add`, `web_collection_find`, `web_cfind_loop`, `web_collection_remove`, `web_cremove_loop` |
-| Validation (3) | `web_require_body`, `web_require_json`, `web_require_field` |
+| Collections (7) | `web_collection_init`, `web_collection_get`, `web_collection_add`, `web_collection_find`, `web_cfind_loop`, `web_collection_remove`, `web_cremove_loop` |
+| Validation (4) | `web_require_body`, `web_require_json`, `web_require_field`, `web_handle_result` |
 | Server (4) | `web_config`, `web_default_config`, `web_serve`, `web_loop` |
 | Externs (3) | `web_store_get`, `web_store_set`, `web_respond_cors` |
+| Tests (9) | `test_split_path`, `test_match_route`, `test_match_exact`, `test_query_get`, `test_route_constructors`, `test_err_json`, `test_config`, `test_state`, `test_next_id` |
 | Types (1) | `WebReq` |
 
 ### 13.3 web_ffi.c (~60 lines C)
@@ -853,6 +866,9 @@ Create `examples/web-api/` with rewritten items API. Verify `glyph build` works 
 | JSON def names conflict with compiler when building `glyph.glyph` | json.glyph is never a lib_dep of glyph.glyph — no collision |
 | Closure-based handlers cause memory growth | Boehm GC is integrated — closures are collected |
 | Linear route scan too slow for many routes | LLM APIs typically have <20 endpoints; linear scan is fine |
+| Closure calling convention: raw function pointers in arrays/records crash on indirect call | Wrap handler references in lambdas (`\req -> handler(req)`) to create proper closure structs |
+| String interpolation infers record fields as integers | Use explicit string concatenation (`+`) for fields like `req.wmethod` instead of `"{req.wmethod}"` |
+| Multi-line lambda bodies don't parse | Use helper function pattern: `web_log_handle handler req = ...` + `web_log handler = \req -> web_log_handle(handler, req)` |
 
 ---
 

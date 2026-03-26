@@ -10,8 +10,8 @@ cd "$(dirname "$0")"
 sed '/typedef intptr_t GVal;/a GVal net_listen(GVal); GVal net_accept(GVal); GVal net_req_method(GVal); GVal net_req_path(GVal); GVal net_req_query(GVal); GVal net_req_body(GVal); GVal net_respond(GVal,GVal,GVal,GVal); GVal net_close(GVal); GVal api_get_items(GVal); GVal api_get_next_id(GVal); GVal api_swap_array(GVal,GVal);' \
   /tmp/glyph_out.c > /tmp/glyph_patched.c
 
-# Concatenate patched glyph output + network FFI implementation
-cat /tmp/glyph_patched.c ../../libraries/network_ffi.c > /tmp/api_full.c
+# Concatenate patched glyph output + network FFI + app-specific singletons
+cat /tmp/glyph_patched.c ../../libraries/network_ffi.c api_ffi.c > /tmp/api_full.c
 
 cc -O2 -w -Wno-int-conversion -Wno-incompatible-pointer-types \
    /tmp/api_full.c -o api -no-pie -lm
