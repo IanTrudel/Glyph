@@ -1,6 +1,6 @@
 # Self-Hosted Compiler Guide (glyph.glyph)
 
-~1,170 gen=1 fn + 186 test + 7 type = ~1,363 total definitions. Compiles Glyph programs to C → `cc` → native executable. Also supports `--emit=llvm` for LLVM IR output.
+1,324 gen=1 fn + 315 test + 12 type = 1,651 total definitions. Compiles Glyph programs to C → `cc` → native executable. Also supports `--emit=llvm` for LLVM IR output. Boehm GC integrated (all `malloc`/`realloc`/`free` redirected to `GC_malloc`/`GC_realloc`/`GC_free` via preprocessor macros).
 
 ## Overview
 
@@ -25,17 +25,21 @@ glyph_db_open → read_fn_defs + read_type_defs + read_externs
 - String interpolation (`"text {expr}"`) supported in self-hosted parser (tokenizer + parser handle `{}`)
 - `ns TEXT` column on `def` table — auto-derived from name prefix (`cg_`→`"codegen"`, `ll_`→`"llvm"`, `mcp_`→`"mcp"`, `json_`→`"json"`, `mono_`→`"mono"`, etc.)
 
-## Type Definitions (3)
+## Type Definitions (12)
 
 ```
-Token       = {kind:I, start:I, end:I, line:I}
-              Sorted: end, kind, line, start (4 fields)
-
-AstNode     = {kind:I, ival:I, sval:S, n1:I, n2:I, n3:I, ns:[I]}
-              Sorted: ival, kind, n1, n2, n3, ns, sval (7 fields)
-
-ParseResult = {node:I, pos:I}
-              Sorted: node, pos (2 fields)
+Token       = {kind:I, start:I, end:I, line:I}        -- 4 fields (end, kind, line, start)
+AstNode     = {kind:I, ival:I, sval:S, n1:I, n2:I, n3:I, ns:[I]}  -- 7 fields
+ParseResult = {node:I, pos:I}                          -- 2 fields
+JNode       = {kind:I, sval:S, tag:I}                  -- 3 fields (JSON AST node)
+StrBox      = {sval:S}                                 -- 1 field (boxed string)
+StrTag      = {stag:I, sval:S}                         -- 2 fields (tagged string)
+StrComp     = {sa:S, sb:S}                             -- 2 fields (string pair)
+Point2D     = {x:I, y:I}                               -- 2 fields
+FPoint      = {fx:F, fy:F}                             -- 2 fields (float point)
+FPoint32    = {fx:F, fy:F}                             -- 2 fields (float32 point)
+Color       = {r:I, g:I, b:I}                          -- 3 fields (RGB)
+Light       = {ldir:[F], lint:F}                       -- 2 fields (light source)
 ```
 
 Fields sorted alphabetically (BTreeMap convention). At C level: `typedef struct` (gen=2) or offset-based `((long long*)p)[N]` (gen=1).
@@ -201,12 +205,12 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 **Key functions:** `mono_pass`, `mono_collect`, `mono_specialize`
 **Status:** syntactic parameter resolution; deep type-checking not enforced at instantiation sites. Generic type params compile to `GVal` — no enforcement at call sites.
 
-### 13. MCP Server (~52 functions)
+### 13. MCP Server (~55 functions)
 
 **Entry:** `cmd_mcp → mcp_loop` (reads lines from stdin, writes JSON to stdout)
 **Prefix:** `mcp_*` (namespace `mcp`)
 **Transport:** stdio JSON-RPC; start with `./glyph mcp app.glyph`
-**15 tools:** init, put_def, get_def, remove_def, list_defs, search_defs, check_def, deps, rdeps, sql, build, run, coverage, link, migrate
+**18 tools:** init, put_def, get_def, remove_def, list_defs, search_defs, check_def, deps, rdeps, sql, build, run, coverage, link, migrate, use, unuse, libs
 **Key functions:** `cmd_mcp`, `mcp_loop`, `mcp_dispatch`, `mcp_tools_call`
 **Tool input/output:** `json_parse` for params, `mcp_str_prop`/`mcp_int_prop` for extraction
 **Chain pattern:** `mcp_add_toolsN` calls `mcp_add_toolsN+1`; `mcp_tools_callN` falls through to `mcp_tools_callN+1`
@@ -219,6 +223,27 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 **Purpose:** MCP server protocol; also used for structured error responses
 **JNode:** `{kind:I, sval:S, tag:I}` stored in flat pool array
 **Critical:** `find_best_type` picks AstNode (7 fields) over JNode (3 fields) for shared field names. In any JSON function that accesses `.sval` on a pool element without dispatching on `.tag`, add `_ = node.tag` as a hint to force correct offset. Affected functions: `json_get_str`, `mcp_get_db`, `mcp_tool_get_def`, `mcp_tool_list_defs`, `mcp_tool_remove_def`, `mcp_tool_search_defs`.
+
+### 15. TCO (Tail Call Optimization) (~11 functions)
+
+**Entry:** `tco_optimize(mirs)` → optimizes all MIR functions in-place
+**Prefix:** `tco_*` (namespace `tco`)
+**Purpose:** Detect self-recursive tail calls and transform them into loops (goto loop header with updated args)
+**Key functions:** `tco_optimize`, `tco_opt_mirs`, `tco_opt_fn`, `tco_opt_blks`, `tco_transform`, `tco_is_ret_blk`, `tco_alloc_temps`, `tco_emit_temps`, `tco_emit_params`, `tco_copy_stmts`, `tco_build_stmts`
+
+### 16. Coverage (~4 functions)
+
+**Entry:** `cg_runtime_coverage()` → emits C runtime for function-level coverage instrumentation
+**Key functions:** `cg_runtime_coverage`, `cov_count_fns`, `cov_is_fn`, `cover_fn_names`
+**Trigger:** `glyph test app.glyph --cover` → builds with `#ifdef GLYPH_COVERAGE`, writes `.cover` TSV file via `atexit` handler
+**Report:** `glyph cover app.glyph` → reads `.cover` file, shows hit/miss stats
+
+### 17. Library Loading (~5 functions)
+
+**Entry:** `load_libs_for_build(db)` → reads `lib_dep` table, opens each library, unions defs
+**Key functions:** `load_libs_for_build`, `load_lib_meta_loop`, `lib_seen`, `merge_cc_args`, `resolve_app_prepend`
+**Meta keys:** `cc_prepend` (C file to prepend to generated C), `cc_args` (extra cc flags like `-lm`)
+**Library system:** `glyph use app.glyph lib.glyph` registers in `lib_dep` table; at build time, compiler opens each lib and merges its defs + externs + meta
 
 ### 9. CLI Dispatch (~45 functions)
 
@@ -270,7 +295,7 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 | Generics are syntactic only | Type params compile to `GVal`; no enforcement at call sites | Monomorphization pass handles basic cases; deep type mismatch is a runtime crash |
 | `s2()` nesting limit ~7 | Stack overflow in Cranelift binary | Combine at same nesting level |
 | No stdin support | `read_file` uses fseek | Use `-b` flag or temp files |
-| No GC | All heap allocs persist | Short-lived programs only |
+| Boehm GC | `malloc`/`realloc`/`free` → `GC_malloc`/`GC_realloc`/`GC_free` via preprocessor macros | Link with `-lgc`; Rust-compiled binaries (glyph0/glyph1) do NOT have GC |
 | Self-hosted can't self-build gen=2 | Sees both gen=1 and gen=2 overrides | Use `glyph0 --gen=2` |
 | `tokens=0` from self-hosted | No BPE computation | `cargo run -- build --full` for correct values |
 
@@ -288,8 +313,10 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 | Extern System | ~24 | `cg_extern_*`, `fix_ext_*`, `collect_libs` | `cg_extern_wrappers` |
 | LLVM Backend | ~65 | `ll_*` | `cg_llvm_program` |
 | Monomorphization | ~35 | `mono_*` | `mono_pass` |
-| MCP Server | ~52 | `mcp_*` | `cmd_mcp` / `mcp_loop` |
-| JSON | ~64 | `json_*`, `jb_*` | `json_parse` |
+| MCP Server | ~55 | `mcp_*` | `cmd_mcp` / `mcp_loop` |
+| JSON | ~56 | `json_*`, `jb_*` | `json_parse` |
 | CLI | ~45 | `cmd_*`, `dispatch_cmd*` | `main` |
-| Build | ~10 | `compile_*`, `build_*`, `read_*` | `compile_db` |
-| Utilities | ~20 | `s2`–`s7`, `sort_str_*`, `itos` | `s2` |
+| Build | ~51 | `compile_*`, `build_*`, `read_*`, `load_lib*` | `compile_db` |
+| TCO | ~11 | `tco_*` | `tco_optimize` |
+| Coverage | ~4 | `cov_*`, `cg_runtime_coverage` | `cg_runtime_coverage` |
+| Utilities | ~52 | `s2`–`s7`, `sort_str_*`, `itos` | `s2` |

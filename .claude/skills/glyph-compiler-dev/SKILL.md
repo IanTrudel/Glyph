@@ -17,7 +17,7 @@ DB → Parser → Resolver →         DB → tokenize → parse_fn_def →
 ```
 
 - **Rust compiler** (6 crates, ~10k LOC): Cranelift backend, full type checking, incremental compilation
-- **Self-hosted compiler** (glyph.glyph, ~1,363 definitions): C codegen backend, LLVM IR backend (`--emit=llvm`), MCP server (stdio transport, 15 tools), type system wired into `glyph check`, everything is `long long`
+- **Self-hosted compiler** (glyph.glyph, ~1,651 definitions): C codegen backend, LLVM IR backend (`--emit=llvm`), MCP server (stdio transport, 18 tools), type system wired into `glyph check`, everything is `long long`, Boehm GC integrated
 - The compiler IS a SQLite database — `glyph.glyph` contains all self-hosted definitions as rows
 
 **Bootstrap chain (4-stage):**
@@ -55,13 +55,13 @@ cargo run -- build app.glyph           # Test against a program
 cargo run -- build app.glyph --gen=2   # Build with gen=2 struct codegen
 
 # Self-hosted compiler (full bootstrap)
-ninja                                   # 2-stage: glyph0 → glyph (gen=2 via Cranelift)
+ninja                                   # 4-stage: glyph0 → glyph1 → glyph2 → glyph
 ninja test                              # Rust tests + self-hosted regression
 
 # Quick iteration on self-hosted changes (MCP preferred — see recipes)
 ./glyph0 build glyph.glyph --full --gen=1    # Rebuild gen=1 only
 ./glyph0 build glyph.glyph --full --gen=2    # Rebuild with gen=2 overrides
-./glyph test glyph.glyph                     # Run full self-hosted test suite (186 tests)
+./glyph test glyph.glyph                     # Run full self-hosted test suite (315 tests)
 
 # MCP workflow (primary — no shell escaping, structured errors)
 ./glyph mcp glyph.glyph               # Start MCP server; use mcp__glyph__* tools in Claude
@@ -123,9 +123,12 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 | C keyword as fn name | `double`, `int`, `void` etc. collide in generated C | Avoid C reserved words in Glyph function names |
 | `s2()` nesting ~7 limit | Stack overflow in Cranelift binary with deep nesting | Combine strings at same nesting level |
 | Gen=2 parameter reads | Field-access tagging covers most cases; edge cases fall back | Use unique field prefixes for reliable struct detection |
-| Extern headers | Wrappers only see stdlib includes | Heavy FFI: use separate C wrapper file instead of extern_ table |
+| Extern headers | Wrappers only see stdlib includes | Heavy FFI: use separate C wrapper file via `cc_prepend` meta key or manual concatenation |
 | String pattern matching | `parse_single_pattern` double-stripping: extracted token text is already unquoted, so `glyph_str_slice(s, 1, len-1)` gives wrong result | Fixed 2026-03-19; watch for similar bugs when adding new pattern kinds |
 | JNode `.sval` field access | `find_best_type` picks AstNode (7 fields) over JNode (3 fields) — wrong offset | Add `_ = node.tag` hint in JSON functions that access JNode `.sval` without dispatching on `.tag` |
+| Closure calling convention | Raw fn refs (`&fn_name`) in arrays/records crash — closure convention dereferences `f[0]` for fn ptr | Wrap in lambdas: `\x -> fn_name(x)` creates proper closure struct |
+| Multi-line lambdas | Only single-line `\x -> expr` parses | Use helper function pattern: `helper f x = ...` + `\x -> helper(f, x)` |
+| String interp on record fields | Type checker may infer record fields as int; `"{r.field}"` calls `int_to_str` on a string | Use explicit `+` concatenation: `r.field + " " + r.other` |
 
 ## Build Modes
 
@@ -190,6 +193,6 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 ## Supporting Files
 
 - [rust-compiler.md](rust-compiler.md) — Crate-by-crate guide to the Rust compiler
-- [self-hosted-compiler.md](self-hosted-compiler.md) — Subsystem guide for glyph.glyph (~1,363 definitions)
+- [self-hosted-compiler.md](self-hosted-compiler.md) — Subsystem guide for glyph.glyph (~1,651 definitions)
 - [modification-recipes.md](modification-recipes.md) — Step-by-step recipes for common compiler changes
 - [documents/glyph-compiler-reference.md](../../../documents/glyph-compiler-reference.md) — Exhaustive reference (~950 lines)

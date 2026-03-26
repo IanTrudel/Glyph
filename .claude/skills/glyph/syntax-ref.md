@@ -74,8 +74,35 @@ atom     = INT | FLOAT | STRING | RAW_STRING | "true" | "false"
          | "[" exprs "]"                     -- array literal
          | "[" expr ".." expr "]"            -- range
          | "{" fields "}"                    -- record literal
+         | expr "{" fields "}"              -- record update (functional)
          | "." IDENT                         -- field accessor shorthand (\x -> x.field)
 ```
+
+## Pipe, Compose, and Field Accessors
+
+```
+-- Pipe: pass result of left as last arg to right
+x |> f |> g                  -- equivalent to g(f(x))
+items |> filter(.active) |> map(.name)
+
+-- Compose: combine functions left-to-right
+f >> g                       -- equivalent to \x -> g(f(x))
+double >> add1               -- first double, then add1
+
+-- Field accessor shorthand: creates a lambda
+.name                        -- equivalent to \x -> x.name
+.x                           -- useful with map: map(points, .x)
+```
+
+## Record Updates
+
+```
+p = {x: 1, y: 2, z: 3}
+p2 = p{x: 10}               -- {x: 10, y: 2, z: 3}
+p3 = p{x: 10, y: 20}        -- {x: 10, y: 20, z: 3}
+```
+
+Creates a new record with specified fields changed. Original is unchanged.
 
 ## Literals
 

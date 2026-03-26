@@ -22,8 +22,8 @@ Runtime functions are prefixed `glyph_` in generated C (e.g., `println` → `gly
 | `eprintln` | `S -> I` | Print + newline to stderr |
 | `read_file` | `S -> S` | Read entire file (not stdin/pipes) |
 | `write_file` | `S -> S -> I` | Write string to file (0=ok) |
-| `read_line` | `-> S` | Read a line from stdin |
-| `flush` | `-> V` | Flush stdout |
+| `read_line` | `I -> S` | Read a line from stdin (dummy arg required — zero-arg side effect) |
+| `flush` | `I -> V` | Flush stdout (dummy arg required — zero-arg side effect) |
 | `args` | `-> [S]` | Command-line arguments |
 | `system` | `S -> I` | Execute shell command, return exit code |
 
@@ -40,6 +40,13 @@ Runtime functions are prefixed `glyph_` in generated C (e.g., `println` → `gly
 | `str_to_int` | `S -> I` | Parse integer (0 on failure) |
 | `str_to_cstr` | `S -> *V` | To null-terminated C string |
 | `cstr_to_str` | `*V -> S` | From C string |
+| `str_index_of` | `S -> S -> I` | Find substring index (-1 if not found) |
+| `str_starts_with` | `S -> S -> I` | Prefix test (1=yes, 0=no) |
+| `str_ends_with` | `S -> S -> I` | Suffix test (1=yes, 0=no) |
+| `str_trim` | `S -> S` | Trim whitespace from both ends |
+| `str_to_upper` | `S -> S` | Convert to uppercase |
+| `str_split` | `S -> S -> [S]` | Split string by separator |
+| `str_from_code` | `I -> S` | Single character from ASCII code |
 
 ## String Builder
 
@@ -83,6 +90,9 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `array_set` | `[I] -> I -> I -> V` | Set element at index |
 | `array_pop` | `[I] -> I` | Remove and return last (panics if empty) |
 | `array_bounds_check` | `I -> I -> V` | Check `[0..len)`, panic if OOB |
+| `array_reverse` | `[I] -> [I]` | Reverse array in-place, returns same array |
+| `array_slice` | `[I] -> I -> I -> [I]` | New array from `[start..end)` (clamps) |
+| `array_index_of` | `[I] -> I -> I` | Find element index (-1 if not found) |
 
 ## Map
 
@@ -116,6 +126,16 @@ count_loop m words i =
       hm_set(m, w, cur + 1)
       count_loop(m, words, i + 1)
 ```
+
+## Bitset
+
+Fixed-size bit array for efficient boolean flag storage.
+
+| Function | Sig | Description |
+|----------|-----|-------------|
+| `bitset_new` | `I -> *V` | Create bitset with N bits (all clear) |
+| `bitset_set` | `*V -> I -> V` | Set bit at index |
+| `bitset_test` | `*V -> I -> I` | Test bit at index (1=set, 0=clear) |
 
 ## Result
 
@@ -184,7 +204,7 @@ Only in test builds (`./glyph test`). All return 0, set `_test_failed` flag on f
 | Enum | `{tag: i64, payload...}` heap-allocated | 8B + 8B/field |
 | Closure | `{fn_ptr, captures...}` heap-allocated | 8B + 8B/capture |
 
-All values are `long long` (8 bytes) at ABI boundary. No GC — allocations persist until exit.
+All values are `long long` (8 bytes) at ABI boundary. Boehm GC integrated — `malloc`/`realloc`/`free` redirected to `GC_malloc`/`GC_realloc`/`GC_free` via preprocessor macros. Programs link with `-lgc`.
 
 ## FFI Type Mapping
 

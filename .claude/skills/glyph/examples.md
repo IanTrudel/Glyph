@@ -155,7 +155,11 @@ mcp__glyph__put_def(db="tested.glyph", name="test_mul", kind="test",
   body="test_mul u =
   assert_eq(mul(3, 4), 12)
   assert_eq(mul(0, 5), 0)")
-mcp__glyph__build(db="tested.glyph", flags="--test")
+mcp__glyph__put_def(db="tested.glyph", name="main", kind="fn", body="main = 0")
+```
+Then run tests via CLI:
+```bash
+./glyph test tested.glyph
 ```
 Output:
 ```
@@ -358,3 +362,109 @@ keys: 2
 ```
 
 Maps use `hm_new()` — there is no map literal syntax. String keys only in the current implementation. Values are stored as `I` (GVal); cast pointers with `alloc` for complex value types.
+
+## 14. Record Updates
+
+```
+mcp__glyph__init(db="rupd.glyph")
+mcp__glyph__put_def(db="rupd.glyph", name="Point", kind="type",
+  body="Point = {x: I, y: I}")
+mcp__glyph__put_def(db="rupd.glyph", name="main", kind="fn",
+  body='main =
+  p = {x: 1, y: 2}
+  p2 = p{x: 10}
+  println("p.x=" + int_to_str(p.x) + " p.y=" + int_to_str(p.y))
+  println("p2.x=" + int_to_str(p2.x) + " p2.y=" + int_to_str(p2.y))')
+mcp__glyph__run(db="rupd.glyph")
+```
+Output:
+```
+p.x=1 p.y=2
+p2.x=10 p2.y=2
+```
+
+`p{x: 10}` creates a new record with `x` changed. The original `p` is unchanged.
+
+## 15. Pipe and Compose
+
+```
+mcp__glyph__init(db="pipe.glyph")
+mcp__glyph__put_def(db="pipe.glyph", name="double", kind="fn", body="double x = x * 2")
+mcp__glyph__put_def(db="pipe.glyph", name="add1", kind="fn", body="add1 x = x + 1")
+mcp__glyph__put_def(db="pipe.glyph", name="main", kind="fn",
+  body='main =
+  result = 5 |> double |> add1
+  println(int_to_str(result))
+  transform = double >> add1
+  println(int_to_str(transform(5)))')
+mcp__glyph__run(db="pipe.glyph")
+```
+Output:
+```
+11
+11
+```
+
+`|>` pipes the left value into the right function. `>>` composes two functions left-to-right.
+
+## 16. Using Libraries
+
+```
+mcp__glyph__init(db="libex.glyph")
+mcp__glyph__put_def(db="libex.glyph", name="main", kind="fn",
+  body='main =
+  nums = [3, 1, 4, 1, 5, 9, 2, 6]
+  sorted = sort(nums)
+  println("sorted: " + join(", ", map(sorted, \x -> int_to_str(x))))
+  evens = filter(nums, \x -> x % 2 == 0)
+  println("evens: " + join(", ", map(evens, \x -> int_to_str(x))))
+  total = fold(nums, 0, \acc x -> acc + x)
+  println("sum: " + int_to_str(total))')
+```
+Then register stdlib and build:
+```bash
+./glyph use libex.glyph libraries/stdlib.glyph
+./glyph run libex.glyph
+```
+Output:
+```
+sorted: 1, 1, 2, 3, 4, 5, 6, 9
+evens: 4, 2, 6
+sum: 31
+```
+
+## 17. Web API (CRUD)
+
+Requires `web.glyph`, `json.glyph`, `stdlib.glyph`, and `network.glyph` libraries.
+
+```
+mcp__glyph__init(db="api.glyph")
+mcp__glyph__put_def(db="api.glyph", name="handle_list", kind="fn",
+  body='handle_list req =
+  items = web_collection_list("items")
+  web_ok(req, "[" + join(",", items) + "]")')
+mcp__glyph__put_def(db="api.glyph", name="handle_create", kind="fn",
+  body='handle_create req =
+  id = web_next_id(0)
+  item = json_set(req.wbody, "id", int_to_str(id))
+  web_collection_add("items", item)
+  web_ok(req, item)')
+mcp__glyph__put_def(db="api.glyph", name="routes", kind="fn",
+  body='routes u = [
+  web_get("/items", \req -> handle_list(req)),
+  web_post("/items", \req -> handle_create(req))]')
+mcp__glyph__put_def(db="api.glyph", name="main", kind="fn",
+  body='main =
+  handler = web_log(web_app(routes(0)))
+  web_serve(web_default_config(0), handler)')
+```
+Then register libraries and build:
+```bash
+./glyph use api.glyph libraries/stdlib.glyph
+./glyph use api.glyph libraries/json.glyph
+./glyph use api.glyph libraries/network.glyph
+./glyph use api.glyph libraries/web.glyph
+./glyph build api.glyph
+```
+
+**Critical pitfall:** Route handlers MUST be wrapped in lambdas (`\req -> handler(req)`), not passed as raw references (`handle_list`). Raw function references crash due to the closure calling convention.

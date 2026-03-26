@@ -109,7 +109,7 @@ Both compilers embed the C runtime, so both must be updated.
 7. **Verify:**
    ```bash
    ./glyph build /tmp/test.glyph /tmp/test_out && /tmp/test_out
-   ./glyph test glyph.glyph    # full test suite (186 tests)
+   ./glyph test glyph.glyph    # full test suite (315 tests)
    ```
 
 ## Recipe 5: Add a Gen=2 Override
@@ -157,11 +157,11 @@ cargo build --release && cp target/release/glyph glyph0
 
 Or use ninja for the standard chain:
 ```bash
-ninja                    # 2-stage: glyph0 → glyph (gen=2)
+ninja                    # 4-stage: glyph0 → glyph1 → glyph2 → glyph
 ninja test               # Runs all tests
 ```
 
-**Note:** The bootstrap is now 2-stage (not 3-stage). `glyph0 --gen=2` compiles all gen=2 overrides via Cranelift directly, producing the final `glyph` binary. The self-hosted compiler cannot self-build with `--gen=2` because it sees both gen=1 and gen=2 overrides with the same names.
+**Note:** The bootstrap is 4-stage: `glyph0` (Rust/Cranelift) → `glyph1` (Cranelift binary) → `glyph2` (C-codegen binary) → `glyph` (LLVM-compiled final binary). The self-hosted compiler cannot self-build with `--gen=2` because it sees both gen=1 and gen=2 overrides with the same names.
 
 ## Recipe 7: Add a New Type Definition (Self-Hosted)
 
@@ -386,7 +386,7 @@ The MCP server is the **primary workflow** for interacting with glyph.glyph. It 
 
 In Claude Code, MCP tools are available as `mcp__glyph__*` after the server is connected.
 
-**15 available tools:**
+**18 available tools:**
 
 | Tool | Purpose |
 |------|---------|
@@ -405,6 +405,9 @@ In Claude Code, MCP tools are available as `mcp__glyph__*` after the server is c
 | `mcp__glyph__coverage` | Coverage report |
 | `mcp__glyph__link` | Link a library into an app |
 | `mcp__glyph__migrate` | Run schema migrations |
+| `mcp__glyph__use` | Register library as build-time dependency |
+| `mcp__glyph__unuse` | Remove a registered library dependency |
+| `mcp__glyph__libs` | List registered library dependencies |
 
 **Adding a new MCP tool:**
 1. Write `mcp_tool_NAME(db, params)` — parse params with `mcp_str_prop`/`mcp_int_prop`, return JSON string

@@ -190,6 +190,14 @@ Stack = <T>{items:[T], size:I}
 ```
 The `<T>` syntax is accepted by the parser but type parameters are not enforced — all fields are stored as `GVal` at runtime. There is no true monomorphization or distinct code generation per type argument. Use generic type defs for documentation/intent only; the compiler will not catch type mismatches at instantiation sites.
 
+### Record Updates
+```
+p = {x: 1, y: 2}
+p2 = p{x: 10}             -- creates new record: {x: 10, y: 2}
+p3 = p{x: 10, y: 20}      -- multiple fields
+```
+Record update `rec{field: value}` creates a new record with the specified fields changed. The original record is unchanged (functional update).
+
 ### Loops
 No for-loop syntax. Write loops as tail-recursive helper functions:
 ```
@@ -209,13 +217,16 @@ loop_helper arr i =
 | C keyword as fn name | C codegen conflict | Avoid: `double`, `int`, `float`, `void`, `return`, `if`, `while`, `for`, `struct`, `enum`, `const`, `static`, `extern` |
 | `=` vs `:=` | `=` is let binding, `:=` is mutation | Use `:=` only for reassigning existing variables |
 | No stdin | `read_file` uses fseek | Use `-b` flag or temp files |
-| No GC | All heap allocs persist | Short-lived programs only |
+| Boehm GC | Self-hosted compiler integrates Boehm GC (`malloc`→`GC_malloc`) | No manual dealloc needed; link with `-lgc` |
 | `deps`/`rdeps` empty | Dep table populated at build time | Run `./glyph build` first |
 | Type checker warns on `!` | Unwrap not fully typed | Ignore warning; runtime is correct |
 | `r[0]` on Result segfaults | Array indexing treats Result as array header | Use `match r` with `Ok(v)`/`Err(e)`, or `?`/`!` operators |
 | Field offset ambiguity | Shared field names across record types | Access a type-unique field on the same variable |
 | Gen mismatch on `put` | Default auto-detects gen | Use `--gen N` to target a specific generation explicitly |
 | `True`/`False` segfaults | These are enum constructors, not bool literals | Use lowercase `true`/`false` in match patterns |
+| Closure calling convention | Raw fn refs (`&fn`) in arrays/records crash | Wrap in lambdas: `\x -> fn(x)` creates proper closure struct |
+| Multi-line lambdas | Only single-line `\x -> expr` parses | Use helper function: `helper f x = ...` + `\x -> helper(f, x)` |
+| String interp on record fields | Type checker may infer fields as int | Use `+` concatenation: `r.field + " " + r.other` |
 
 ## Library Dependencies
 
@@ -236,6 +247,23 @@ glyph libs app.glyph                         # list
 Records the library path in `app.glyph`'s `lib_dep` table. At build time, the compiler opens each registered library via `glyph_db_open` and unions its defs into the compilation — **no copying**. The library file stays separate. To filter which namespace to import, use `--ns`.
 
 **Prefer Level 2** for reusable libraries — it's non-destructive, easy to upgrade (update the file on disk), and keeps the app database clean. Use Level 1 only when you need the defs permanently embedded or editable in the app.
+
+## Available Libraries
+
+| Library | Defs | Description | FFI |
+|---------|------|-------------|-----|
+| `libraries/stdlib.glyph` | ~30 | Core utilities: `map`, `filter`, `fold`, `join`, `sort`, `range` | None |
+| `libraries/json.glyph` | ~49 | JSON parser/generator. `json_parse`, `json_gen`, `json_get`, `jb_*` builders | None |
+| `libraries/network.glyph` | ~23 | TCP server: `net_listen`, `net_accept`, `net_respond`, HTTP parsing | `network_ffi.c` |
+| `libraries/web.glyph` | ~60 | Web framework: routing, middleware, CRUD helpers, state store | `web_ffi.c` |
+| `libraries/gtk.glyph` | ~20 | GTK4 bindings: windows, buttons, labels, text views, signals | `gtk_ffi.c` |
+
+**Usage:**
+```bash
+glyph use app.glyph libraries/stdlib.glyph    # register as build-time dep
+glyph use app.glyph libraries/json.glyph
+glyph build app.glyph                          # libs auto-included at build time
+```
 
 ## Schema Quick Reference
 
