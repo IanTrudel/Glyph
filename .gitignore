@@ -27,6 +27,7 @@ examples/gtk/hello/hello
 examples/gtk/calculator/calc
 examples/gtk/editor/editor
 examples/gwm/gwm
+examples/prolog/prolog
 examples/vulkan/triangle/triangle
 examples/web-api/app
 *.glyph-shm
