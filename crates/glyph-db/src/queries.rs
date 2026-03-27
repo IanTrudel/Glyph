@@ -96,7 +96,7 @@ impl Database {
     /// Get dirty definitions for a target generation (effective defs filtered to dirty + transitive dependents).
     pub fn dirty_defs_gen(&self, target_gen: i64) -> Result<Vec<DefRow>> {
         let mut stmt = self.conn.prepare(
-            "WITH effective AS (
+            "WITH RECURSIVE effective AS (
                  SELECT d.* FROM def d
                  INNER JOIN (
                      SELECT name, kind, MAX(gen) as max_gen
@@ -104,7 +104,7 @@ impl Database {
                      GROUP BY name, kind
                  ) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen
              ),
-             RECURSIVE dirty(id) AS (
+             dirty(id) AS (
                  SELECT id FROM effective WHERE compiled = 0
                  UNION
                  SELECT d.from_id FROM dep d JOIN dirty ON d.to_id = dirty.id

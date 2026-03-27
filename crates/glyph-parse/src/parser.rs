@@ -617,7 +617,26 @@ impl Parser {
                 self.advance();
                 let params = self.parse_lambda_params()?;
                 self.expect(&TokenKind::Arrow)?;
-                let body = self.parse_expr()?;
+                // Lambda body can be inline or an indented block
+                self.skip_newlines();
+                let body = if self.check(&TokenKind::Indent) {
+                    let block_start = self.span();
+                    self.advance();
+                    let mut stmts = Vec::new();
+                    while !self.check(&TokenKind::Dedent) && !self.check(&TokenKind::Eof) {
+                        stmts.push(self.parse_stmt()?);
+                        self.skip_newlines();
+                    }
+                    if self.check(&TokenKind::Dedent) {
+                        self.advance();
+                    }
+                    Expr {
+                        kind: ExprKind::Block(stmts),
+                        span: block_start.merge(self.prev_span()),
+                    }
+                } else {
+                    self.parse_expr()?
+                };
                 Ok(Expr {
                     kind: ExprKind::Lambda(params, Box::new(body)),
                     span: start.merge(self.prev_span()),
@@ -1647,6 +1666,79 @@ mod tests {
             assert!(matches!(body.kind, ExprKind::Binary(BinOp::Add, _, _)));
         } else {
             panic!("expected Lambda");
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_block() {
+        let def = parse_fn("f x = \\y ->\n  z = y + 1\n  z");
+        if let DefKind::Fn(fndef) = &def.kind {
+            if let Body::Expr(ref expr) = fndef.body {
+                if let ExprKind::Lambda(params, body) = &expr.kind {
+                    assert_eq!(params.len(), 1);
+                    assert_eq!(params[0].name, "y");
+                    assert!(
+                        matches!(body.kind, ExprKind::Block(ref stmts) if stmts.len() == 2),
+                        "expected Block with 2 stmts, got {:?}",
+                        body.kind
+                    );
+                } else {
+                    panic!("expected Lambda, got {:?}", expr.kind);
+                }
+            } else {
+                panic!("expected Expr body");
+            }
+        } else {
+            panic!("expected Fn def");
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_block_multiline() {
+        // Lambda with block body and captures
+        let def = parse_fn("make_adder n =\n  \\x ->\n    y = n + x\n    y");
+        if let DefKind::Fn(fndef) = &def.kind {
+            if let Body::Block(ref stmts) = fndef.body {
+                assert_eq!(stmts.len(), 1);
+                if let StmtKind::Expr(ref expr) = stmts[0].kind {
+                    if let ExprKind::Lambda(params, body) = &expr.kind {
+                        assert_eq!(params.len(), 1);
+                        assert_eq!(params[0].name, "x");
+                        assert!(matches!(body.kind, ExprKind::Block(ref s) if s.len() == 2));
+                    } else {
+                        panic!("expected Lambda");
+                    }
+                } else {
+                    panic!("expected Expr stmt");
+                }
+            } else {
+                panic!("expected Block body");
+            }
+        } else {
+            panic!("expected Fn def");
+        }
+    }
+
+    #[test]
+    fn test_parse_lambda_inline_still_works() {
+        // Ensure single-line lambdas still parse correctly
+        let def = parse_fn("f = \\x -> x + 1");
+        if let DefKind::Fn(fndef) = &def.kind {
+            if let Body::Expr(ref expr) = fndef.body {
+                if let ExprKind::Lambda(_, body) = &expr.kind {
+                    assert!(
+                        matches!(body.kind, ExprKind::Binary(BinOp::Add, _, _)),
+                        "expected Binary Add, got {:?}",
+                        body.kind
+                    );
+                } else {
+                    panic!("expected Lambda");
+                }
+            } else {
+                panic!("expected Expr body");
+            }
+        } else {
+            panic!("expected Fn def");
         }
     }
 
