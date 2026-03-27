@@ -38,7 +38,6 @@ pub enum TokenKind {
     Slash,
     Percent,
     Eq,
-    ColonEq,
     EqEq,
     BangEq,
     Lt,

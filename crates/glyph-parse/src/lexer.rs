@@ -173,12 +173,7 @@ impl Lexer {
             }
             ':' => {
                 self.advance();
-                if !self.at_end() && self.peek() == '=' {
-                    self.advance();
-                    self.push(TokenKind::ColonEq, start);
-                } else {
-                    self.push(TokenKind::Colon, start);
-                }
+                self.push(TokenKind::Colon, start);
             }
             '.' => {
                 self.advance();

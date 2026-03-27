@@ -835,41 +835,6 @@ impl MirLower {
                 });
                 Operand::ConstUnit
             }
-            ast::StmtKind::Assign(lhs, rhs) => {
-                let rhs_val = self.lower_expr(rhs);
-                match &lhs.kind {
-                    ast::ExprKind::Ident(name) => {
-                        // Variable reassignment: find existing local and overwrite
-                        let local_id = self.locals.iter()
-                            .rev()
-                            .find(|l| l.name.as_deref() == Some(name.as_str()))
-                            .map(|l| l.id);
-                        if let Some(id) = local_id {
-                            self.emit(Statement {
-                                dest: id,
-                                rvalue: Rvalue::Use(rhs_val),
-                            });
-                        }
-                    }
-                    ast::ExprKind::Index(arr_expr, idx_expr) => {
-                        // Array index assignment: arr[i] := val
-                        let arr_op = self.lower_expr(arr_expr);
-                        let idx_op = self.lower_expr(idx_expr);
-                        let scratch = self.alloc_local(None, MirType::Int);
-                        self.emit(Statement {
-                            dest: scratch,
-                            rvalue: Rvalue::Call(
-                                Operand::ExternRef("glyph_array_set".to_string()),
-                                vec![arr_op, idx_op, rhs_val],
-                            ),
-                        });
-                    }
-                    _ => {
-                        // Other lvalue forms (field access, etc.) — not yet supported
-                    }
-                }
-                Operand::ConstUnit
-            }
             ast::StmtKind::LetDestructure(names, expr) => {
                 let val = self.lower_expr(expr);
                 let val_ty = self.operand_type(&val);
@@ -1276,10 +1241,6 @@ impl MirLower {
                             for name in names {
                                 block_bound.insert(name.clone());
                             }
-                        }
-                        ast::StmtKind::Assign(l, r) => {
-                            self.walk_free_vars(l, &block_bound, seen, result);
-                            self.walk_free_vars(r, &block_bound, seen, result);
                         }
                     }
                 }

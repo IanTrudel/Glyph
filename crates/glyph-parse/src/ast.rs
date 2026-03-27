@@ -55,7 +55,6 @@ pub enum StmtKind {
     Expr(Expr),
     Let(String, Expr),
     LetDestructure(Vec<String>, Expr),
-    Assign(Expr, Expr),
 }
 
 #[derive(Debug, Clone)]

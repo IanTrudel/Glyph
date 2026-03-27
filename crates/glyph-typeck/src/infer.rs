@@ -362,10 +362,6 @@ impl InferEngine {
                 let _ = ty;
                 Type::Void
             }
-            ast::StmtKind::Assign(_lhs, rhs) => {
-                self.infer_expr(rhs);
-                Type::Void
-            }
         }
     }
 

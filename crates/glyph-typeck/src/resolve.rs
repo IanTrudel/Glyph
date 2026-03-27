@@ -101,10 +101,6 @@ impl<'a> Resolver<'a> {
                 }
                 Ok(())
             }
-            ast::StmtKind::Assign(lhs, rhs) => {
-                self.resolve_expr(lhs)?;
-                self.resolve_expr(rhs)
-            }
         }
     }
 

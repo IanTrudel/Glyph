@@ -161,16 +161,6 @@ impl Parser {
 
         let expr = self.parse_expr()?;
 
-        // Check for assignment: lvalue := expr
-        if self.check(&TokenKind::ColonEq) {
-            self.advance();
-            let rhs = self.parse_expr()?;
-            return Ok(Stmt {
-                span: start.merge(self.prev_span()),
-                kind: StmtKind::Assign(expr, rhs),
-            });
-        }
-
         // Check for let binding: ident = expr (only if expr is a bare ident)
         if self.check(&TokenKind::Eq) {
             if let ExprKind::Ident(name) = &expr.kind {
