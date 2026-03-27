@@ -180,9 +180,10 @@ impl MirLower {
                 let l = self.lower_expr(left);
                 let r = self.lower_expr(right);
                 let l_ty = self.operand_type(&l);
+                let r_ty = self.operand_type(&r);
 
                 // String concatenation: desugar to runtime call
-                if matches!(l_ty, MirType::Str) && matches!(op, ast::BinOp::Add) {
+                if (matches!(l_ty, MirType::Str) || matches!(r_ty, MirType::Str)) && matches!(op, ast::BinOp::Add) {
                     let dest = self.alloc_local(None, MirType::Str);
                     self.emit(Statement {
                         dest,
@@ -190,6 +191,36 @@ impl MirLower {
                             Operand::ExternRef("glyph_str_concat".to_string()),
                             vec![l, r],
                         ),
+                    });
+                    return Operand::Local(dest);
+                }
+
+                // String equality: desugar to runtime call
+                let is_str = matches!(l_ty, MirType::Str) || matches!(r_ty, MirType::Str);
+                if is_str && matches!(op, ast::BinOp::Eq) {
+                    let dest = self.alloc_local(None, MirType::Bool);
+                    self.emit(Statement {
+                        dest,
+                        rvalue: Rvalue::Call(
+                            Operand::ExternRef("glyph_str_eq".to_string()),
+                            vec![l, r],
+                        ),
+                    });
+                    return Operand::Local(dest);
+                }
+                if is_str && matches!(op, ast::BinOp::Neq) {
+                    let eq_dest = self.alloc_local(None, MirType::Bool);
+                    self.emit(Statement {
+                        dest: eq_dest,
+                        rvalue: Rvalue::Call(
+                            Operand::ExternRef("glyph_str_eq".to_string()),
+                            vec![l, r],
+                        ),
+                    });
+                    let dest = self.alloc_local(None, MirType::Bool);
+                    self.emit(Statement {
+                        dest,
+                        rvalue: Rvalue::UnOp(UnOp::Not, Operand::Local(eq_dest)),
                     });
                     return Operand::Local(dest);
                 }
