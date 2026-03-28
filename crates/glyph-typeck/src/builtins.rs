@@ -8,6 +8,10 @@ pub fn register_builtins(env: &mut TypeEnv) {
     env.insert("false".into(), Type::Bool);
     // Builtin functions
     env.insert("print".into(), Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+    env.insert("println".into(), Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+    env.insert("eprintln".into(), Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
+    env.insert("glyph_exit".into(), Type::Fn(Box::new(Type::Int), Box::new(Type::Never)));
+    env.insert("glyph_panic".into(), Type::Fn(Box::new(Type::Str), Box::new(Type::Never)));
 }
 
 /// Get the result type of a binary operator given operand types.

@@ -70,9 +70,9 @@ impl InferEngine {
         self.env.insert("glyph_println".into(),
             Type::Fn(Box::new(Type::Str), Box::new(Type::Int)));
 
-        // glyph_exit : I -> V
+        // glyph_exit : I -> N (bottom type, never returns)
         self.env.insert("glyph_exit".into(),
-            Type::Fn(Box::new(Type::Int), Box::new(Type::Void)));
+            Type::Fn(Box::new(Type::Int), Box::new(Type::Never)));
     }
 
     /// Register an enum type and its variant constructors.
@@ -807,5 +807,10 @@ mod tests {
         let ty = engine.infer_expr(&expr);
         let resolved = engine.subst.resolve(&ty);
         assert!(matches!(resolved, Type::Fn(_, _)));
+    }
+
+    #[test]
+    fn test_glyph_exit_returns_never() {
+        assert_eq!(infer("glyph_exit(1)"), Type::Never);
     }
 }

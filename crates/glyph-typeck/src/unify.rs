@@ -115,9 +115,15 @@ impl Substitution {
             // Error absorbs
             (Type::Error, _) | (_, Type::Error) => Ok(()),
 
-            // Type variables
+            // Bool/Int coercion (same type at runtime in Glyph)
+            (Type::Bool, Type::Int) | (Type::Int, Type::Bool) => Ok(()),
+
+            // Type variables — must come before Never so vars get bound
             (Type::Var(v), _) => self.bind(*v, &b),
             (_, Type::Var(v)) => self.bind(*v, &a),
+
+            // Never is a bottom type — unifies with anything
+            (Type::Never, _) | (_, Type::Never) => Ok(()),
 
             // Functions
             (Type::Fn(a1, r1), Type::Fn(a2, r2)) => {
