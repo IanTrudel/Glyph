@@ -17,13 +17,9 @@ pub struct DefRow {
 pub enum DefKind {
     Fn,
     Type,
-    Trait,
-    Impl,
-    Const,
-    Fsm,
-    Srv,
-    Macro,
     Test,
+    Const,
+    Data,
 }
 
 impl DefKind {
@@ -31,13 +27,9 @@ impl DefKind {
         match self {
             Self::Fn => "fn",
             Self::Type => "type",
-            Self::Trait => "trait",
-            Self::Impl => "impl",
-            Self::Const => "const",
-            Self::Fsm => "fsm",
-            Self::Srv => "srv",
-            Self::Macro => "macro",
             Self::Test => "test",
+            Self::Const => "const",
+            Self::Data => "data",
         }
     }
 
@@ -45,13 +37,9 @@ impl DefKind {
         match s {
             "fn" => Some(Self::Fn),
             "type" => Some(Self::Type),
-            "trait" => Some(Self::Trait),
-            "impl" => Some(Self::Impl),
-            "const" => Some(Self::Const),
-            "fsm" => Some(Self::Fsm),
-            "srv" => Some(Self::Srv),
-            "macro" => Some(Self::Macro),
             "test" => Some(Self::Test),
+            "const" => Some(Self::Const),
+            "data" => Some(Self::Data),
             _ => None,
         }
     }

@@ -14,12 +14,9 @@ pub struct Def {
 pub enum DefKind {
     Fn(FnDef),
     Type(TypeDef),
-    Trait(TraitDef),
-    Impl(ImplDef),
-    Const(ConstDef),
-    Fsm(FsmDef),
-    Srv(SrvDef),
     Test(TestDef),
+    Const(String),
+    Data(Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
@@ -218,81 +215,6 @@ pub enum VariantFields {
     None,
     Positional(Vec<TypeExpr>),
     Named(Vec<Field>),
-}
-
-// Trait definitions
-#[derive(Debug, Clone)]
-pub struct TraitDef {
-    pub type_params: Vec<String>,
-    pub methods: Vec<(String, TypeExpr)>,
-}
-
-// Impl definitions
-#[derive(Debug, Clone)]
-pub struct ImplDef {
-    pub trait_name: String,
-    pub type_name: String,
-    pub methods: Vec<(String, FnDef)>,
-}
-
-// Const definition
-#[derive(Debug, Clone)]
-pub struct ConstDef {
-    pub ty: Option<TypeExpr>,
-    pub value: Expr,
-}
-
-// FSM definition
-#[derive(Debug, Clone)]
-pub struct FsmDef {
-    pub states: Vec<StateDef>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StateDef {
-    pub name: String,
-    pub transitions: Vec<Transition>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Transition {
-    pub event: String,
-    pub params: Vec<Param>,
-    pub target: String,
-    pub action: Option<Expr>,
-    pub span: Span,
-}
-
-// Srv definition
-#[derive(Debug, Clone)]
-pub struct SrvDef {
-    pub addr: Expr,
-    pub routes: Vec<Route>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Route {
-    pub path: String,
-    pub handlers: Vec<Handler>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Handler {
-    pub method: HttpMethod,
-    pub params: Vec<Param>,
-    pub body: Body,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
-    Head,
 }
 
 // Test definition

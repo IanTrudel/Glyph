@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS def (
   id        INTEGER PRIMARY KEY,
   name      TEXT    NOT NULL,
   kind      TEXT    NOT NULL CHECK(kind IN (
-              'fn','type','trait','impl','const','fsm','srv','macro','test'
+              'fn','type','test','const','data'
             )),
   sig       TEXT,
   body      TEXT    NOT NULL,

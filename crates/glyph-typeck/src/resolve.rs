@@ -36,24 +36,8 @@ impl<'a> Resolver<'a> {
             ast::DefKind::Type(typedef) => {
                 self.resolve_type_body(&typedef.body)?;
             }
-            ast::DefKind::Trait(_) | ast::DefKind::Fsm(_) | ast::DefKind::Srv(_) => {
-                // These are structural — no name resolution needed for now
-            }
-            ast::DefKind::Impl(impldef) => {
-                // Resolve trait name
-                self.resolve_type_name(&impldef.trait_name)?;
-                self.resolve_type_name(&impldef.type_name)?;
-                for (_, fndef) in &impldef.methods {
-                    self.push_scope();
-                    for p in &fndef.params {
-                        self.add_local(&p.name);
-                    }
-                    self.resolve_body(&fndef.body)?;
-                    self.pop_scope();
-                }
-            }
-            ast::DefKind::Const(cdef) => {
-                self.resolve_expr(&cdef.value)?;
+            ast::DefKind::Const(_) | ast::DefKind::Data(_) => {
+                // Raw values — no name resolution needed
             }
             ast::DefKind::Test(tdef) => {
                 self.resolve_body(&tdef.body)?;

@@ -22,12 +22,7 @@ pub enum TokenKind {
 
     // Keywords
     Match,
-    Trait,
-    Impl,
-    Const,
     Extern,
-    Fsm,
-    Srv,
     Test,
     As,
 
