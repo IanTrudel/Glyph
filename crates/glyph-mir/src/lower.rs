@@ -599,13 +599,13 @@ impl MirLower {
                 let err_block = self.new_block();
                 let merge_block = self.new_block();
 
-                // Some/Ok has discriminant 1 (second variant)
+                // None/Err has discriminant 1 — branch to err_block when disc == 1
                 let cmp = self.alloc_local(None, MirType::Bool);
                 self.emit(Statement {
                     dest: cmp,
                     rvalue: Rvalue::BinOp(BinOp::Eq, Operand::Local(disc), Operand::ConstInt(1)),
                 });
-                self.terminate(Terminator::Branch(Operand::Local(cmp), ok_block, err_block));
+                self.terminate(Terminator::Branch(Operand::Local(cmp), err_block, ok_block));
 
                 // Ok path: extract inner value
                 self.current_block = ok_block;
@@ -644,13 +644,13 @@ impl MirLower {
                 let panic_block = self.new_block();
                 let merge_block = self.new_block();
 
-                // Some/Ok has discriminant 1 (second variant)
+                // None/Err has discriminant 1 — branch to panic_block when disc == 1
                 let cmp = self.alloc_local(None, MirType::Bool);
                 self.emit(Statement {
                     dest: cmp,
                     rvalue: Rvalue::BinOp(BinOp::Eq, Operand::Local(disc), Operand::ConstInt(1)),
                 });
-                self.terminate(Terminator::Branch(Operand::Local(cmp), ok_block, panic_block));
+                self.terminate(Terminator::Branch(Operand::Local(cmp), panic_block, ok_block));
 
                 // Ok path: extract inner value
                 self.current_block = ok_block;

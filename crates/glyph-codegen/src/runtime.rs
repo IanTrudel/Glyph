@@ -53,6 +53,9 @@ pub const RT_DEREF: &str = "glyph_deref";
 pub const RT_SET_REF: &str = "glyph_set_ref";
 pub const RT_GENERATE: &str = "glyph_generate";
 pub const RT_FILE_EXISTS: &str = "glyph_file_exists";
+pub const RT_OK: &str = "glyph_ok";
+pub const RT_ERR: &str = "glyph_err";
+pub const RT_PANIC_UNWRAP: &str = "glyph_panic_unwrap";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -621,6 +624,47 @@ long long glyph_generate(long long n, long long fn) {
     hdr[1] = len;
     hdr[2] = len | (1LL << 63);
     return (long long)hdr;
+}
+
+/* === Result type (ok/err) === */
+long long glyph_ok(long long val) {
+    long long* r = (long long*)malloc(16); r[0] = 0; r[1] = val; return (long long)r;
+}
+long long glyph_err(long long msg) {
+    long long* r = (long long*)malloc(16); r[0] = 1; r[1] = msg; return (long long)r;
+}
+long long glyph_panic_unwrap(long long variant, long long fn_name) {
+    long long* v = (long long*)variant; long long payload = v[1];
+    const char* fn = *(const char**)fn_name;
+    int fn_len = (int)*(long long*)((char*)fn_name+8);
+    if (payload > (long long)4096) {
+        long long plen = *(long long*)((char*)payload+8);
+        if (plen > 0 && plen < 100000) {
+            const char* ps = *(const char**)payload;
+            fprintf(stderr, "panic: unwrap failed: %.*s (in %.*s)\n", (int)plen, ps, fn_len, fn);
+            exit(1);
+        }
+    }
+    fprintf(stderr, "panic: unwrap failed in %.*s\n", fn_len, fn);
+    exit(1); return 0;
+}
+long long glyph_try_read_file(long long path) {
+    long long result = (long long)glyph_read_file((void*)path);
+    if (*(long long*)((char*)result+8) < 0) {
+        const char* m = "file read failed";
+        char* s = (char*)malloc(16); *(const char**)s = m; *(long long*)(s+8) = 16;
+        return glyph_err((long long)s);
+    }
+    return glyph_ok(result);
+}
+long long glyph_try_write_file(long long path, long long content) {
+    long long result = glyph_write_file((void*)path, (void*)content);
+    if (result < 0) {
+        const char* m = "file write failed";
+        char* s = (char*)malloc(16); *(const char**)s = m; *(long long*)(s+8) = 17;
+        return glyph_err((long long)s);
+    }
+    return glyph_ok(0);
 }
 
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */

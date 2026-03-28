@@ -736,6 +736,38 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     file_exists_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("file_exists", runtime::RT_FILE_EXISTS, &file_exists_sig);
 
+    // glyph_ok(val: i64) -> i64
+    let mut ok_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    ok_sig.params.push(AbiParam::new(types::I64));
+    ok_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("ok", runtime::RT_OK, &ok_sig);
+
+    // glyph_err(msg: i64) -> i64
+    let mut err_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    err_sig.params.push(AbiParam::new(types::I64));
+    err_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("err", runtime::RT_ERR, &err_sig);
+
+    // glyph_panic_unwrap(variant: i64, fn_name: i64) -> void (never returns, but declare i64 for ABI)
+    let mut panic_unwrap_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    panic_unwrap_sig.params.push(AbiParam::new(types::I64));
+    panic_unwrap_sig.params.push(AbiParam::new(types::I64));
+    panic_unwrap_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("panic_unwrap", runtime::RT_PANIC_UNWRAP, &panic_unwrap_sig);
+
+    // glyph_try_read_file(path: i64) -> i64
+    let mut try_read_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    try_read_sig.params.push(AbiParam::new(types::I64));
+    try_read_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("try_read_file", "glyph_try_read_file", &try_read_sig);
+
+    // glyph_try_write_file(path: i64, content: i64) -> i64
+    let mut try_write_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    try_write_sig.params.push(AbiParam::new(types::I64));
+    try_write_sig.params.push(AbiParam::new(types::I64));
+    try_write_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("try_write_file", "glyph_try_write_file", &try_write_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }
