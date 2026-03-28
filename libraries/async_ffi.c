@@ -158,7 +158,7 @@ GVal async_timer_create_ms(GVal ms) {
 
 GVal async_timer_read(GVal fd) {
     uint64_t val = 0;
-    read((int)fd, &val, sizeof(val));
+    if (read((int)fd, &val, sizeof(val)) < 0) { /* ignore */ }
     return (GVal)val;
 }
 

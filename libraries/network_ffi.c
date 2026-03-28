@@ -193,9 +193,9 @@ GVal net_respond(GVal h, GVal status, GVal ct, GVal bd) {
         (int)ct_len, ct_ptr,
         (long long)bd_len);
 
-    (void)write(r->fd, header, header_len);
+    if (write(r->fd, header, header_len) < 0) { /* ignore */ }
     if (bd_len > 0) {
-        (void)write(r->fd, bd_ptr, (int)bd_len);
+        if (write(r->fd, bd_ptr, (int)bd_len) < 0) { /* ignore */ }
     }
 
     close(r->fd);

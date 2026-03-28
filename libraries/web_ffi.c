@@ -98,9 +98,9 @@ GVal web_respond_cors(GVal h, GVal status, GVal ct, GVal bd, GVal origin) {
         (long long)bd_len,
         (int)or_len, or_ptr);
 
-    (void)write(fd, header, header_len);
+    if (write(fd, header, header_len) < 0) { /* ignore */ }
     if (bd_len > 0) {
-        (void)write(fd, bd_ptr, (int)bd_len);
+        if (write(fd, bd_ptr, (int)bd_len) < 0) { /* ignore */ }
     }
 
     close(fd);
