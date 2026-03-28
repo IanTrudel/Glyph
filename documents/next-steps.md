@@ -44,7 +44,7 @@ The `is_runtime_fn` chain (6 functions, ~90 str_eq comparisons) and `nfp2`→`nf
 ### 10. `unify_tags` type coercion is too permissive
 `unify_tags` treats `Int`, `Bool`, and `Void` as interchangeable ("int-like") — if both sides are any of these three, unification silently succeeds. This means `Bool` unifies with `Void`, `Void` unifies with `Int`, etc. This was likely expedient for the GVal representation (everything is i64) but it masks real type errors. Tightening this to only coerce `Bool ↔ Int` (which the runtime actually supports) while rejecting `Void` mismatches would catch bugs earlier without breaking working code.
 
-### 11. Lambda lifting boilerplate extraction
+### ~~11. Lambda lifting boilerplate extraction~~
 `lower_compose`, `lower_field_accessor`, and `wrap_fn_as_closure` each independently build a synthetic lambda MIR from scratch — allocating a lowering context, creating entry block, binding `__env`/`__x` params, emitting body, constructing the MIR record, collecting nested lifts. The three functions share ~70% identical scaffolding. Extracting a `mk_synthetic_lambda(ctx, body_emitter)` helper that handles the boilerplate and takes a callback/closure for the body-specific part would eliminate ~200 tokens of duplication and make adding new synthetic lambdas (e.g., for `generate`) trivial.
 
 ### ~~12. Missing `register_builtins` entries~~
