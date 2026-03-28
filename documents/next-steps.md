@@ -2,119 +2,72 @@
 
 ## Current State
 
-- **1,662 definitions** (1,317 fn + 332 test + 13 type), ~53k tokens
-- **7 libraries** shipping (async, gtk, json, network, scan, web, x11) + stdlib
-- **37 monomorphization defs** — the mono pass exists but gen=2 has **0 definitions** currently
-- **332 tests** (all gen=1), heaviest coverage in test/typeck/parser/mir/lower
-- Recent work: multi-line lambdas, `:=` removal, immutability design docs, data-array model exploration
+- **1,728 definitions** (1,353 fn + 360 test + 13 type + 2 const), ~184k tokens
+- **9 libraries** shipping (async, gtk, json, network, scan, stdlib, thread, web, x11)
+- **stdlib.glyph**: 65 definitions, 1,574 tokens
+- **21 example programs** (api, asteroids, benchmark, calculator, countdown, errors, fibonacci, fsm, gbuild, gled, glint, gstats, gtk, gwm, hello, life, pipeline, prolog, sheet, vulkan, web-api)
+- **360 self-hosted tests**, 77 Rust tests (6 crates)
+- **3-stage bootstrap** working: glyph0 (Rust/Cranelift) → glyph1 → glyph (LLVM)
+- **23 externs** in compiler, MCP server with 18 tools
+- Recent work: Result type + error propagation, frozen hashmap dispatch, guard-based refactoring, `unify_tags` flattening
 
-## Recommendations (roughly priority order)
+## Recommendations
 
-### 1. Implement `generate` / `accumulate` array constructors
-You've already designed this (the Data.Array model analysis from earlier today). `generate(n, f)` eliminates accumulator loops for ~60% of array operations and plays directly into the immutability story. Multi-line lambdas just shipped, making the syntax clean. This is the highest-leverage next step — it's a small runtime addition (`glyph_array_generate`) that immediately makes functional-style array code idiomatic.
+### 1. Structured type error messages
+`tc_err` prints only `[tc_err] function_name` with no detail about what went wrong. Since Glyph's audience is LLMs, line/column carets aren't useful — but structured diagnostics are: expected vs actual types, which subexpression or call site triggered the mismatch, and the definition name. E.g. `[tc_err] my_fn: expected I but got S in argument 1 of add_nums`. This would let an LLM fix type errors without re-reading the entire function.
 
-### 2. Stdlib expansion
-`stdlib.glyph` has only 34 functions. With the library system (`glyph use`/`glyph link`) now working, bulking up stdlib with common operations (map, filter, fold, zip, sort, find, any/all, string utilities like split/join/trim/contains) would make writing example programs much less boilerplate-heavy. Every example currently reinvents these.
+### 2. MIR inlining (optimization unlock)
+The compiler has zero optimization passes beyond TCO. Most "constant-like" values come from zero-arg function calls (`op_add()`, `mir_eq()`) which are opaque at the MIR level. Inlining small functions is the key unlock that makes all downstream passes effective. The optimization stack should be built bottom-up:
 
-### 3. Freeze-bit for arrays (Phase 1 of immutability)
-The design docs are written. A single-bit flag on array headers (`frozen`) that makes `array_set`/`array_push` trap on frozen arrays would be a minimal, non-breaking change that enables the immutability migration incrementally. Array literals could freeze by default; explicit `thaw` for mutation.
+1. **Inlining** — inline small/zero-arg functions into call sites. Requires: call graph analysis, size heuristics, parameter substitution, recursion detection.
+2. **Constant propagation** — replace locals assigned a constant and never reassigned with the constant value.
+3. **Constant folding** — evaluate `binop(const, const)` at compile time. MIR already distinguishes `ok_const_int`/`ok_const_bool`/`ok_const_str`.
+4. **Branch folding** — when `tm_branch` condition is constant, replace with `tm_goto`.
+5. **Dead code elimination** — remove unused locals, unreachable blocks.
 
-### 4. Clean up large definitions
-The top 5 functions are 400-587 tokens each (`tok_one2`, `tok_loop`, `parse_match_arms`, `tok_one3`, `lower_or_subs`). Some of these (especially the tokenizer chain) could benefit from the guard-based dispatch refactoring that was already applied to ~45 other functions. This is maintenance, not feature work, but it reduces token cost for every future LLM interaction with these defs.
+### 3. Monomorphization
+37 `mono_*` functions exist for specializing polymorphic functions into concrete types at compile time. The mono pass runs on every build but rarely triggers (no polymorphic functions in practice). Meanwhile, the struct_map infrastructure already generates `typedef struct` and typed field access for known types, but function signatures are all `GVal`. The primary reliability win is making generated C type-safe so `cc` catches bugs currently hidden by `-w`. Six-phase plan: typed locals → typed parameters → typed returns → enum typedefs → activate mono pass → remove `-w`. See [monomorphization.md](monomorphization.md) for full investigation and implementation plan.
 
-### 5. Gen-2 monomorphization revival
-There are 37 `mono_*` functions but 0 gen=2 definitions currently. If monomorphized codegen was previously working (memory mentions gen=2 struct codegen was complete), something has regressed or been removed. Reviving this would unlock `typedef struct` codegen for user-defined types — important for performance and C interop.
+### 4. Build artifact inspection (`--emit-c`)
+Generated C goes to `/tmp/glyph_out.c` unconditionally; LLVM IR to `/tmp/glyph_out.ll`. There's `--emit-mir` for MIR debugging but no way to inspect generated C without fishing in `/tmp`. Adding `--emit-c` (or `--emit=c`) that writes to a named file or stdout would make debugging codegen far easier.
 
-### ~~6. Error handling / Result type in practice~~
-The runtime has `ok`/`err`/`try_read_file`/`try_write_file` but there's no `?` propagation in the self-hosted compiler pipeline. Making the error propagation operator work end-to-end would be a significant usability win, especially for the web/network examples where error handling is real.
+### 5. `generate` / `accumulate` array constructors
+`generate(n, f)` eliminates accumulator loops for array construction and plays into the immutability story. Multi-line lambdas are shipped, making the syntax clean. Small runtime addition (`glyph_array_generate`) that makes functional-style array code idiomatic.
 
----
+### 6. Stdlib expansion
+stdlib.glyph has 40 functions covering collection operations (`map`/`filter`/`fold`/`zip`/`sort`/`join`/`flat_map`/`any`/`all`/`find_index`/`contains`/`each`/`range`/`take`/`drop`/`sum`/`product`/`min`/`max`/`clamp`/`iabs`) plus base64. What's missing:
 
-## Deep-Dive Recommendations (from compiler internals analysis)
+**Character classification** (reinvented 3+ times across examples):
+- `is_digit`, `is_alpha`, `is_space`, `is_upper`, `is_lower`, `is_alnum` — calculator, gstats, sheet, gled all hand-roll these
 
-### 7. Constant Folding / Dead Code Elimination pass
-The compiler has **zero optimization passes** beyond TCO. The TCO pass (`tco_optimize`) is clean and well-structured (11 functions, pattern-matches on MIR blocks). Adding a constant folding pass in the same style would be straightforward — the MIR already separates `ok_const_int`, `ok_const_bool`, `ok_const_str` operands from locals, so recognizing `binop(const, const)` and folding at compile time is mechanical. A DCE pass that removes unused locals after folding would compound the benefit. This directly reduces generated C code size and runtime work.
+**String utilities** (reinvented 1-2 times each):
+- `pad_left`/`pad_right` — gstats, sheet both build this
+- `repeat_str` — sheet, gled (`make_spaces`)
+- `split_lines`/`join_lines` — gled builds this, generally useful
+- `starts_with`/`ends_with` — api example reinvents this
+- `str_replace` — compiler has `str_replace_all` (241 tokens), not in stdlib
+- `count_lines` — glint, errors both build this
 
-### ~~8. String dispatch tables to replace `glyph_str_eq` chains~~
-The `is_runtime_fn` chain (6 functions, ~90 str_eq comparisons) and `nfp2`→`nfp7` namespace prefix chain (another 30+ str_eq calls) are the single most expensive dispatch patterns in the compiler. Every function call and every definition insertion walks these chains linearly. The hashmap runtime (`cg_runtime_map`) already exists and works — using `hm_new`/`hm_set`/`hm_has` to build a lookup table at startup and replacing these chains with `hm_get` would be a measurable speedup on large programs, and would shrink those 6+6 chain functions down to 2 (one init, one lookup).
+**Missing collection operations:**
+- `reverse` — not in stdlib
+- `enumerate` — (index, value) pairs
+- `last` — get last element
 
-### ~~9. `binop_type` and `lower_binop` should be table-driven~~
-`binop_type` (334 tokens) is a 13-deep nested match on integer equality. `lower_binop` (213 tokens) + `lower_binop2` (95 tokens) is the same pattern again. Both map `op_X()` → `mir_Y()` or `op_X()` → type. These are pure lookup tables disguised as code. An array-indexed approach (`result = table[op]`) would collapse ~640 tokens of match chains into ~30 tokens of array construction + 1 index. This also makes adding new operators trivial instead of requiring edits to 3 separate match chains.
+### 7. Scan library expansion
+scan.glyph is inspired by SNOBOL/Icon-style pattern matching — position-advancing scanners over character sets with success/fail signaling. It has character sets (`cs_digit`/`cs_alpha`/`cs_alnum`/`cs_hex`/`cs_upper`/`cs_lower`/`cs_ws`/`cs_print`) and scanner combinators (`sc_char`/`sc_take`/`sc_take0`/`sc_upto`/`sc_between`/`sc_literal`/`sc_quoted`/`sc_ident`/`sc_int`/`sc_skip_ws`/`sc_rest`). What's missing:
 
-### ~~10. `unify_tags` type coercion is too permissive~~ — FIXED
-`ty_never` wired as proper bottom type (unifies with everything). `Void` removed from `int_like` — only `Bool ↔ Int` coercion remains. `glyph_exit` returns `Never`, `glyph_panic` registered as `S→N`. `array_push` signature fixed to `[T]→T→[T]`. 6 compiler functions fixed for surfaced Void↔Int mismatches. 343/343 tests, 0 type warnings.
+**Combinator gaps:**
+- `sc_sep_by` — parse items separated by delimiter (CSV, argument lists). Currently requires manual looping with `sc_upto` + position arithmetic.
+- `sc_map` — transform a scanner's result value (e.g. `sc_map(sc_int, \x -> x * 2)`)
+- `sc_or` — try first scanner, fall back to second on `None`
+- `sc_seq` — sequence two scanners, combine results
+- `sc_optional` — try scanner, return default on `None`
+- `sc_float` — parse float literals (currently only `sc_int`)
+- `sc_line` — scan to next newline
 
-### ~~11. Lambda lifting boilerplate extraction~~
-`lower_compose`, `lower_field_accessor`, and `wrap_fn_as_closure` each independently build a synthetic lambda MIR from scratch — allocating a lowering context, creating entry block, binding `__env`/`__x` params, emitting body, constructing the MIR record, collecting nested lifts. The three functions share ~70% identical scaffolding. Extracting a `mk_synthetic_lambda(ctx, body_emitter)` helper that handles the boilerplate and takes a callback/closure for the body-specific part would eliminate ~200 tokens of duplication and make adding new synthetic lambdas (e.g., for `generate`) trivial.
+**Character set gaps:**
+- `cs_punct` — punctuation characters
+- `cs_not` / complement shorthand — `scan_cset_compl` exists as runtime but no `cs_` convenience wrapper
 
-### ~~12. Missing `register_builtins` entries~~
-The runtime has functions that `is_runtime_fn` recognizes but `register_builtins` doesn't register with the type checker: `array_pop`, `str_to_float`, `float_to_str`, `int_to_float`, `float_to_int`, `str_index_of`, `str_starts_with`, `str_ends_with`, `str_trim`, `str_to_upper`, `str_split`, `str_from_code`, `array_reverse`, `array_slice`, `array_index_of`. These functions compile and link fine (the C runtime defines them), but the type checker can't infer their types, meaning any code using them gets type warnings. Adding their signatures to `register_builtins` is mechanical and would clean up type inference for all user programs using these functions.
-
-### 13. Build artifact inspection (`--emit-c`)
-Generated C goes to `/tmp/glyph_out.c` unconditionally. There's `--emit-mir` for MIR debugging but no way to inspect the generated C without fishing in `/tmp`. Adding `--emit-c` (or `--emit=c`) that writes the C to a named file (or stdout) would make debugging codegen issues far easier. Similarly, the LLVM path writes to `/tmp/glyph_out.ll`. Both should respect an output path.
-
-### ~~14. 672 zero-token definitions~~ — FIXED
-Implemented a Glyph-native BPE token estimator (`count_tokens` + 12 helper functions: `ct_loop`, `ct_dispatch`, `ct_is_alpha`, `ct_is_alnum`, `ct_skip_ident`, `ct_skip_num`, `ct_skip_str`, `ct_skip_ws`, `ct_is_tq`, `ct_skip_raw`, `ct_is_pair`, `ct_count_us`). Integrated into both `do_put` (CLI) and `mcp_put_insert` (MCP). Character-scanning approach: identifiers ~1 token per 5 chars, raw C strings ~1 per 2.7 chars, two-char operators detected, whitespace ~1 per 6 chars. Calibration against cl100k_base ground truth: **3.7% total overestimate, 10 tokens mean abs error, 4/1,317 defs >40% error**. Previous 875 zero-token definitions backfilled via Python tiktoken.
-
----
-
-## Additional Recommendations (from /btw analysis)
-
-### ~~15. Fix the `>>` composition operator~~ — VERIFIED WORKING
-~~Claimed broken but `test_compose` passes. `lower_compose` is fully implemented in `lower_expr2`.~~
-
-### ~~16. Implement `.field` accessor lowering~~ — VERIFIED WORKING
-~~`lower_field_accessor` is fully implemented — generates synthetic lambda with field access.~~
-
-### ~~17. Four versions of `walk_free_vars` exist~~ — VERIFIED: standard dispatch chain
-~~Not copy-paste. Each handles different expression kinds (ident/literals → binary/call → lambda/match/pipe → propagate/array/record) and chains to the next. Same pattern as `tok_one`→`tok_one2`→`tok_one3`→`tok_one4`.~~
-
-### ~~18. Codegen has ~10+ empty stub functions (0 tokens)~~ — VERIFIED: false, stale `tokens` column
-~~All listed functions have real bodies (157-1318 chars) and active callers. The `tokens=0` in the def table is from #14 (self-hosted put_def doesn't recompute the BPE token count), not empty stubs.~~
-
-### 19. The only optimization pass is TCO — no constant folding, no DCE, no inlining
-Adding even basic constant folding (evaluate `3 + 4` at compile time) would be a straightforward MIR pass and meaningfully reduce generated C code size.
-
-### 20. Type checker errors have no source locations
-`tc_err` just prints `[tc_err] function_name` with no line/column. The parser already has `format_diagnostic` with caret pointing — threading source positions through type inference would dramatically improve the developer experience.
-
-### ~~21. C runtime has string functions that aren't exposed to Glyph~~
-All string functions (`str_split`, `str_trim`, `str_starts_with`, `str_ends_with`, `str_index_of`, `str_to_upper`, `str_from_code`) and array functions (`array_reverse`, `array_slice`, `array_index_of`) are registered in `mk_runtime_set` and fully available.
-
-### ~~22. `unify_tags` has 17 nested match expressions~~
-Refactored from 17 nested matches to 8 flat guard-dispatch arms using `||` or-guards. Same semantics, much more readable.
-
-### 23. Build artifacts go to `/tmp/glyph_out.*` with no way to inspect them
-A `--keep-intermediates` or `--emit-c` flag to write generated C to a user-specified path would make debugging codegen issues much easier.
-
-### 24. 120+ manual `_loop` helper functions in the compiler itself
-The compiler doesn't use its own stdlib. Having the compiler `glyph use stdlib.glyph` and replace manual loop helpers with `map`/`filter`/`fold` would be a strong dogfooding signal and cut significant token bloat.
-
----
-
-**Top picks for highest novelty + impact:** #19 (constant folding) and #20 (type error locations) are the meatiest new feature work. #12 (register_builtins) and #14 (zero-token fix) are quick wins.
-
----
-
-## Future: MIR Inlining as Optimization Unlock
-
-Constant folding (#7/#19) has **limited standalone impact** because most "constant-like" values in Glyph come from zero-arg function calls (`op_add()`, `mir_eq()`, `rv_use()`, etc.) which are opaque at the MIR level. In MIR, `op == op_add()` becomes:
-
-```
-_tmp = call(op_add)         ← function call, not a constant
-_cond = eq(_param, _tmp)    ← binop(local, local), not binop(const, const)
-```
-
-The folder can't see through the call. The real optimization stack needs to be built bottom-up:
-
-1. **Inlining** (high impact, hard) — Inline small functions (especially zero-arg constants like `op_add = 1`) directly into call sites. Requires: call graph analysis, size heuristics, parameter substitution, recursion detection. This is the key unlock — once calls are inlined, all downstream passes become effective.
-
-2. **Constant propagation** (medium impact, medium difficulty) — After inlining, locals that are assigned a constant and never reassigned can be replaced with the constant value everywhere they're used.
-
-3. **Constant folding** (low standalone impact, easy) — Evaluate `binop(const, const)` at compile time. Only fires after inlining + propagation make constants visible. The MIR already distinguishes `ok_const_int`/`ok_const_bool`/`ok_const_str` operands, so the pattern-match is mechanical.
-
-4. **Branch folding** (medium impact, easy after folding) — When a `tm_branch` condition is constant, replace with `tm_goto` to the taken target. Opens up dead block elimination.
-
-5. **Dead code elimination** (medium impact, medium difficulty) — Remove assignments to unused locals, unreachable blocks. Requires a use-count pass.
-
-Inlining alone would transform how the compiler's own code compiles — the hundreds of small constant functions and dispatch helpers would collapse into their callers, making all subsequent passes effective.
+### 8. Generational language evolution
+Generations (`gen` column) form a bootstrapping ladder: gen=1 is compilable by glyph0 (Rust), gen=2 can use features only gen=1+ understands, gen=3 needs gen=2+, etc. A higher-gen definition overrides a lower-gen one of the same name when building with `--gen=N`. Currently the entire compiler is gen=1. Higher generations would let the self-hosted compiler adopt newer Glyph features (Result types, guards, or-patterns) that glyph0 can't compile, decoupling language evolution from the Rust bootstrap.
