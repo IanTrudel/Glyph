@@ -46,8 +46,17 @@ pub const RT_BITSET_TEST: &str = "glyph_bitset_test";
 pub const RT_ARRAY_FREEZE: &str = "glyph_array_freeze";
 pub const RT_ARRAY_FROZEN: &str = "glyph_array_frozen";
 pub const RT_ARRAY_THAW: &str = "glyph_array_thaw";
+pub const RT_HM_NEW: &str = "glyph_hm_new";
+pub const RT_HM_SET: &str = "glyph_hm_set";
+pub const RT_HM_GET: &str = "glyph_hm_get";
+pub const RT_HM_DEL: &str = "glyph_hm_del";
+pub const RT_HM_KEYS: &str = "glyph_hm_keys";
+pub const RT_HM_LEN: &str = "glyph_hm_len";
+pub const RT_HM_HAS: &str = "glyph_hm_has";
 pub const RT_HM_FREEZE: &str = "glyph_hm_freeze";
 pub const RT_HM_FROZEN: &str = "glyph_hm_frozen";
+pub const RT_HM_GET_FLOAT: &str = "glyph_hm_get_float";
+pub const RT_HM_SET_FLOAT: &str = "glyph_hm_set_float";
 pub const RT_REF: &str = "glyph_ref";
 pub const RT_DEREF: &str = "glyph_deref";
 pub const RT_SET_REF: &str = "glyph_set_ref";
@@ -587,6 +596,99 @@ long long glyph_array_thaw(long long hdr) {
     nh[0] = (long long)nd; nh[1] = len; nh[2] = cap;
     return (long long)nh;
 }
+/* === Hash Map (open addressing, FNV-1a) === */
+static long long glyph_hm_hash(long long k) {
+    unsigned char* s = (unsigned char*)((long long*)k)[0];
+    long long len = ((long long*)k)[1];
+    unsigned long long h = 14695981039346656037ULL;
+    long long i; for (i = 0; i < len; i++) { h ^= s[i]; h *= 1099511628211ULL; }
+    return (long long)(h & 0x7FFFFFFFFFFFFFFFLL);
+}
+static long long glyph_hm_keq(long long a, long long b) { return glyph_str_eq((void*)a, (void*)b); }
+long long glyph_hm_new() {
+    long long cap = 8; long long* h = (long long*)malloc(24);
+    long long* d = (long long*)malloc(cap*24); memset(d, 0, cap*24);
+    h[0] = (long long)d; h[1] = 0; h[2] = cap; return (long long)h;
+}
+long long glyph_hm_len(long long m) { return ((long long*)m)[1]; }
+long long glyph_hm_has(long long m, long long k) {
+    long long* h = (long long*)m; long long cap = h[2] & 0x7FFFFFFFFFFFFFFFLL; long long* d = (long long*)h[0];
+    long long idx = glyph_hm_hash(k) % cap;
+    long long i; for (i = 0; i < cap; i++) {
+        long long s = ((idx+i) % cap) * 3;
+        if (d[s+2] == 0) return 0;
+        if (d[s+2] == 1 && glyph_hm_keq(d[s], k)) return 1;
+    }
+    return 0;
+}
+long long glyph_hm_get(long long m, long long k) {
+    long long* h = (long long*)m; long long cap = h[2] & 0x7FFFFFFFFFFFFFFFLL; long long* d = (long long*)h[0];
+    long long idx = glyph_hm_hash(k) % cap;
+    long long i; for (i = 0; i < cap; i++) {
+        long long s = ((idx+i) % cap) * 3;
+        if (d[s+2] == 0) return 0;
+        if (d[s+2] == 1 && glyph_hm_keq(d[s], k)) return d[s+1];
+    }
+    return 0;
+}
+static void glyph_hm_resize(long long* h) {
+    long long oc = h[2] & 0x7FFFFFFFFFFFFFFFLL; long long* od = (long long*)h[0];
+    long long nc = oc * 2; long long* nd = (long long*)malloc(nc*24); memset(nd, 0, nc*24);
+    long long i; for (i = 0; i < oc; i++) {
+        long long os = i * 3;
+        if (od[os+2] == 1) {
+            long long idx = glyph_hm_hash(od[os]) % nc;
+            long long j; for (j = 0; j < nc; j++) {
+                long long ns = ((idx+j) % nc) * 3;
+                if (nd[ns+2] == 0) { nd[ns] = od[os]; nd[ns+1] = od[os+1]; nd[ns+2] = 1; break; }
+            }
+        }
+    }
+    h[0] = (long long)nd; h[2] = nc;
+}
+long long glyph_hm_set(long long m, long long k, long long v) {
+    long long* h = (long long*)m;
+    if (h[2] < 0) { fprintf(stderr, "set on frozen map\n"); exit(1); }
+    long long cap = h[2]; long long* d = (long long*)h[0];
+    long long idx = glyph_hm_hash(k) % cap; long long tomb = -1;
+    long long i; for (i = 0; i < cap; i++) {
+        long long s = ((idx+i) % cap) * 3;
+        if (d[s+2] == 0) {
+            if (tomb >= 0) s = tomb;
+            d[s] = k; d[s+1] = v; d[s+2] = 1; h[1]++;
+            if (h[1]*10 > cap*7) glyph_hm_resize(h); return m;
+        }
+        if (d[s+2] == 2 && tomb < 0) tomb = s;
+        if (d[s+2] == 1 && glyph_hm_keq(d[s], k)) { d[s+1] = v; return m; }
+    }
+    if (tomb >= 0) {
+        d[tomb] = k; d[tomb+1] = v; d[tomb+2] = 1; h[1]++;
+        if (h[1]*10 > cap*7) glyph_hm_resize(h); return m;
+    }
+    glyph_hm_resize(h); return glyph_hm_set(m, k, v);
+}
+long long glyph_hm_del(long long m, long long k) {
+    long long* h = (long long*)m;
+    if (h[2] < 0) { fprintf(stderr, "del on frozen map\n"); exit(1); }
+    long long cap = h[2]; long long* d = (long long*)h[0];
+    long long idx = glyph_hm_hash(k) % cap;
+    long long i; for (i = 0; i < cap; i++) {
+        long long s = ((idx+i) % cap) * 3;
+        if (d[s+2] == 0) return m;
+        if (d[s+2] == 1 && glyph_hm_keq(d[s], k)) { d[s+2] = 2; h[1]--; return m; }
+    }
+    return m;
+}
+long long glyph_hm_keys(long long m) {
+    long long* h = (long long*)m; long long n = h[1]; long long cap = h[2] & 0x7FFFFFFFFFFFFFFFLL; long long* d = (long long*)h[0];
+    long long* kd = (long long*)malloc((n+1)*8);
+    long long* kh = (long long*)malloc(24);
+    long long i, j = 0;
+    for (i = 0; i < cap; i++) { long long s = i*3; if (d[s+2] == 1) kd[j++] = d[s]; }
+    kh[0] = (long long)kd; kh[1] = j; kh[2] = j | (1LL << 63); return (long long)kh;
+}
+long long glyph_hm_get_float(long long m, long long k) { return glyph_hm_get(m, k); }
+long long glyph_hm_set_float(long long m, long long k, long long v) { return glyph_hm_set(m, k, v); }
 long long glyph_hm_freeze(long long hdr) {
     long long* h = (long long*)hdr;
     if (h[2] >= 0) h[2] = h[2] | (1LL << 63);

@@ -692,6 +692,52 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     arr_thaw_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("array_thaw", runtime::RT_ARRAY_THAW, &arr_thaw_sig);
 
+    // glyph_hm_new() -> i64
+    let mut hm_new_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_new_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_new", runtime::RT_HM_NEW, &hm_new_sig);
+
+    // glyph_hm_set(m: i64, k: i64, v: i64) -> i64
+    let mut hm_set_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_set_sig.params.push(AbiParam::new(types::I64));
+    hm_set_sig.params.push(AbiParam::new(types::I64));
+    hm_set_sig.params.push(AbiParam::new(types::I64));
+    hm_set_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_set", runtime::RT_HM_SET, &hm_set_sig);
+
+    // glyph_hm_get(m: i64, k: i64) -> i64
+    let mut hm_get_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_get_sig.params.push(AbiParam::new(types::I64));
+    hm_get_sig.params.push(AbiParam::new(types::I64));
+    hm_get_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_get", runtime::RT_HM_GET, &hm_get_sig);
+
+    // glyph_hm_del(m: i64, k: i64) -> i64
+    let mut hm_del_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_del_sig.params.push(AbiParam::new(types::I64));
+    hm_del_sig.params.push(AbiParam::new(types::I64));
+    hm_del_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_del", runtime::RT_HM_DEL, &hm_del_sig);
+
+    // glyph_hm_keys(m: i64) -> i64
+    let mut hm_keys_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_keys_sig.params.push(AbiParam::new(types::I64));
+    hm_keys_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_keys", runtime::RT_HM_KEYS, &hm_keys_sig);
+
+    // glyph_hm_len(m: i64) -> i64
+    let mut hm_len_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_len_sig.params.push(AbiParam::new(types::I64));
+    hm_len_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_len", runtime::RT_HM_LEN, &hm_len_sig);
+
+    // glyph_hm_has(m: i64, k: i64) -> i64
+    let mut hm_has_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_has_sig.params.push(AbiParam::new(types::I64));
+    hm_has_sig.params.push(AbiParam::new(types::I64));
+    hm_has_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_has", runtime::RT_HM_HAS, &hm_has_sig);
+
     // glyph_hm_freeze(hdr: i64) -> i64
     let mut hm_freeze_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
     hm_freeze_sig.params.push(AbiParam::new(types::I64));
@@ -703,6 +749,21 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     hm_frozen_sig.params.push(AbiParam::new(types::I64));
     hm_frozen_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("hm_frozen", runtime::RT_HM_FROZEN, &hm_frozen_sig);
+
+    // glyph_hm_get_float(m: i64, k: i64) -> i64
+    let mut hm_get_float_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_get_float_sig.params.push(AbiParam::new(types::I64));
+    hm_get_float_sig.params.push(AbiParam::new(types::I64));
+    hm_get_float_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_get_float", runtime::RT_HM_GET_FLOAT, &hm_get_float_sig);
+
+    // glyph_hm_set_float(m: i64, k: i64, v: i64) -> i64
+    let mut hm_set_float_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_set_float_sig.params.push(AbiParam::new(types::I64));
+    hm_set_float_sig.params.push(AbiParam::new(types::I64));
+    hm_set_float_sig.params.push(AbiParam::new(types::I64));
+    hm_set_float_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_set_float", runtime::RT_HM_SET_FLOAT, &hm_set_float_sig);
 
     // glyph_ref(val: i64) -> i64
     let mut ref_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);

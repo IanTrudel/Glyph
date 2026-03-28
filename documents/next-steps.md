@@ -25,7 +25,7 @@ The top 5 functions are 400-587 tokens each (`tok_one2`, `tok_loop`, `parse_matc
 ### 5. Gen-2 monomorphization revival
 There are 37 `mono_*` functions but 0 gen=2 definitions currently. If monomorphized codegen was previously working (memory mentions gen=2 struct codegen was complete), something has regressed or been removed. Reviving this would unlock `typedef struct` codegen for user-defined types — important for performance and C interop.
 
-### 6. Error handling / Result type in practice
+### ~~6. Error handling / Result type in practice~~
 The runtime has `ok`/`err`/`try_read_file`/`try_write_file` but there's no `?` propagation in the self-hosted compiler pipeline. Making the error propagation operator work end-to-end would be a significant usability win, especially for the web/network examples where error handling is real.
 
 ---
@@ -35,10 +35,10 @@ The runtime has `ok`/`err`/`try_read_file`/`try_write_file` but there's no `?` p
 ### 7. Constant Folding / Dead Code Elimination pass
 The compiler has **zero optimization passes** beyond TCO. The TCO pass (`tco_optimize`) is clean and well-structured (11 functions, pattern-matches on MIR blocks). Adding a constant folding pass in the same style would be straightforward — the MIR already separates `ok_const_int`, `ok_const_bool`, `ok_const_str` operands from locals, so recognizing `binop(const, const)` and folding at compile time is mechanical. A DCE pass that removes unused locals after folding would compound the benefit. This directly reduces generated C code size and runtime work.
 
-### 8. String dispatch tables to replace `glyph_str_eq` chains
+### ~~8. String dispatch tables to replace `glyph_str_eq` chains~~
 The `is_runtime_fn` chain (6 functions, ~90 str_eq comparisons) and `nfp2`→`nfp7` namespace prefix chain (another 30+ str_eq calls) are the single most expensive dispatch patterns in the compiler. Every function call and every definition insertion walks these chains linearly. The hashmap runtime (`cg_runtime_map`) already exists and works — using `hm_new`/`hm_set`/`hm_has` to build a lookup table at startup and replacing these chains with `hm_get` would be a measurable speedup on large programs, and would shrink those 6+6 chain functions down to 2 (one init, one lookup).
 
-### 9. `binop_type` and `lower_binop` should be table-driven
+### ~~9. `binop_type` and `lower_binop` should be table-driven~~
 `binop_type` (334 tokens) is a 13-deep nested match on integer equality. `lower_binop` (213 tokens) + `lower_binop2` (95 tokens) is the same pattern again. Both map `op_X()` → `mir_Y()` or `op_X()` → type. These are pure lookup tables disguised as code. An array-indexed approach (`result = table[op]`) would collapse ~640 tokens of match chains into ~30 tokens of array construction + 1 index. This also makes adding new operators trivial instead of requiring edits to 3 separate match chains.
 
 ### ~~10. `unify_tags` type coercion is too permissive~~ — FIXED
