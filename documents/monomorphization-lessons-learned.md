@@ -200,32 +200,31 @@ List of runtime functions that have (or had) non-GVal C signatures — verify th
 
 ---
 
-## 8. Extern Wrappers Need Universal Casting
+## 8. Extern Wrappers Need Function Pointer Casts
 
 ### What happened
 
 Extern wrappers generate: `GVal glyph_getenv(GVal _0) { return (GVal)(getenv)(_0); }`. The `_0` argument is GVal (intptr_t) but `getenv` expects `const char*`. With warning suppression off, this is an error.
 
+The initial fix wrapped arguments in `(void*)`: `(getenv)((void*)_0)`. But this broke extern functions whose C implementations accept `GVal` directly (e.g., async library's `coro_create(GVal, GVal, GVal)`), because `void*` is not `GVal`.
+
 ### How it was fixed
 
-`cg_wrap_call_args` now wraps every argument in `(void*)`: `return (GVal)(getenv)((void*)_0)`. The `void*` intermediate cast is well-defined for intptr_t→pointer conversion and GCC accepts it without warnings.
+`cg_extern_wrapper` now casts the function pointer itself to a GVal-based signature, suppressing all prototype checking:
+
+```c
+// Before (bare call — GCC checks arg types against getenv's prototype):
+GVal glyph_getenv(GVal _0) { return (GVal)(getenv)(_0); }
+
+// After (function pointer cast — GCC trusts the cast signature):
+GVal glyph_getenv(GVal _0) { return (GVal)((GVal(*)(GVal))(getenv))(_0); }
+```
+
+New helpers: `cg_wrap_fnptr_cast(symbol, nparams, is_void)` and `cg_wrap_fnptr_params(n, i)` generate the cast expression. This approach works universally — both for externs taking typed C pointers (getenv, fflush) and externs taking GVal (coro_create, chan_send).
 
 ### LLVM lesson
 
-The LLVM backend doesn't generate extern wrappers the same way — it uses `declare` for extern functions and calls them directly. When you add typed LLVM signatures, extern calls will need `inttoptr` casts:
-
-```llvm
-; Before (everything i64):
-%result = call i64 @getenv(i64 %arg)
-
-; After (if extern is declared with ptr):
-declare ptr @getenv(ptr)
-%arg_ptr = inttoptr i64 %arg to ptr
-%result_ptr = call ptr @getenv(ptr %arg_ptr)
-%result = ptrtoint ptr %result_ptr to i64
-```
-
-Alternatively, keep extern declarations as `i64` and let LLVM handle the ABI. This avoids the cast issue entirely but means the LLVM IR doesn't reflect the actual C types of extern functions.
+The LLVM backend doesn't generate extern wrappers the same way — it uses `declare` for extern functions and calls them directly. Keep extern declarations as `i64` parameters and let LLVM handle the ABI. This avoids the cast issue entirely.
 
 ---
 
@@ -406,7 +405,54 @@ For reference when building the LLVM equivalent:
 
 ---
 
-## 15. What Was NOT Needed (Avoid Over-Engineering)
+## 15. Record/Closure/Indirect-Call Stores Need (GVal) Casts
+
+### What happened
+
+Three more boundary sites surfaced when building real examples (gwm, async, web-api):
+
+| Site | Code pattern | Issue |
+|------|-------------|-------|
+| Record aggregate stores | `__r[N] = typed_local` | Typed `Glyph_WmColors*` stored into `GVal*` array |
+| Closure capture stores | `__c[N] = typed_local` | Typed local captured into `GVal*` closure env |
+| Indirect call arguments | `fn_ptr(closure, typed_local)` | Typed local passed as `GVal` param to closure call |
+
+Each required `(GVal)` casts. Fixed in `cg_store_ops`, `cg_store_ops_alpha`, `cg_closure_stores`, `cg_indirect_args`, and `cg_indirect_args_rest`.
+
+### Why these weren't caught in Section 5
+
+Section 5 covered the **typed-function** boundaries (params, returns, variant elements). These are **generic infrastructure** boundaries — they move values between typed locals and GVal-typed storage that exists regardless of monomorphization. They only broke when mono actually typed a local as a struct pointer in code that uses closures or builds large records.
+
+### LLVM lesson
+
+Same pattern: `ptrtoint` before storing a typed value into an `i64*` slot (record, closure env, indirect call arg). The LLVM backend will catch these immediately as type mismatches since `store %Glyph_Foo* %val, i64* %slot` is invalid IR.
+
+---
+
+## 16. FFI C Files Must Be Portable Across intptr_t Definitions
+
+### What happened
+
+Hand-written FFI C files (`network_ffi.c`, `web_ffi.c`) used `%lld` in `snprintf` format strings for `GVal` values. On x86_64 Linux, `GVal` is `intptr_t` which maps to `long` (not `long long`). Both are 64-bit, but GCC's `-Wformat` distinguishes them — producing warnings on CI that don't appear on systems where `intptr_t` is `long long`.
+
+Similarly, `gtk_ffi.c` declared `extern GVal glyph_cstr_to_str(const char *s)` but the runtime defines it as `GVal glyph_cstr_to_str(GVal s)` — conflicting types.
+
+### How it was fixed
+
+- `snprintf` args cast to `(long long)` to match `%lld` format specifier
+- `write()` return values cast to `(void)` to suppress unused-result warnings
+- `gtk_ffi.c` extern declaration changed to match runtime signature
+
+### Lesson
+
+FFI C files are outside the compiler's control — they're hand-written and prepended verbatim. They must not assume `GVal` is any specific C type beyond `intptr_t`. Rules:
+1. Use `(long long)` casts with `%lld`, or use `PRIdPTR` from `<inttypes.h>`
+2. Extern declarations of runtime functions must use `GVal`, not C-native types
+3. `(void)write(...)` suppresses `-Wunused-result` portably
+
+---
+
+## 17. What Was NOT Needed (Avoid Over-Engineering)
 
 - **Enum typedef structs:** The existing tagged-integer (fieldless) and GVal-array (payload) representations worked fine. No need for C `union` types.
 - **Typed array elements:** Arrays stay `GVal*` internally. Only the locals holding array elements get typed after extraction.
