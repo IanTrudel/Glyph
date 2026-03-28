@@ -33,6 +33,7 @@ examples/web-api/app
 examples/gbuild/gbuild
 examples/sheet/sheet
 examples/pipeline/pipeline
+examples/fsm/fsm
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
