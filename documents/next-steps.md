@@ -93,3 +93,28 @@ The compiler doesn't use its own stdlib. Having the compiler `glyph use stdlib.g
 ---
 
 **Top picks for highest novelty + impact:** #19 (constant folding) and #20 (type error locations) are the meatiest new feature work. #12 (register_builtins) and #14 (zero-token fix) are quick wins.
+
+---
+
+## Future: MIR Inlining as Optimization Unlock
+
+Constant folding (#7/#19) has **limited standalone impact** because most "constant-like" values in Glyph come from zero-arg function calls (`op_add()`, `mir_eq()`, `rv_use()`, etc.) which are opaque at the MIR level. In MIR, `op == op_add()` becomes:
+
+```
+_tmp = call(op_add)         ← function call, not a constant
+_cond = eq(_param, _tmp)    ← binop(local, local), not binop(const, const)
+```
+
+The folder can't see through the call. The real optimization stack needs to be built bottom-up:
+
+1. **Inlining** (high impact, hard) — Inline small functions (especially zero-arg constants like `op_add = 1`) directly into call sites. Requires: call graph analysis, size heuristics, parameter substitution, recursion detection. This is the key unlock — once calls are inlined, all downstream passes become effective.
+
+2. **Constant propagation** (medium impact, medium difficulty) — After inlining, locals that are assigned a constant and never reassigned can be replaced with the constant value everywhere they're used.
+
+3. **Constant folding** (low standalone impact, easy) — Evaluate `binop(const, const)` at compile time. Only fires after inlining + propagation make constants visible. The MIR already distinguishes `ok_const_int`/`ok_const_bool`/`ok_const_str` operands, so the pattern-match is mechanical.
+
+4. **Branch folding** (medium impact, easy after folding) — When a `tm_branch` condition is constant, replace with `tm_goto` to the taken target. Opens up dead block elimination.
+
+5. **Dead code elimination** (medium impact, medium difficulty) — Remove assignments to unused locals, unreachable blocks. Requires a use-count pass.
+
+Inlining alone would transform how the compiler's own code compiles — the hundreds of small constant functions and dispatch helpers would collapse into their callers, making all subsequent passes effective.
