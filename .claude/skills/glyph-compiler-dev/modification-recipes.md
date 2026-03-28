@@ -19,7 +19,7 @@ Both compilers embed the C runtime, so both must be updated.
 8. Rebuild: `./glyph0 build glyph.glyph --full`
 9. Test: `./glyph test glyph.glyph`
 
-**Runtime chain note:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6`. Each handles ~5-8 names. The last function in the chain returns 0 (not runtime). To add fn7: write `is_runtime_fn7 name = ...`, update fn6's default case to call `is_runtime_fn7(name)` instead of returning 0.
+**Runtime chain note:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6 → fn7`. Each handles ~5-8 names. The last function in the chain returns 0 (not runtime). To add fn8: write `is_runtime_fn8 name = ...`, update fn7's default case to call `is_runtime_fn8(name)` instead of returning `false`.
 
 ## Recipe 2: Add a New Expression / AST Node
 
@@ -286,7 +286,9 @@ mcp__glyph__put_def(db="glyph.glyph", name="fn_name", kind="fn",
 
 **Gen flag:** `./glyph put --gen N` inserts directly at the specified generation. Without `--gen`, auto-detects the highest existing gen for that name/kind, or defaults to gen=1 for new definitions.
 
-**Batch inserts:** Write each definition to its own temp file and run `./glyph put -f` for each. Or use `sqlite3` with `.read` on a SQL file for bulk operations.
+**Batch inserts (MCP):** Use `mcp__glyph__put_defs` with an array of `{name, kind, body}` objects — validates each def individually.
+
+**Batch inserts (CLI):** Write each definition to its own temp file and run `./glyph put -f` for each.
 
 ## Recipe 12: Debugging the Self-Hosted Compiler
 
@@ -379,17 +381,20 @@ The MCP server is the **primary workflow** for interacting with glyph.glyph. It 
 
 In Claude Code, MCP tools are available as `mcp__glyph__*` after the server is connected.
 
-**18 available tools:**
+**21 available tools:**
 
 | Tool | Purpose |
 |------|---------|
 | `mcp__glyph__init` | Create a new .glyph database |
-| `mcp__glyph__get_def` | Read a definition body |
+| `mcp__glyph__get_def` | Read a definition body (+ type signature) |
 | `mcp__glyph__put_def` | Insert/update a definition |
+| `mcp__glyph__put_defs` | Batch insert/update multiple definitions |
 | `mcp__glyph__remove_def` | Delete a definition |
-| `mcp__glyph__list_defs` | List definitions (filter by kind/ns) |
-| `mcp__glyph__search_defs` | Search names and bodies |
-| `mcp__glyph__check_def` | Type-check a definition, returns structured errors |
+| `mcp__glyph__list_defs` | List definitions (filter by kind/ns/pattern) |
+| `mcp__glyph__search_defs` | Search bodies for pattern |
+| `mcp__glyph__check_def` | Type-check a single definition |
+| `mcp__glyph__check_all` | Type-check all definitions |
+| `mcp__glyph__test` | Run test definitions |
 | `mcp__glyph__deps` | Forward dependency edges |
 | `mcp__glyph__rdeps` | Reverse dependency edges |
 | `mcp__glyph__sql` | Raw SQL query |

@@ -157,10 +157,11 @@ mcp__glyph__put_def(db="tested.glyph", name="test_mul", kind="test",
   assert_eq(mul(0, 5), 0)")
 mcp__glyph__put_def(db="tested.glyph", name="main", kind="fn", body="main = 0")
 ```
-Then run tests via CLI:
-```bash
-./glyph test tested.glyph
+Then run tests:
 ```
+mcp__glyph__test(db="tested.glyph")
+```
+CLI: `./glyph test tested.glyph`
 Output:
 ```
 PASS test_add
@@ -414,17 +415,17 @@ mcp__glyph__init(db="libex.glyph")
 mcp__glyph__put_def(db="libex.glyph", name="main", kind="fn",
   body='main =
   nums = [3, 1, 4, 1, 5, 9, 2, 6]
-  sorted = sort(nums)
+  sorted = sort(\a b -> a - b, nums)
   println("sorted: " + join(", ", map(sorted, \x -> int_to_str(x))))
   evens = filter(nums, \x -> x % 2 == 0)
   println("evens: " + join(", ", map(evens, \x -> int_to_str(x))))
   total = fold(nums, 0, \acc x -> acc + x)
   println("sum: " + int_to_str(total))')
 ```
-Then register stdlib and build:
-```bash
-./glyph use libex.glyph libraries/stdlib.glyph
-./glyph run libex.glyph
+Then register stdlib and run:
+```
+mcp__glyph__use(db="libex.glyph", lib="libraries/stdlib.glyph")
+mcp__glyph__run(db="libex.glyph")
 ```
 Output:
 ```
@@ -459,12 +460,12 @@ mcp__glyph__put_def(db="api.glyph", name="main", kind="fn",
   web_serve(web_default_config(0), handler)')
 ```
 Then register libraries and build:
-```bash
-./glyph use api.glyph libraries/stdlib.glyph
-./glyph use api.glyph libraries/json.glyph
-./glyph use api.glyph libraries/network.glyph
-./glyph use api.glyph libraries/web.glyph
-./glyph build api.glyph
+```
+mcp__glyph__use(db="api.glyph", lib="libraries/stdlib.glyph")
+mcp__glyph__use(db="api.glyph", lib="libraries/json.glyph")
+mcp__glyph__use(db="api.glyph", lib="libraries/network.glyph")
+mcp__glyph__use(db="api.glyph", lib="libraries/web.glyph")
+mcp__glyph__build(db="api.glyph")
 ```
 
 **Critical pitfall:** Route handlers MUST be wrapped in lambdas (`\req -> handler(req)`), not passed as raw references (`handle_list`). Raw function references crash due to the closure calling convention.

@@ -674,6 +674,62 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     bitset_test_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("bitset_test", runtime::RT_BITSET_TEST, &bitset_test_sig);
 
+    // glyph_array_freeze(hdr: i64) -> i64
+    let mut arr_freeze_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    arr_freeze_sig.params.push(AbiParam::new(types::I64));
+    arr_freeze_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("array_freeze", runtime::RT_ARRAY_FREEZE, &arr_freeze_sig);
+
+    // glyph_array_frozen(hdr: i64) -> i64
+    let mut arr_frozen_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    arr_frozen_sig.params.push(AbiParam::new(types::I64));
+    arr_frozen_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("array_frozen", runtime::RT_ARRAY_FROZEN, &arr_frozen_sig);
+
+    // glyph_array_thaw(hdr: i64) -> i64
+    let mut arr_thaw_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    arr_thaw_sig.params.push(AbiParam::new(types::I64));
+    arr_thaw_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("array_thaw", runtime::RT_ARRAY_THAW, &arr_thaw_sig);
+
+    // glyph_hm_freeze(hdr: i64) -> i64
+    let mut hm_freeze_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_freeze_sig.params.push(AbiParam::new(types::I64));
+    hm_freeze_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_freeze", runtime::RT_HM_FREEZE, &hm_freeze_sig);
+
+    // glyph_hm_frozen(hdr: i64) -> i64
+    let mut hm_frozen_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    hm_frozen_sig.params.push(AbiParam::new(types::I64));
+    hm_frozen_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("hm_frozen", runtime::RT_HM_FROZEN, &hm_frozen_sig);
+
+    // glyph_ref(val: i64) -> i64
+    let mut ref_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    ref_sig.params.push(AbiParam::new(types::I64));
+    ref_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("ref", runtime::RT_REF, &ref_sig);
+
+    // glyph_deref(r: i64) -> i64
+    let mut deref_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    deref_sig.params.push(AbiParam::new(types::I64));
+    deref_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("deref", runtime::RT_DEREF, &deref_sig);
+
+    // glyph_set_ref(r: i64, val: i64) -> i64
+    let mut set_ref_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    set_ref_sig.params.push(AbiParam::new(types::I64));
+    set_ref_sig.params.push(AbiParam::new(types::I64));
+    set_ref_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("set_ref", runtime::RT_SET_REF, &set_ref_sig);
+
+    // glyph_generate(n: i64, fn: i64) -> i64
+    let mut generate_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    generate_sig.params.push(AbiParam::new(types::I64));
+    generate_sig.params.push(AbiParam::new(types::I64));
+    generate_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("generate", runtime::RT_GENERATE, &generate_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }

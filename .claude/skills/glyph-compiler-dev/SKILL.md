@@ -48,26 +48,28 @@ glyph2 build glyph.glyph --emit=llvm → glyph (final LLVM-compiled binary)
 
 ## Build & Test
 
+**Primary: MCP tools** (no shell escaping, structured errors, multi-line bodies)
+
+```
+mcp__glyph__get_def(name="cg_stmt")                     # Read a compiler definition
+mcp__glyph__put_def(name="fn_name", body="fn_name x = x + 1")  # Insert/update
+mcp__glyph__put_defs(defs=[{name:"a", body:"..."}, ...]) # Batch insert
+mcp__glyph__search_defs(pattern="array_freeze")          # Search bodies
+mcp__glyph__check_def(body="fn x = x + 1")              # Validate without inserting
+mcp__glyph__check_all()                                  # Type-check everything
+mcp__glyph__test(tests="test_foo test_bar")              # Run specific tests
+mcp__glyph__build()                                      # Compile glyph.glyph
+mcp__glyph__sql(query="SELECT name FROM def WHERE ...")   # Raw SQL
+```
+
+**Secondary: CLI** (fallback — shell escaping headaches with `{`, `"`, `\`)
+
 ```bash
-# Rust compiler
-cargo build && cargo test              # Build + 73 tests
-cargo run -- build app.glyph           # Test against a program
-cargo run -- build app.glyph --gen=N   # Build with specific generation
-
-# Self-hosted compiler (full bootstrap)
-ninja                                   # 4-stage: glyph0 → glyph1 → glyph2 → glyph
+ninja                                   # Full 4-stage bootstrap: glyph0 → glyph1 → glyph2 → glyph
 ninja test                              # Rust tests + self-hosted regression
-
-# Quick iteration on self-hosted changes (MCP preferred — see recipes)
-./glyph0 build glyph.glyph --full --gen=1    # Rebuild gen=1 only
-./glyph0 build glyph.glyph --full             # Full rebuild
-./glyph test glyph.glyph                     # Run full self-hosted test suite (315 tests)
-
-# MCP workflow (primary — no shell escaping, structured errors)
-./glyph mcp glyph.glyph               # Start MCP server; use mcp__glyph__* tools in Claude
-
-# Inspect generated C
-cat /tmp/glyph_out.c                   # Last compiled C output
+./glyph test glyph.glyph               # Run self-hosted test suite (~356 tests)
+./glyph0 build glyph.glyph --full      # Quick rebuild via Rust compiler
+cat /tmp/glyph_out.c                   # Inspect last generated C
 ```
 
 ## Pipeline Side-by-Side
@@ -102,7 +104,7 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 |-----------|-------------|
 | Recursive `*_loop` suffix | No loops — all iteration is tail-recursive |
 | `match true/_ ->` | No `if/else` — match on bool for branching |
-| `counter = [0]` + `raw_set` | Single-element arrays for mutable state |
+| `counter = ref(0)` + `deref`/`set_ref` | Explicit mutable cells for counters/state |
 | `tk_int = 1`, `rv_use = 1` | Integer constant functions for enum-like values |
 | Chain functions | Split at ~30 match arms: `dispatch_cmd` → `dispatch_cmd2` → ... |
 | Unique field prefixes | `okind/oval/ostr`, `sdest/skind`, `tkind/top` — avoids offset ambiguity |
@@ -127,8 +129,9 @@ Link:      link_with_extras() → cc            glyph_system("cc ...") → EXE
 | String pattern matching | `parse_single_pattern` double-stripping: extracted token text is already unquoted, so `glyph_str_slice(s, 1, len-1)` gives wrong result | Fixed 2026-03-19; watch for similar bugs when adding new pattern kinds |
 | JNode `.sval` field access | `find_best_type` picks AstNode (7 fields) over JNode (3 fields) — wrong offset | Add `_ = node.tag` hint in JSON functions that access JNode `.sval` without dispatching on `.tag` |
 | Closure calling convention | Raw fn refs (`&fn_name`) in arrays/records crash — closure convention dereferences `f[0]` for fn ptr | Wrap in lambdas: `\x -> fn_name(x)` creates proper closure struct |
-| Multi-line lambdas | Only single-line `\x -> expr` parses | Use helper function pattern: `helper f x = ...` + `\x -> helper(f, x)` |
+| Multi-line lambdas | Lambdas support multi-line blocks via indentation | `\x ->\n  a = x + 1\n  a * 2` |
 | String interp on record fields | Type checker may infer record fields as int; `"{r.field}"` calls `int_to_str` on a string | Use explicit `+` concatenation: `r.field + " " + r.other` |
+| Frozen stdlib results | `map`, `filter`, `sort`, etc. return frozen arrays | Call `array_thaw(result)` if you need to mutate the result |
 
 ## Build Modes
 

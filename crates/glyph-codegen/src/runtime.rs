@@ -43,6 +43,15 @@ pub const RT_FLUSH: &str = "glyph_flush";
 pub const RT_BITSET_NEW: &str = "glyph_bitset_new";
 pub const RT_BITSET_SET: &str = "glyph_bitset_set";
 pub const RT_BITSET_TEST: &str = "glyph_bitset_test";
+pub const RT_ARRAY_FREEZE: &str = "glyph_array_freeze";
+pub const RT_ARRAY_FROZEN: &str = "glyph_array_frozen";
+pub const RT_ARRAY_THAW: &str = "glyph_array_thaw";
+pub const RT_HM_FREEZE: &str = "glyph_hm_freeze";
+pub const RT_HM_FROZEN: &str = "glyph_hm_frozen";
+pub const RT_REF: &str = "glyph_ref";
+pub const RT_DEREF: &str = "glyph_deref";
+pub const RT_SET_REF: &str = "glyph_set_ref";
+pub const RT_GENERATE: &str = "glyph_generate";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -59,7 +68,7 @@ pub const RUNTIME_C: &str = r#"
 #include <string.h>
 #include <signal.h>
 
-const char* _glyph_current_fn = "(unknown)";
+__thread const char* _glyph_current_fn = "(unknown)";
 
 static void _glyph_sigsegv(int sig) {
     fprintf(stderr, "segfault in function: %s\n", _glyph_current_fn);
@@ -156,6 +165,7 @@ void* glyph_array_new(long long cap) {
  * Returns (possibly new) data pointer. Caller must update header. */
 void* glyph_array_push(void* header_ptr, long long value) {
     long long* header = (long long*)header_ptr;
+    if (header[2] < 0) glyph_panic("push on frozen array");
     long long* data_ptr_slot = &header[0];
     long long len = header[1];
     long long cap = header[2];
@@ -360,6 +370,7 @@ char* glyph_str_to_cstr(void* str_struct) {
 /* Set element in array. Header is {ptr, len, cap}. Returns 0. */
 long long glyph_array_set(void* header_ptr, long long index, long long value) {
     long long* header = (long long*)header_ptr;
+    if (header[2] < 0) glyph_panic("set on frozen array");
     long long* data = (long long*)header[0];
     long long len = header[1];
     if (index < 0 || index >= len) {
@@ -379,6 +390,7 @@ long long glyph_raw_set(long long ptr, long long idx, long long val) {
 /* Pop last element from array. Returns the removed element. */
 long long glyph_array_pop(void* header_ptr) {
     long long* header = (long long*)header_ptr;
+    if (header[2] < 0) glyph_panic("pop on frozen array");
     long long* data = (long long*)header[0];
     long long len = header[1];
     if (len <= 0) {
@@ -534,6 +546,65 @@ long long glyph_bitset_set(long long bs, long long idx) {
 }
 long long glyph_bitset_test(long long bs, long long idx) {
     return (((unsigned long long*)bs)[idx / 64] >> (idx % 64)) & 1;
+}
+
+/* === Array/Map Freeze (immutability bit in cap sign bit) === */
+long long glyph_array_freeze(long long hdr) {
+    long long* h = (long long*)hdr;
+    if (h[2] >= 0) h[2] = h[2] | (1LL << 63);
+    return hdr;
+}
+long long glyph_array_frozen(long long hdr) {
+    return ((long long*)hdr)[2] < 0 ? 1 : 0;
+}
+long long glyph_array_thaw(long long hdr) {
+    long long* h = (long long*)hdr;
+    long long len = h[1];
+    long long cap = h[2] & 0x7FFFFFFFFFFFFFFFLL;
+    if (cap < len) cap = len;
+    long long* nh = (long long*)malloc(24);
+    long long* nd = (long long*)malloc(cap * 8);
+    memcpy(nd, (void*)h[0], len * 8);
+    nh[0] = (long long)nd; nh[1] = len; nh[2] = cap;
+    return (long long)nh;
+}
+long long glyph_hm_freeze(long long hdr) {
+    long long* h = (long long*)hdr;
+    if (h[2] >= 0) h[2] = h[2] | (1LL << 63);
+    return hdr;
+}
+long long glyph_hm_frozen(long long hdr) {
+    return ((long long*)hdr)[2] < 0 ? 1 : 0;
+}
+
+/* === Ref type (mutable cell, 8 bytes) === */
+long long glyph_ref(long long val) {
+    long long* r = (long long*)malloc(8);
+    r[0] = val;
+    return (long long)r;
+}
+long long glyph_deref(long long r) {
+    return ((long long*)r)[0];
+}
+long long glyph_set_ref(long long r, long long val) {
+    ((long long*)r)[0] = val;
+    return 0;
+}
+
+/* === Array generate (declarative construction, result is frozen) === */
+long long glyph_generate(long long n, long long fn) {
+    long long len = n;
+    long long* hdr = (long long*)malloc(24);
+    long long* data = (long long*)malloc(len * 8);
+    long long i;
+    for (i = 0; i < len; i++) {
+        long long (*fp)(long long, long long) = (long long(*)(long long,long long))((long long*)fn)[0];
+        data[i] = fp(fn, i);
+    }
+    hdr[0] = (long long)data;
+    hdr[1] = len;
+    hdr[2] = len | (1LL << 63);
+    return (long long)hdr;
 }
 
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */

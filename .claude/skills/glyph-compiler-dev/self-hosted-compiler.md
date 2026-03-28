@@ -94,7 +94,7 @@ Each level has a `*_loop` companion for left-recursive iteration.
 
 **Available via `glyph check` but not called during `glyph build`.** `cmd_check` runs `tc_pre_register` → `tc_infer_all` → `tc_report_errors`. Record type unification has known bugs (crashes on some record patterns), so typecheck is advisory only.
 
-**Engine:** `mk_engine()` → record with `bindings, env_marks, env_names, env_types, errors, next_var, parent, ty_pool`
+**Engine:** `mk_engine()` → record with `bindings, env_marks, env_names, env_types, errors, next_var: ref(0), parent, tmap: ref([]), ty_pool`
 **TyNode:** `{tag:I, n1:I, n2:I, ns:[I], sval:S}` stored in flat pool array
 **Type tags:** `ty_int=1..ty_error=99`
 **Key subsystems:** `subst_*` (union-find), `unify*` (type unification), `env_*` (scope stack), `infer_*`/`infer_expr2`/`infer_expr3` (split across 3 chain functions)
@@ -107,7 +107,7 @@ Each level has a `*_loop` companion for left-recursive iteration.
 - `block_stmts: [[Stmt]]` — 2D array (stmts per block)
 - `block_terms: [Term]` — one terminator per block
 - `local_names: [S]`, `local_types: [I]` — parallel arrays for locals
-- `cur_block: [I]`, `nxt_local: [I]`, `nxt_block: [I]` — single-element mutable counters
+- `cur_block: ref(0)`, `nxt_local: ref(0)`, `nxt_block: ref(0)` — explicit mutable cells via `ref`/`deref`/`set_ref`
 - `var_names/var_locals/var_marks` — scope stack for variable environment
 
 **Expression lowering:** `lower_expr`/`lower_expr2` dispatch by AST kind to: `lower_ident`, `lower_binary`, `lower_unary`, `lower_call`, `lower_field`, `lower_idx`, `lower_lambda`, `lower_pipe`, `lower_array`, `lower_record`, `lower_str_interp`
@@ -165,7 +165,7 @@ Renames `ok_func_ref` operands from user name to `glyph_`-prefixed wrapper name.
 
 **Embedded C runtime:** `cg_runtime_c()` (core), `cg_runtime_args()`, `cg_runtime_io()`, `cg_runtime_sb()`, `cg_runtime_raw()`, `cg_runtime_sqlite()`, `cg_runtime_extra()` (SIGSEGV handler). Combined via `cg_runtime_full(externs)`.
 
-**Runtime detection chain:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6` — 6 chained functions checking if a name is a built-in runtime function.
+**Runtime detection chain:** `is_runtime_fn → fn2 → fn3 → fn4 → fn5 → fn6 → fn7` — 7 chained functions checking if a name is a built-in runtime function. fn7 handles freeze/ref/generate primitives.
 
 ### 7. Struct Codegen (~47 definitions)
 
@@ -210,7 +210,7 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 **Entry:** `cmd_mcp → mcp_loop` (reads lines from stdin, writes JSON to stdout)
 **Prefix:** `mcp_*` (namespace `mcp`)
 **Transport:** stdio JSON-RPC; start with `./glyph mcp app.glyph`
-**18 tools:** init, put_def, get_def, remove_def, list_defs, search_defs, check_def, deps, rdeps, sql, build, run, coverage, link, migrate, use, unuse, libs
+**21 tools:** init, put_def, put_defs, get_def, remove_def, list_defs, search_defs, check_def, check_all, test, deps, rdeps, sql, build, run, coverage, link, migrate, use, unuse, libs
 **Key functions:** `cmd_mcp`, `mcp_loop`, `mcp_dispatch`, `mcp_tools_call`
 **Tool input/output:** `json_parse` for params, `mcp_str_prop`/`mcp_int_prop` for extraction
 **Chain pattern:** `mcp_add_toolsN` calls `mcp_add_toolsN+1`; `mcp_tools_callN` falls through to `mcp_tools_callN+1`
@@ -280,7 +280,7 @@ Programs declare externs in `extern_` table → compiler generates C wrappers.
 
 1. **Recursive iteration:** Base function + `*_loop` helper for all iteration
 2. **Match-as-control-flow:** `match x > 0` with `true ->` / `_ ->` branches (no if/else)
-3. **Single-element array mutation:** `counter = [0]`, `raw_set(counter, 0, counter[0] + 1)`
+3. **Mutable cell via Ref:** `counter = ref(0)`, `set_ref(counter, deref(counter) + 1)`
 4. **Integer constant functions:** `tk_int = 1`, `rv_use = 1` — zero-arg functions returning fixed values
 5. **Chain functions:** Split at ~30 match arms across numbered functions
 6. **Unique field prefixes:** `okind/oval/ostr`, `sdest/skind/sival`, `tkind/top/tgt1/tgt2` etc.

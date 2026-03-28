@@ -51,6 +51,9 @@ Start the MCP server with `./glyph mcp app.glyph`, or use the pre-configured `mc
 | `mcp__glyph__list_defs` | `pattern, kind, gen, db` | List definitions |
 | `mcp__glyph__search_defs` | `pattern, kind, db` | Search bodies |
 | `mcp__glyph__check_def` | `body, kind, db` | Validate without inserting |
+| `mcp__glyph__check_all` | `db, gen` | Type-check all definitions |
+| `mcp__glyph__put_defs` | `defs, db` | Batch insert/update definitions |
+| `mcp__glyph__test` | `db, tests` | Run test definitions |
 | `mcp__glyph__deps` | `name, db` | Forward dependencies |
 | `mcp__glyph__rdeps` | `name, db` | Reverse dependencies |
 | `mcp__glyph__sql` | `query, db` | Raw SQL |
@@ -214,6 +217,7 @@ loop_helper arr i =
 | `{` in strings triggers interpolation | String interpolation syntax | Use `\{` for literal `{` |
 | Map literals need double braces | `{k: v}` is a record literal | Use `hm_new()` + `hm_set` for maps |
 | Zero-arg fn with side effects runs eagerly | Treated as constant | Add dummy param: `usage u = println(...)` |
+| Stdlib returns frozen arrays | `map`, `filter`, `sort` etc. freeze results | Call `array_thaw(result)` if you need to mutate |
 | C keyword as fn name | C codegen conflict | Avoid: `double`, `int`, `float`, `void`, `return`, `if`, `while`, `for`, `struct`, `enum`, `const`, `static`, `extern` |
 | `=` vs `:=` | `=` is let binding, `:=` is mutation | Use `:=` only for reassigning existing variables |
 | No stdin | `read_file` uses fseek | Use `-b` flag or temp files |
@@ -225,7 +229,6 @@ loop_helper arr i =
 | Gen mismatch on `put` | Default auto-detects gen | Use `--gen N` to target a specific generation explicitly |
 | `True`/`False` segfaults | These are enum constructors, not bool literals | Use lowercase `true`/`false` in match patterns |
 | Closure calling convention | Raw fn refs (`&fn`) in arrays/records crash | Wrap in lambdas: `\x -> fn(x)` creates proper closure struct |
-| Multi-line lambdas | Only single-line `\x -> expr` parses | Use helper function: `helper f x = ...` + `\x -> helper(f, x)` |
 | String interp on record fields | Type checker may infer fields as int | Use `+` concatenation: `r.field + " " + r.other` |
 
 ## Library Dependencies

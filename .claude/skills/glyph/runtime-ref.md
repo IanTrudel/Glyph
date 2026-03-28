@@ -91,9 +91,13 @@ O(n) concatenation. String interpolation compiles to these automatically.
 | `array_pop` | `[I] -> I` | Remove and return last (panics if empty) |
 | `array_bounds_check` | `I -> I -> V` | Check `[0..len)`, panic if OOB |
 | `raw_set` | `*V -> I -> I -> V` | Set value at raw pointer offset |
-| `array_reverse` | `[I] -> [I]` | Reverse array in-place, returns same array |
-| `array_slice` | `[I] -> I -> I -> [I]` | New array from `[start..end)` (clamps) |
+| `array_reverse` | `[I] -> [I]` | Reverse array in-place (panics if frozen) |
+| `array_slice` | `[I] -> I -> I -> [I]` | New frozen array from `[start..end)` (clamps) |
 | `array_index_of` | `[I] -> I -> I` | Find element index (-1 if not found) |
+| `array_freeze` | `[I] -> [I]` | Mark array immutable (idempotent, returns same ptr) |
+| `array_frozen` | `[I] -> I` | 1 if frozen, 0 if mutable |
+| `array_thaw` | `[I] -> [I]` | Create a mutable deep copy of a frozen array |
+| `generate` | `I -> (I -> I) -> [I]` | Create frozen array of N elements via `fn(index)` |
 
 ## Map
 
@@ -106,7 +110,9 @@ Hash map with string keys. All values are `I` (GVal) internally.
 | `hm_get` | `*V -> S -> I` | Lookup value (0 if absent) |
 | `hm_has` | `*V -> S -> I` | Membership test (1=present, 0=absent) |
 | `hm_del` | `*V -> S -> V` | Remove entry |
-| `hm_keys` | `*V -> [S]` | Extract all keys as array |
+| `hm_keys` | `*V -> [S]` | Extract all keys as frozen array |
+| `hm_freeze` | `*V -> *V` | Mark map immutable |
+| `hm_frozen` | `*V -> I` | 1 if frozen, 0 if mutable |
 | `hm_len` | `*V -> I` | Number of entries |
 | `hm_get_float` | `*V -> S -> F` | Lookup float value (0.0 if absent) |
 | `hm_set_float` | `*V -> S -> F -> V` | Insert or update float entry |
@@ -129,6 +135,24 @@ count_loop m words i =
       hm_set(m, w, cur + 1)
       count_loop(m, words, i + 1)
 ```
+
+## Ref (Mutable Cell)
+
+Explicit mutable cell — 8 bytes, always mutable. Use instead of `[0]` array hack.
+
+| Function | Sig | Description |
+|----------|-----|-------------|
+| `ref` | `I -> &I` | Create mutable cell holding value |
+| `deref` | `&I -> I` | Read cell value |
+| `set_ref` | `&I -> I -> V` | Write new value to cell |
+
+```
+counter = ref(0)
+_ = set_ref(counter, deref(counter) + 1)
+x = deref(counter)    -- x = 1
+```
+
+Closures capture the ref pointer by value — mutations visible to both sides.
 
 ## Bitset
 

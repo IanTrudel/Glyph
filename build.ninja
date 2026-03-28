@@ -13,8 +13,8 @@
 #   ninja cover        run self-hosted tests with coverage (→ glyph.glyph.cover)
 #   ninja dump         regenerate glyph.sql from glyph.glyph
 #   ninja install      install glyph + glyph.glyph to /usr/local (override with PREFIX=)
-#   ninja -t clean     remove ninja build artifacts (not Rust target/)
-#   cargo clean        remove Rust build artifacts (target/)
+#   ninja clean         remove all build artifacts (binaries + Rust target/)
+#   ninja -t clean      remove ninja build artifacts only (not Rust target/)
 
 # Stage 0: Build the Rust bootstrap compiler
 rule cargo_build
@@ -98,6 +98,13 @@ rule do_install
   description = Installing glyph → $${PREFIX:-/usr/local}
 
 build install: do_install | glyph
+
+# Clean everything (ninja artifacts + Rust target/)
+rule do_clean
+  command = rm -f glyph0 glyph1 glyph2 glyph glyph.sql glyph.glyph.cover && cargo clean 2>&1
+  description = Cleaning build artifacts
+
+build clean: do_clean
 
 # Dump the database to SQL
 rule dump_sql
