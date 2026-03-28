@@ -30,6 +30,7 @@ examples/gwm/gwm
 examples/prolog/prolog
 examples/vulkan/triangle/triangle
 examples/web-api/app
+examples/gbuild/gbuild
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
