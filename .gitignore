@@ -31,6 +31,8 @@ examples/prolog/prolog
 examples/vulkan/triangle/triangle
 examples/web-api/app
 examples/gbuild/gbuild
+examples/sheet/sheet
+examples/pipeline/pipeline
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
