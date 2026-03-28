@@ -34,6 +34,7 @@ examples/gbuild/gbuild
 examples/sheet/sheet
 examples/pipeline/pipeline
 examples/fsm/fsm
+examples/errors/errors
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
