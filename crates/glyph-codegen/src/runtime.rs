@@ -52,6 +52,7 @@ pub const RT_REF: &str = "glyph_ref";
 pub const RT_DEREF: &str = "glyph_deref";
 pub const RT_SET_REF: &str = "glyph_set_ref";
 pub const RT_GENERATE: &str = "glyph_generate";
+pub const RT_FILE_EXISTS: &str = "glyph_file_exists";
 
 // SQLite wrapper functions (only linked when program uses sqlite3)
 pub const RT_DB_OPEN: &str = "glyph_db_open";
@@ -241,6 +242,21 @@ long long glyph_str_char_at(void* str_struct, long long index) {
     long long len = *(long long*)((char*)str_struct + 8);
     if (index < 0 || index >= len) return -1;
     return (long long)(unsigned char)ptr[index];
+}
+
+/* Check if a file exists. Returns 1 if exists, 0 otherwise. */
+long long glyph_file_exists(void* path_struct) {
+    const char* path_ptr = *(const char**)path_struct;
+    long long path_len = *(long long*)((char*)path_struct + 8);
+    char* cpath = (char*)malloc(path_len + 1);
+    if (!cpath) glyph_panic("out of memory");
+    memcpy(cpath, path_ptr, path_len);
+    cpath[path_len] = '\0';
+    FILE* f = fopen(cpath, "rb");
+    free(cpath);
+    if (!f) return 0;
+    fclose(f);
+    return 1;
 }
 
 /* Read entire file into a string struct. Returns heap-allocated string struct.

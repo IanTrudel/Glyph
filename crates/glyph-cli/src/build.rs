@@ -730,6 +730,12 @@ fn declare_runtime(codegen: &mut CodegenContext) {
     generate_sig.returns.push(AbiParam::new(types::I64));
     codegen.declare_extern("generate", runtime::RT_GENERATE, &generate_sig);
 
+    // glyph_file_exists(path: i64) -> i64
+    let mut file_exists_sig = cranelift_codegen::ir::Signature::new(CallConv::SystemV);
+    file_exists_sig.params.push(AbiParam::new(types::I64));
+    file_exists_sig.returns.push(AbiParam::new(types::I64));
+    codegen.declare_extern("file_exists", runtime::RT_FILE_EXISTS, &file_exists_sig);
+
     // Note: SQLite wrapper functions (glyph_db_*) are NOT declared here.
     // They come from extern_ table rows in the .glyph database.
 }
