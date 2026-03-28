@@ -78,11 +78,11 @@ Adding even basic constant folding (evaluate `3 + 4` at compile time) would be a
 ### 20. Type checker errors have no source locations
 `tc_err` just prints `[tc_err] function_name` with no line/column. The parser already has `format_diagnostic` with caret pointing — threading source positions through type inference would dramatically improve the developer experience.
 
-### 21. C runtime has string functions that aren't exposed to Glyph
-Functions like `split`, `trim`, `starts_with`, `ends_with`, `index_of` may already exist in the C runtime but aren't registered in `is_runtime_fn` or `extern_`. Quick wins if they're already written.
+### ~~21. C runtime has string functions that aren't exposed to Glyph~~
+All string functions (`str_split`, `str_trim`, `str_starts_with`, `str_ends_with`, `str_index_of`, `str_to_upper`, `str_from_code`) and array functions (`array_reverse`, `array_slice`, `array_index_of`) are registered in `mk_runtime_set` and fully available.
 
-### 22. `unify_tags` has 17 nested match expressions
-It's the most complex function in the type checker. Refactoring it into a dispatch table or splitting by type-tag pairs would make it much more maintainable and cheaper for LLMs to reason about.
+### ~~22. `unify_tags` has 17 nested match expressions~~
+Refactored from 17 nested matches to 8 flat guard-dispatch arms using `||` or-guards. Same semantics, much more readable.
 
 ### 23. Build artifacts go to `/tmp/glyph_out.*` with no way to inspect them
 A `--keep-intermediates` or `--emit-c` flag to write generated C to a user-specified path would make debugging codegen issues much easier.
