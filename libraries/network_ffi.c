@@ -189,13 +189,13 @@ GVal net_respond(GVal h, GVal status, GVal ct, GVal bd) {
         "Content-Length: %lld\r\n"
         "Connection: close\r\n"
         "\r\n",
-        status, status_text,
+        (long long)status, status_text,
         (int)ct_len, ct_ptr,
-        bd_len);
+        (long long)bd_len);
 
-    write(r->fd, header, header_len);
+    (void)write(r->fd, header, header_len);
     if (bd_len > 0) {
-        write(r->fd, bd_ptr, (int)bd_len);
+        (void)write(r->fd, bd_ptr, (int)bd_len);
     }
 
     close(r->fd);

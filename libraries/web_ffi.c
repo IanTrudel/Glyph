@@ -93,14 +93,14 @@ GVal web_respond_cors(GVal h, GVal status, GVal ct, GVal bd, GVal origin) {
         "Access-Control-Allow-Headers: Content-Type\r\n"
         "Connection: close\r\n"
         "\r\n",
-        status, status_text,
+        (long long)status, status_text,
         (int)ct_len, ct_ptr,
-        bd_len,
+        (long long)bd_len,
         (int)or_len, or_ptr);
 
-    write(fd, header, header_len);
+    (void)write(fd, header, header_len);
     if (bd_len > 0) {
-        write(fd, bd_ptr, (int)bd_len);
+        (void)write(fd, bd_ptr, (int)bd_len);
     }
 
     close(fd);

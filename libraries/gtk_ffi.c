@@ -762,7 +762,7 @@ GVal gtk_ffi_idle_add(GVal closure) {
 /* ── Tier 5: File Dialogs (GTK 4.10+) ─────────────────────────────────── */
 
 /* Glyph string helper (defined later in glyph runtime, forward-declare) */
-extern GVal glyph_cstr_to_str(const char *s);
+extern GVal glyph_cstr_to_str(GVal s);
 
 /* Async callback for file_dialog_open */
 static void _cb_file_open(GObject *src, GAsyncResult *res, gpointer data) {
@@ -771,13 +771,13 @@ static void _cb_file_open(GObject *src, GAsyncResult *res, gpointer data) {
     GFile *file = gtk_file_dialog_open_finish(GTK_FILE_DIALOG(src), res, &err);
     if (file) {
         char *path = g_file_get_path(file);
-        GVal gpath = glyph_cstr_to_str(path);
+        GVal gpath = glyph_cstr_to_str((GVal)path);
         ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, gpath);
         g_free(path);
         g_object_unref(file);
     } else {
         /* User cancelled or error — call with empty string */
-        GVal empty = glyph_cstr_to_str("");
+        GVal empty = glyph_cstr_to_str((GVal)"");
         ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, empty);
         if (err) g_error_free(err);
     }
@@ -790,12 +790,12 @@ static void _cb_file_save(GObject *src, GAsyncResult *res, gpointer data) {
     GFile *file = gtk_file_dialog_save_finish(GTK_FILE_DIALOG(src), res, &err);
     if (file) {
         char *path = g_file_get_path(file);
-        GVal gpath = glyph_cstr_to_str(path);
+        GVal gpath = glyph_cstr_to_str((GVal)path);
         ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, gpath);
         g_free(path);
         g_object_unref(file);
     } else {
-        GVal empty = glyph_cstr_to_str("");
+        GVal empty = glyph_cstr_to_str((GVal)"");
         ((GVal (*)(GVal, GVal))cl[0])((GVal)cl, empty);
         if (err) g_error_free(err);
     }
