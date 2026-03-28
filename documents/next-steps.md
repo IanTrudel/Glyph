@@ -47,14 +47,14 @@ The `is_runtime_fn` chain (6 functions, ~90 str_eq comparisons) and `nfp2`→`nf
 ### 11. Lambda lifting boilerplate extraction
 `lower_compose`, `lower_field_accessor`, and `wrap_fn_as_closure` each independently build a synthetic lambda MIR from scratch — allocating a lowering context, creating entry block, binding `__env`/`__x` params, emitting body, constructing the MIR record, collecting nested lifts. The three functions share ~70% identical scaffolding. Extracting a `mk_synthetic_lambda(ctx, body_emitter)` helper that handles the boilerplate and takes a callback/closure for the body-specific part would eliminate ~200 tokens of duplication and make adding new synthetic lambdas (e.g., for `generate`) trivial.
 
-### 12. Missing `register_builtins` entries
+### ~~12. Missing `register_builtins` entries~~
 The runtime has functions that `is_runtime_fn` recognizes but `register_builtins` doesn't register with the type checker: `array_pop`, `str_to_float`, `float_to_str`, `int_to_float`, `float_to_int`, `str_index_of`, `str_starts_with`, `str_ends_with`, `str_trim`, `str_to_upper`, `str_split`, `str_from_code`, `array_reverse`, `array_slice`, `array_index_of`. These functions compile and link fine (the C runtime defines them), but the type checker can't infer their types, meaning any code using them gets type warnings. Adding their signatures to `register_builtins` is mechanical and would clean up type inference for all user programs using these functions.
 
 ### 13. Build artifact inspection (`--emit-c`)
 Generated C goes to `/tmp/glyph_out.c` unconditionally. There's `--emit-mir` for MIR debugging but no way to inspect the generated C without fishing in `/tmp`. Adding `--emit-c` (or `--emit=c`) that writes the C to a named file (or stdout) would make debugging codegen issues far easier. Similarly, the LLVM path writes to `/tmp/glyph_out.ll`. Both should respect an output path.
 
-### 14. 672 zero-token definitions
-Nearly half of all functions (672/1,317) report 0 tokens despite having real bodies (e.g., `lower_compose` is 30+ lines but shows 0 tokens). The token counter appears broken for definitions modified via certain paths. The `tokens` column drives `dump --budget` and `stat` output. A one-time fix (`UPDATE def SET tokens = glyph_tokens(body) WHERE tokens = 0 AND LENGTH(body) > 0`) would restore accurate token accounting.
+### ~~14. 672 zero-token definitions~~ — FIXED
+Implemented a Glyph-native BPE token estimator (`count_tokens` + 12 helper functions: `ct_loop`, `ct_dispatch`, `ct_is_alpha`, `ct_is_alnum`, `ct_skip_ident`, `ct_skip_num`, `ct_skip_str`, `ct_skip_ws`, `ct_is_tq`, `ct_skip_raw`, `ct_is_pair`, `ct_count_us`). Integrated into both `do_put` (CLI) and `mcp_put_insert` (MCP). Character-scanning approach: identifiers ~1 token per 5 chars, raw C strings ~1 per 2.7 chars, two-char operators detected, whitespace ~1 per 6 chars. Calibration against cl100k_base ground truth: **3.7% total overestimate, 10 tokens mean abs error, 4/1,317 defs >40% error**. Previous 875 zero-token definitions backfilled via Python tiktoken.
 
 ---
 
@@ -66,11 +66,11 @@ Nearly half of all functions (672/1,317) report 0 tokens despite having real bod
 ### ~~16. Implement `.field` accessor lowering~~ — VERIFIED WORKING
 ~~`lower_field_accessor` is fully implemented — generates synthetic lambda with field access.~~
 
-### 17. Four versions of `walk_free_vars` exist (walk_free_vars, 2, 3, 4)
-This looks like accumulated copy-paste. Consolidating into one parameterized version would cut ~500 tokens of near-duplicate code and reduce future bug surface.
+### ~~17. Four versions of `walk_free_vars` exist~~ — VERIFIED: standard dispatch chain
+~~Not copy-paste. Each handles different expression kinds (ident/literals → binary/call → lambda/match/pipe → propagate/array/record) and chains to the next. Same pattern as `tok_one`→`tok_one2`→`tok_one3`→`tok_one4`.~~
 
-### 18. Codegen has ~10+ empty stub functions (0 tokens)
-`cg_closure_stmt`, `cg_closure_stores`, `cg_aggregate_stmt2`, `cg_stmt2`, `cg_needs_dummy_arg`, etc. — these are either dead or unfinished. Cleaning them out or completing them would clarify what's actually implemented.
+### ~~18. Codegen has ~10+ empty stub functions (0 tokens)~~ — VERIFIED: false, stale `tokens` column
+~~All listed functions have real bodies (157-1318 chars) and active callers. The `tokens=0` in the def table is from #14 (self-hosted put_def doesn't recompute the BPE token count), not empty stubs.~~
 
 ### 19. The only optimization pass is TCO — no constant folding, no DCE, no inlining
 Adding even basic constant folding (evaluate `3 + 4` at compile time) would be a straightforward MIR pass and meaningfully reduce generated C code size.
