@@ -116,7 +116,7 @@ running_sum arr = accumulate(arr, 0, \acc x -> acc + x)
 
 The pattern is everywhere — any time you see `result = []` followed by a loop with `array_push`, that's a `generate` or `map` waiting to happen. `map` already exists in stdlib but `generate` fills the gap where you're building from an index, not transforming an existing array.
 
-### 6. Stdlib expansion
+### ~~6. Stdlib expansion~~
 stdlib.glyph has 40 functions covering collection operations (`map`/`filter`/`fold`/`zip`/`sort`/`join`/`flat_map`/`any`/`all`/`find_index`/`contains`/`each`/`range`/`take`/`drop`/`sum`/`product`/`min`/`max`/`clamp`/`iabs`) plus base64. What's missing:
 
 **Character classification** (reinvented 3+ times across examples):
@@ -135,7 +135,7 @@ stdlib.glyph has 40 functions covering collection operations (`map`/`filter`/`fo
 - `enumerate` — (index, value) pairs
 - `last` — get last element
 
-### 7. Scan library expansion
+### ~~7. Scan library expansion~~
 scan.glyph is inspired by SNOBOL/Icon-style pattern matching — position-advancing scanners over character sets with success/fail signaling. It has character sets (`cs_digit`/`cs_alpha`/`cs_alnum`/`cs_hex`/`cs_upper`/`cs_lower`/`cs_ws`/`cs_print`) and scanner combinators (`sc_char`/`sc_take`/`sc_take0`/`sc_upto`/`sc_between`/`sc_literal`/`sc_quoted`/`sc_ident`/`sc_int`/`sc_skip_ws`/`sc_rest`). What's missing:
 
 **Combinator gaps:**

@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Glyph is an LLM-native programming language where **programs are SQLite3 databases** (`.glyph` files), not source files. The unit of storage is the *definition*, and SQL queries replace the traditional module/import system. The language is designed for token-minimal syntax to minimize BPE token count for LLM generation and consumption.
 
-**Current status:** Working compiler (v0.2). Two compilers exist:
-- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,651 definitions, C codegen backend, LLVM IR backend (`--emit=llvm`), 27 CLI commands, MCP server (18 tools). This is the primary compiler.
+**Current status:** Working compiler. Two compilers exist:
+- **Self-hosted compiler** (`glyph.glyph` → `./glyph`): ~1,774 definitions (1,399 fn + 360 test + 13 type + 2 const), C codegen backend with monomorphization, LLVM IR backend (`--emit=llvm`), 30 CLI commands, MCP server. This is the primary compiler.
 - **Rust compiler** (`cargo run -- ...`): Cranelift backend, used as bootstrap tool (`glyph0`) to rebuild `glyph.glyph`.
 
 ## Build Commands
@@ -23,7 +23,7 @@ ninja test                     # run all tests (Rust + self-hosted)
 
 ```bash
 cargo build                    # build the Rust compiler
-cargo test                     # run all Rust tests (73 tests across 6 crates)
+cargo test                     # run all Rust tests (77 tests across 6 crates)
 cargo run -- <subcommand>      # run the Rust compiler CLI
 ```
 
@@ -42,7 +42,7 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 ./glyph run program.glyph                      # build + execute main
 ./glyph test program.glyph                     # run test definitions
 ./glyph test program.glyph test_foo test_bar   # run specific tests
-./glyph check program.glyph                    # type-check only
+./glyph check program.glyph                    # type-check all definitions
 ./glyph ls program.glyph                       # list definitions
 ./glyph find program.glyph pattern             # search definitions
 ./glyph deps program.glyph fn_name             # forward dependencies
@@ -55,13 +55,16 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 ./glyph export program.glyph src/              # export defs to src/<ns>/<name>.<kind>.gl files
 ./glyph import program.glyph src/              # import defs from file tree
 ./glyph migrate target.glyph                   # apply pending schema migrations
-./glyph link lib.glyph program.glyph           # link library defs into app
+./glyph link lib.glyph program.glyph           # link library defs into app (permanent copy)
+./glyph unlink lib.glyph program.glyph         # remove linked library definitions
 ./glyph use app.glyph lib.glyph                # register library as build-time dep
 ./glyph unuse app.glyph lib.glyph              # remove a registered library dep
 ./glyph libs app.glyph                         # list registered library deps
 ./glyph undo program.glyph fn_name             # undo last change
 ./glyph history program.glyph fn_name          # show change history
 ./glyph mcp program.glyph                      # start MCP server
+./glyph version                                # print version
+./glyph update                                 # download and install latest release
 ```
 
 ## Rust Compiler CLI (`cargo run --` / `glyph0`) — Bootstrap Only
@@ -80,7 +83,8 @@ glyph0 test program.glyph                     # run test definitions
 
 ```
 Cargo.toml (workspace)
-glyph.glyph             # self-hosted compiler source (SQLite database, ~1,651 definitions)
+glyph.glyph             # self-hosted compiler source (SQLite database, ~1,774 definitions)
+documentation.glyph     # language reference & runtime regression tests (171 defs, 49 tests)
 build.ninja              # bootstrap build rules
 crates/
   glyph-db/              # SQLite schema, custom functions (glyph_hash, glyph_tokens), DB access
@@ -89,24 +93,42 @@ crates/
   glyph-mir/             # MIR (flat CFG), lowering, pattern match compilation, serde cache
   glyph-codegen/         # Cranelift codegen, ABI, system linker invocation, minimal C runtime
   glyph-cli/             # `glyph` binary — init/build/run/check/test commands
-examples/
+libraries/
+  stdlib.glyph           # standard library (string, array, math utilities)
+  scan.glyph             # scanner combinators (char sets, float parser, sequence/choice)
+  json.glyph             # JSON parser and builder
+  network.glyph          # HTTP client/server (+ network_ffi.c)
+  web.glyph              # web framework (routing, handlers)
+  gtk.glyph              # GTK4 bindings (+ gtk_ffi.c)
+  x11.glyph              # X11 bindings (+ x11_ffi.c)
+  async.glyph            # async/event loop (+ async_ffi.c)
+  thread.glyph           # threading (+ thread_ffi.c)
+examples/                # 21 example programs
   api/                   # REST API server
   asteroids/             # Asteroids game
   benchmark/             # Performance comparison (Glyph vs C)
   calculator/            # Expression calculator REPL
   countdown/             # Countdown timer
+  errors/                # Error handling with Result types
   fibonacci/             # Fibonacci example
+  fsm/                   # Finite state machine (ATM example)
+  gbuild/                # Build tool
   gled/                  # Terminal text editor (ncurses FFI)
   glint/                 # Project analyzer (SQLite FFI)
   gstats/                # Statistical analyzer (named record types)
   gtk/                   # GTK4 GUI application
+  gwm/                   # Window manager
   hello/                 # Hello world
   life/                  # Conway's Game of Life (X11 GUI)
+  pipeline/              # Data pipeline
+  prolog/                # Prolog interpreter
+  sheet/                 # Command-line spreadsheet with bytecode VM
   vulkan/                # Vulkan graphics
   web-api/               # Web API with CRUD operations
 documents/
   glyph-self-hosted-programming-manual.md  # comprehensive language manual
   glyph-spec.md          # formal language specification
+  monomorphization.md    # monomorphization design and lessons learned
 ```
 
 **Rust crate dependency flow (strict, no cycles):**
@@ -118,8 +140,8 @@ glyph-cli → glyph-codegen → glyph-mir → glyph-typeck → glyph-parse → g
 
 **Self-hosted compiler (primary):**
 ```
-.glyph DB → SELECT defs → Tokenizer → Parser → Type Infer (HM) → MIR → C codegen → cc → executable
-                                                                              ↳ LLVM IR → llc → executable  (--emit=llvm)
+.glyph DB → SELECT defs → Tokenizer → Parser → Type Infer (HM) → MIR → Monomorphization → C codegen → cc → executable
+                                                                                                 ↳ LLVM IR → llc → executable  (--emit=llvm)
 ```
 
 **Rust compiler (bootstrap):**
@@ -149,7 +171,7 @@ Build with `ninja` (runs all 4 stages). Manual: `cargo build --release && cp tar
 ## Core Database Schema
 
 The program *is* its schema. Key tables:
-- **`def`** — all definitions (fn, type, test, trait, impl, const, fsm, srv, macro) with source body, type sig, hash, token count, compiled flag, generation
+- **`def`** — all definitions (fn, type, test, const, data, trait, impl, fsm, srv, macro) with source body, type sig, hash, token count, compiled flag, generation
 - **`dep`** — dependency graph edges (calls, uses_type, implements, field_of, variant_of)
 - **`extern_`** — C ABI foreign function declarations (note: underscore suffix to avoid SQL keyword)
 - **`module` / `module_member`** — logical grouping with export flags
