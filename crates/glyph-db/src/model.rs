@@ -20,6 +20,7 @@ pub enum DefKind {
     Test,
     Const,
     Data,
+    Prop,
 }
 
 impl DefKind {
@@ -30,6 +31,7 @@ impl DefKind {
             Self::Test => "test",
             Self::Const => "const",
             Self::Data => "data",
+            Self::Prop => "prop",
         }
     }
 
@@ -40,6 +42,7 @@ impl DefKind {
             "test" => Some(Self::Test),
             "const" => Some(Self::Const),
             "data" => Some(Self::Data),
+            "prop" => Some(Self::Prop),
             _ => None,
         }
     }
