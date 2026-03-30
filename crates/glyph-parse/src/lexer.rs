@@ -273,6 +273,7 @@ impl Lexer {
                 self.advance();
                 self.push(TokenKind::Question, start);
             }
+            '#' => self.scan_char_literal(start),
             '"' => self.scan_string(start),
             'r' if self.peek_at(1) == Some('"') => self.scan_raw_string(start),
             'b' if self.peek_at(1) == Some('"') => self.scan_byte_string(start),
@@ -312,6 +313,39 @@ impl Lexer {
         }
         let text: String = self.source[start..self.pos].iter().collect();
         self.push(TokenKind::TypeIdent(text), start);
+    }
+
+    fn scan_char_literal(&mut self, start: usize) {
+        self.advance(); // consume '#'
+        if self.at_end() {
+            self.push(TokenKind::Error("unexpected end after '#'".into()), start);
+            return;
+        }
+        let ch = self.advance();
+        if ch == '\\' {
+            // escape sequence: #\n #\t #\\ #\0
+            if self.at_end() {
+                self.push(TokenKind::Error("unexpected end after '#\\'".into()), start);
+                return;
+            }
+            let esc = self.advance();
+            let val = match esc {
+                'n' => 10,
+                't' => 9,
+                '\\' => 92,
+                '0' => 0,
+                _ => {
+                    self.push(
+                        TokenKind::Error(format!("unknown char escape: '\\{esc}'")),
+                        start,
+                    );
+                    return;
+                }
+            };
+            self.push(TokenKind::Int(val), start);
+        } else {
+            self.push(TokenKind::Int(ch as i64), start);
+        }
     }
 
     fn scan_number(&mut self, start: usize) {
