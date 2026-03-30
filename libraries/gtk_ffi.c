@@ -873,3 +873,138 @@ GVal gtk_ffi_alert_dialog_show(GVal dlg, GVal win) {
                           GTK_WINDOW((void *)win));
     return 0;
 }
+
+/* ── Float bit-cast helpers ───────────────────────────────────────────── */
+
+static GVal _f2i(double f) { GVal v; memcpy(&v, &f, sizeof(double)); return v; }
+static double _i2f(GVal v) { double f; memcpy(&f, &v, sizeof(double)); return f; }
+
+/* ── Drawing area ─────────────────────────────────────────────────────── */
+
+static void _tramp_draw(GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data) {
+    (void)area;
+    GVal *cl = (GVal *)data;
+    ((GVal (*)(GVal, GVal, GVal, GVal))cl[0])((GVal)cl, (GVal)cr, (GVal)w, (GVal)h);
+}
+
+GVal gtk_ffi_drawing_area(GVal w, GVal h, GVal closure) {
+    GtkWidget *da = gtk_drawing_area_new();
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(da), (int)w);
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(da), (int)h);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(da), _tramp_draw, (gpointer)closure, NULL);
+    return (GVal)da;
+}
+
+/* ── Gesture click ────────────────────────────────────────────────────── */
+
+static void _tramp_click(GtkGestureClick *gesture, int n_press, double x, double y, gpointer data) {
+    (void)gesture;
+    GVal *cl = (GVal *)data;
+    ((GVal (*)(GVal, GVal, GVal, GVal))cl[0])((GVal)cl, (GVal)n_press, _f2i(x), _f2i(y));
+}
+
+GVal gtk_ffi_gesture_click_new(GVal _d) { (void)_d;
+    return (GVal)gtk_gesture_click_new();
+}
+
+GVal gtk_ffi_gesture_click_on_pressed(GVal gesture, GVal closure) {
+    g_signal_connect((void *)gesture, "pressed",
+                     G_CALLBACK(_tramp_click), (gpointer)closure);
+    return 0;
+}
+
+/* ── Gesture drag ─────────────────────────────────────────────────────── */
+
+static void _tramp_drag(GtkGestureDrag *gesture, double x, double y, gpointer data) {
+    (void)gesture;
+    GVal *cl = (GVal *)data;
+    ((GVal (*)(GVal, GVal, GVal))cl[0])((GVal)cl, _f2i(x), _f2i(y));
+}
+
+GVal gtk_ffi_gesture_drag_new(GVal _d) { (void)_d;
+    return (GVal)gtk_gesture_drag_new();
+}
+
+GVal gtk_ffi_gesture_drag_on_begin(GVal gesture, GVal closure) {
+    g_signal_connect((void *)gesture, "drag-begin",
+                     G_CALLBACK(_tramp_drag), (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_gesture_drag_on_update(GVal gesture, GVal closure) {
+    g_signal_connect((void *)gesture, "drag-update",
+                     G_CALLBACK(_tramp_drag), (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_gesture_drag_on_end(GVal gesture, GVal closure) {
+    g_signal_connect((void *)gesture, "drag-end",
+                     G_CALLBACK(_tramp_drag), (gpointer)closure);
+    return 0;
+}
+
+GVal gtk_ffi_gesture_set_button(GVal gesture, GVal button) {
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE((void *)gesture), (guint)button);
+    return 0;
+}
+
+/* ── Scroll controller ────────────────────────────────────────────────── */
+
+static gboolean _tramp_scroll(GtkEventControllerScroll *ctrl, double dx, double dy, gpointer data) {
+    (void)ctrl;
+    GVal *cl = (GVal *)data;
+    return (gboolean)((GVal (*)(GVal, GVal, GVal))cl[0])((GVal)cl, _f2i(dx), _f2i(dy));
+}
+
+GVal gtk_ffi_scroll_flags_vertical(GVal _d) { (void)_d;
+    return (GVal)GTK_EVENT_CONTROLLER_SCROLL_VERTICAL;
+}
+
+GVal gtk_ffi_scroll_controller_new(GVal flags) {
+    return (GVal)gtk_event_controller_scroll_new((GtkEventControllerScrollFlags)flags);
+}
+
+GVal gtk_ffi_scroll_on_scroll(GVal ctrl, GVal closure) {
+    g_signal_connect((void *)ctrl, "scroll",
+                     G_CALLBACK(_tramp_scroll), (gpointer)closure);
+    return 0;
+}
+
+/* ── Paned ────────────────────────────────────────────────────────────── */
+
+GVal gtk_ffi_paned_new(GVal orientation) {
+    return (GVal)gtk_paned_new((GtkOrientation)orientation);
+}
+
+GVal gtk_ffi_paned_set_start_child(GVal paned, GVal child) {
+    gtk_paned_set_start_child(GTK_PANED((void *)paned), GTK_WIDGET((void *)child));
+    return 0;
+}
+
+GVal gtk_ffi_paned_set_end_child(GVal paned, GVal child) {
+    gtk_paned_set_end_child(GTK_PANED((void *)paned), GTK_WIDGET((void *)child));
+    return 0;
+}
+
+GVal gtk_ffi_paned_set_shrink_start(GVal paned, GVal shrink) {
+    gtk_paned_set_shrink_start_child(GTK_PANED((void *)paned), (gboolean)shrink);
+    return 0;
+}
+
+GVal gtk_ffi_paned_set_shrink_end(GVal paned, GVal shrink) {
+    gtk_paned_set_shrink_end_child(GTK_PANED((void *)paned), (gboolean)shrink);
+    return 0;
+}
+
+GVal gtk_ffi_paned_set_position(GVal paned, GVal pos) {
+    gtk_paned_set_position(GTK_PANED((void *)paned), (int)pos);
+    return 0;
+}
+
+/* ── Spin button signal ───────────────────────────────────────────────── */
+
+GVal gtk_ffi_on_spin_value_changed(GVal sb, GVal closure) {
+    g_signal_connect((void *)sb, "value-changed",
+                     G_CALLBACK(_tramp_void_widget), (gpointer)closure);
+    return 0;
+}

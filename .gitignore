@@ -35,9 +35,14 @@ examples/sheet/sheet
 examples/pipeline/pipeline
 examples/fsm/fsm
 examples/errors/errors
+examples/gtk/vie/vie
+examples/gtk/vie/vie_new
+examples/gtk/cairo_test/cairo_test
 *.glyph-shm
 *.glyph-wal
 *.glyph.cover
 .ninja_log
 *.glyph.bak
+*.vie
+*.vie.svg
 /workspace
