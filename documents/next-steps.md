@@ -471,3 +471,88 @@ The compiler already has two forms of static analysis: HM type inference and exh
 **Higher effort, interesting:**
 - **Purity analysis** — tag functions as pure/impure based on whether they call I/O, mutate state, or call impure functions. Propagates through the dep graph. Useful for LLMs reasoning about what's safe to reorder.
 - **Definite initialization** — ensure all locals are assigned before use on every code path.
+
+### 31. Char literals
+The tokenizer and parser are full of magic numbers: `45` for `-`, `40` for `(`, `123` for `{`, `10` for newline. Every function in `tok_one` through `tok_one4` is a wall of integer comparisons against ASCII codes. A char literal syntax (e.g., `'-'` or `c"-"`) that compiles to the integer code point would make this code self-documenting:
+
+```
+-- Before:
+match c
+  45 -> ...   -- what is 45?
+  40 -> ...   -- or 40?
+
+-- After:
+match c
+  '-' -> ...
+  '(' -> ...
+```
+
+Implementation is minimal: the tokenizer recognizes `'x'` as a new token kind (`tk_char`), the parser treats it as `ex_int_lit` with the char's code point as the value. No new types, no runtime changes — it's pure syntactic sugar over integers. The compiler itself has ~200+ char code comparisons that would immediately benefit, plus libraries like scan.glyph and regex.glyph.
+
+### 32. `glyph rename` — automated definition renaming
+Renaming a definition today requires: (1) get the body, (2) find all reverse dependencies via `rdeps`, (3) get each dependent's body, (4) text-replace the old name with the new name in each, (5) put each modified dependent back, (6) put the renamed definition, (7) remove the old one. That's 2N+3 MCP calls for N dependents, each requiring careful text replacement that could break if the old name appears as a substring of another identifier.
+
+A single `glyph rename old_name new_name` command (and MCP tool) would:
+- Rename the definition itself (update `name` column + first token in body)
+- Find all dependents via the `dep` table
+- Replace whole-word occurrences in each dependent's body (with word-boundary awareness)
+- Re-validate all modified definitions by parsing
+- Abort and roll back if any parse fails
+
+This is the highest-value refactoring primitive. The `dep` table already provides the call graph; the hard part is reliable token-level replacement in bodies rather than naive string substitution. A two-pass approach (tokenize body → find token spans matching old name → splice new name) would be robust. The recently-completed negative-literal refactor (179 definitions) took a bash+perl script — `glyph rename` would make such changes routine.
+
+### 33. `glyph replace` — bulk regex replacement across definitions
+The negative-literal migration exposed a real workflow gap: transforming a pattern across many definitions requires shelling out to sqlite3+perl. A built-in `glyph replace` command would make bulk refactors safe and fast:
+
+```bash
+glyph replace program.glyph 'old_pattern' 'new_text' [--regex] [--dry-run] [--kind fn]
+```
+
+- `--dry-run` shows which definitions would change and the diff, without writing
+- `--regex` enables regex patterns (default is literal string match)
+- `--kind` filters to specific definition kinds
+- Validates each modified body by parsing before committing
+- Reports count of definitions modified
+
+This is distinct from `rename` (#32): rename operates on identifiers using the dep graph; replace operates on arbitrary text patterns. Both are needed — rename for safe identifier changes, replace for syntactic migrations like the `0 - N` → `-N` cleanup.
+
+### 34. Bulk `get_defs` MCP tool
+When investigating a call chain or understanding a subsystem, I routinely call `get_def` 5-10 times in sequence — each a separate MCP round trip. A `get_defs` tool that accepts a list of names and returns all bodies in one call would cut latency significantly:
+
+```json
+mcp__glyph__get_defs(db="app.glyph", names=["parse_atom", "parse_unary", "parse_postfix"])
+```
+
+Returns `[{name, kind, body, gen, tokens}, ...]`. The `list_defs` tool already returns metadata; this extends it to include bodies. For subsystem exploration, combine with `deps`: get a function's dependency list, then fetch all their bodies in one call. This directly reduces the number of tool calls in the most common research pattern.
+
+### 35. Per-definition C/LLVM emit
+`--emit-c` dumps the entire generated C for all 1,400+ definitions. When debugging codegen for a single function, I have to search through a 30,000+ line file. A targeted emit would be far more useful:
+
+```bash
+glyph emit program.glyph fn_name [--format=c|llvm|mir]
+```
+
+This would compile just the named function (and its transitive dependencies for type resolution) and output only its generated code. The compiler already compiles definitions individually — the `compile_fn` pipeline produces per-function MIR and C. The plumbing is there; it just needs a CLI entry point that stops after one function instead of concatenating everything.
+
+For debugging, the most common scenario is: "this function segfaults, what C did we generate for it?" Currently that requires `--emit-c` then searching `/tmp/glyph_out.c` for the function name. A targeted emit would make this instant.
+
+### 36. Cross-database search
+When building a library or application, I often need to find which library provides a function, or check if a name is already used somewhere. Currently I search each `.glyph` file individually — there's no way to search across a project's registered libraries in one operation.
+
+```bash
+glyph search app.glyph 'pattern' [--libs] [--kind fn]
+```
+
+With `--libs`, search bodies across the app database AND all registered libraries (from `lib_dep` table). Returns results tagged with their source database. The MCP equivalent would be invaluable for "where is this function defined?" questions that come up constantly during library integration work (like the recent xml/svg/vie integration).
+
+### ~~37. Negative match patterns~~ ✅ COMPLETE
+Match currently supports integer literal patterns, string patterns, and constructor patterns. With negative literals now in the tokenizer, negative numbers should work in patterns too:
+
+```
+match x
+  -1 -> "negative one"
+  0 -> "zero"
+  _ -> "other"
+```
+
+Currently this requires a guard: `_ ? x == -1 -> "negative one"`. The parser's `parse_single_pattern` already handles `tk_int` — it just needs to also accept `tk_minus` followed by `tk_int` (or, with the new negative literal support, a `tk_int` whose value is negative). Since `cur_ival` already returns the correct negative value from the token text, the pattern match compilation in MIR should work unchanged — it's comparing against an integer constant either way.
