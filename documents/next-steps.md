@@ -407,7 +407,7 @@ The JSON library is solid (59 defs, full parser and builder). But common interch
 - **TOML** — configuration file format. Increasingly standard for project configuration (Cargo.toml, pyproject.toml). More structured than JSON for human-readable config.
 - **MessagePack** — binary serialization. Compact, fast, schema-less. Useful for network protocols and inter-process communication where JSON's text overhead matters.
 
-### 25. Property-based testing / fuzzing
+### ~~25. Property-based testing~~ / fuzzing
 `glyph test` runs assertion-based tests. Property-based testing (generate random inputs, check that invariants hold) would be powerful for the type checker and parser — exactly the kind of code where edge cases hide. A `glyph fuzz` command could:
 
 - Generate random AST nodes and verify the parser round-trips them
