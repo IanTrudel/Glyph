@@ -435,7 +435,7 @@ Git can't meaningfully diff SQLite files — every commit to a `.glyph` database
 
 Output would be per-definition: name, kind, and a unified diff of the body text. This integrates naturally with the `def_history` table (which already tracks old bodies via triggers) and with `glyph export` (which can produce diffable file trees as a workaround today, but shouldn't be required).
 
-### 28. Pattern match exhaustiveness checking
+### ~~28. Pattern match exhaustiveness checking~~
 The compiler silently accepts incomplete matches — a missing arm hits `tm_unreachable` at runtime (trap with "non-exhaustive match" message). Static exhaustiveness checking would catch these at compile time:
 
 - **Enum/variant exhaustiveness**: if a type has variants `Some`/`None`, a match must cover both (or include a wildcard). The type checker already knows variant sets from `type` definitions.
