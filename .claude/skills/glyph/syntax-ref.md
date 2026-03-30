@@ -66,7 +66,7 @@ mul      = unary (("*" | "/" | "%") unary)*
 unary    = ("-" | "!" | "&" | "*") unary | postfix
 postfix  = atom ("." IDENT | "(" args ")" | "[" expr "]" | "?" | "!")*
          -- ? = error propagate, ! = unwrap
-atom     = INT | FLOAT | STRING | RAW_STRING | "true" | "false"
+atom     = INT | FLOAT | CHAR | STRING | RAW_STRING | "true" | "false"
          | IDENT | UPPER_IDENT
          | "\" params "->" expr              -- lambda / closure
          | "match" expr INDENT arms DEDENT   -- match
@@ -108,7 +108,11 @@ Creates a new record with specified fields changed. Original is unchanged.
 
 ```
 42          -- Int (i64), underscores ok: 1_000_000
+-42         -- Negative int (prefix position only)
 3.14        -- Float (f64)
+-3.14       -- Negative float
+#a          -- Char literal → 97 (ASCII code point, syntactic sugar for int)
+#\n         -- Char escape: newline (10). Also: #\t (9), #\\ (92), #\0 (0)
 "hello"     -- String, interpolation with {expr}
 r"raw\n"    -- Raw string, no escapes
 true false  -- Bool
@@ -181,6 +185,8 @@ match expr
 | `_` | anything (wildcard) |
 | `x` | anything, binds to `x` |
 | `42` | integer literal |
+| `-1` | negative integer literal |
+| `#a` | char literal (matches code point) |
 | `"s"` | string literal |
 | `true` / `false` | boolean (use lowercase!) |
 | `None` | nullary enum constructor |

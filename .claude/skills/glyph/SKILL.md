@@ -52,8 +52,10 @@ Start the MCP server with `./glyph mcp app.glyph`, or use the pre-configured `mc
 | `mcp__glyph__search_defs` | `pattern, kind, db` | Search bodies |
 | `mcp__glyph__check_def` | `body, kind, db` | Validate without inserting |
 | `mcp__glyph__check_all` | `db, gen` | Type-check all definitions |
+| `mcp__glyph__get_defs` | `names, kind, db` | Read multiple definitions by name in one call |
 | `mcp__glyph__put_defs` | `defs, db` | Batch insert/update definitions |
 | `mcp__glyph__test` | `db, tests` | Run test definitions |
+| `mcp__glyph__emit` | `names, format, db, gen` | Emit generated C, LLVM IR, or MIR for specific functions |
 | `mcp__glyph__deps` | `name, db` | Forward dependencies |
 | `mcp__glyph__rdeps` | `name, db` | Reverse dependencies |
 | `mcp__glyph__sql` | `query, db` | Raw SQL |
@@ -96,6 +98,7 @@ All commands: `./glyph <command> <db.glyph> [args...]`
 | `use` | `use <app.glyph> <lib.glyph> [--ns=N]` | Register library as a build-time dependency (Level 2 — non-destructive) |
 | `unuse` | `unuse <app.glyph> <lib.glyph>` | Remove a registered library dependency |
 | `libs` | `libs <app.glyph>` | List all registered library dependencies |
+| `emit` | `emit <db> <name...> [--format=c\|llvm\|mir]` | Emit generated code for specific functions |
 | `undo` | `undo <db> <name> [--kind K]` | Undo last change (reversible) |
 | `history` | `history <db> <name> [--kind K]` | Show change history for a definition |
 | `mcp` | `mcp <db>` | Start MCP server on stdin/stdout |
@@ -138,11 +141,14 @@ Stack = <T>{items:[T], size:I}
 
 ### Test (`kind='test'`)
 ```
-test_name u = assert_eq(expr, expected)
-test_name u = INDENT assertions... DEDENT
+test_name = assert_eq(expr, expected)
+test_name =
+  assert(condition)
+  assert_eq(expr, expected)
+  0
 ```
 
-Note: test definitions take a dummy parameter (like all zero-arg side-effect functions).
+Note: test definitions are zero-arg (no dummy parameter needed).
 
 ## Language Features
 
@@ -201,6 +207,28 @@ p3 = p{x: 10, y: 20}      -- multiple fields
 ```
 Record update `rec{field: value}` creates a new record with the specified fields changed. The original record is unchanged (functional update).
 
+### Char Literals
+```
+#a              -- 97 (ASCII code point)
+#0              -- 48
+#+              -- 43
+#\n             -- 10 (newline)
+#\t             -- 9  (tab)
+#\\             -- 92 (backslash)
+#\0             -- 0  (null)
+```
+Char literals (`#x`) are syntactic sugar for integers. They compile to the character's code point value. Useful for replacing magic ASCII numbers in tokenizers and parsers. Space (32) and CR (13) have no char literal form — use the integer directly.
+
+### Negative Literals
+```
+-42             -- negative integer
+-3.14           -- negative float
+match n
+  -1 -> "minus one"   -- negative match pattern
+  _ -> "other"
+```
+The tokenizer uses prefix-position detection: `-` followed by a digit is a negative literal only when the previous token is not value-producing (ident, int, rparen, etc.). After a value, `-` is binary subtraction.
+
 ### Loops
 No for-loop syntax. Write loops as tail-recursive helper functions:
 ```
@@ -216,7 +244,7 @@ loop_helper arr i =
 |---------|-------|-----|
 | `{` in strings triggers interpolation | String interpolation syntax | Use `\{` for literal `{` |
 | Map literals need double braces | `{k: v}` is a record literal | Use `hm_new()` + `hm_set` for maps |
-| Zero-arg fn with side effects runs eagerly | Treated as constant | Add dummy param: `usage u = println(...)` |
+| Zero-arg fn with side effects runs eagerly | Treated as constant | Zero-arg fns are NOT memoized; side effects run each call. Tests are zero-arg. |
 | Stdlib returns frozen arrays | `map`, `filter`, `sort` etc. freeze results | Call `array_thaw(result)` if you need to mutate |
 | C keyword as fn name | C codegen conflict | Avoid: `double`, `int`, `float`, `void`, `return`, `if`, `while`, `for`, `struct`, `enum`, `const`, `static`, `extern` |
 | `=` vs `:=` | `=` is let binding, `:=` is mutation | Use `:=` only for reassigning existing variables |
@@ -253,13 +281,20 @@ Records the library path in `app.glyph`'s `lib_dep` table. At build time, the co
 
 ## Available Libraries
 
-| Library | Defs | Description | FFI |
-|---------|------|-------------|-----|
-| `libraries/stdlib.glyph` | 56 | Core utilities: `map`, `filter`, `fold`, `join`, `sort`, `range` | None |
-| `libraries/json.glyph` | 82 | JSON parser/generator. `json_parse`, `json_gen`, `json_get`, `jb_*` builders | None |
-| `libraries/network.glyph` | 15 | TCP server: `net_listen`, `net_accept`, `net_respond`, HTTP parsing | `network_ffi.c` |
-| `libraries/web.glyph` | 61 | Web framework: routing, middleware, CRUD helpers, state store | `web_ffi.c` |
-| `libraries/gtk.glyph` | 12 | GTK4 bindings: windows, buttons, labels, text views, signals | `gtk_ffi.c` |
+| Library | Description | FFI |
+|---------|-------------|-----|
+| `libraries/stdlib.glyph` | Core utilities: `map`, `filter`, `fold`, `join`, `sort`, `range`, base64 | None |
+| `libraries/json.glyph` | JSON parser/generator. `json_parse`, `json_gen`, `json_get`, `jb_*` builders | None |
+| `libraries/scan.glyph` | Scanner combinators: char sets, float parser, sequence/choice/many | None |
+| `libraries/regex.glyph` | Regex engine: `rx_match`, `rx_find`, `rx_replace`, `rx_split` | None |
+| `libraries/xml.glyph` | XML parser: tokenizer, DOM builder, XPath-like queries, entity handling | None |
+| `libraries/svg.glyph` | SVG builder: paths, shapes, styles, transforms, document generation | None |
+| `libraries/network.glyph` | TCP server: `net_listen`, `net_accept`, `net_respond`, HTTP parsing | `network_ffi.c` |
+| `libraries/web.glyph` | Web framework: routing, middleware, CRUD helpers, state store | `web_ffi.c` |
+| `libraries/gtk.glyph` | GTK4 bindings: windows, buttons, labels, text views, signals, drawing | `gtk_ffi.c` |
+| `libraries/async.glyph` | Async/event loop | `async_ffi.c` |
+| `libraries/thread.glyph` | Threading primitives | `thread_ffi.c` |
+| `libraries/x11.glyph` | X11 window bindings | `x11_ffi.c` |
 
 **Usage:**
 ```bash
