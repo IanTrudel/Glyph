@@ -454,3 +454,20 @@ Like `test` but measures execution time. A `bench` definition kind (e.g., `bench
 - Output in both human-readable and machine-parseable (TSV or JSON) formats
 
 The `benchmark` example program already demonstrates the pattern manually (timing loops with `clock_gettime`). Promoting this to a first-class definition kind eliminates the boilerplate and makes performance regression detection automatable. The existing `prop` seed-passing convention could be reused — bench definitions receive iteration state the same way property tests receive seeds.
+
+### 30. Static analysis
+
+The compiler already has two forms of static analysis: HM type inference and exhaustiveness checking. A broader static analysis pass would catch more classes of bugs at compile time, ordered by value vs. effort:
+
+**Low effort, high value:**
+- **Dead definition detection*** — the `dep` table already exists. Any def not transitively reachable from `main` (or tests) is dead. Practically free with a SQL query.
+- **Unused variables** — at MIR level, any local that's assigned but never read. Straightforward walk over blocks.
+
+**Medium effort, high value:**
+
+- **Unreachable code*** — blocks with no predecessors after a `tm_return`/`tm_unreachable`/`panic`. The block graph already exists in MIR.
+- **Shadowed variable warnings** — scope stack already exists in lowering; just check if a name is already bound in an outer scope.
+
+**Higher effort, interesting:**
+- **Purity analysis** — tag functions as pure/impure based on whether they call I/O, mutate state, or call impure functions. Propagates through the dep graph. Useful for LLMs reasoning about what's safe to reorder.
+- **Definite initialization** — ensure all locals are assigned before use on every code path.
