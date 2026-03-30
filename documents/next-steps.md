@@ -472,7 +472,7 @@ The compiler already has two forms of static analysis: HM type inference and exh
 - **Purity analysis** — tag functions as pure/impure based on whether they call I/O, mutate state, or call impure functions. Propagates through the dep graph. Useful for LLMs reasoning about what's safe to reorder.
 - **Definite initialization** — ensure all locals are assigned before use on every code path.
 
-### 31. Char literals
+### ~~31. Char literals~~ ✅ COMPLETE
 The tokenizer and parser are full of magic numbers: `45` for `-`, `40` for `(`, `123` for `{`, `10` for newline. Every function in `tok_one` through `tok_one4` is a wall of integer comparisons against ASCII codes. A char literal syntax (e.g., `'-'` or `c"-"`) that compiles to the integer code point would make this code self-documenting:
 
 ```
