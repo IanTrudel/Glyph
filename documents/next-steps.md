@@ -516,7 +516,7 @@ glyph replace program.glyph 'old_pattern' 'new_text' [--regex] [--dry-run] [--ki
 
 This is distinct from `rename` (#32): rename operates on identifiers using the dep graph; replace operates on arbitrary text patterns. Both are needed — rename for safe identifier changes, replace for syntactic migrations like the `0 - N` → `-N` cleanup.
 
-### 34. Bulk `get_defs` MCP tool
+### ~~34. Bulk `get_defs` MCP tool~~
 When investigating a call chain or understanding a subsystem, I routinely call `get_def` 5-10 times in sequence — each a separate MCP round trip. A `get_defs` tool that accepts a list of names and returns all bodies in one call would cut latency significantly:
 
 ```json
@@ -525,7 +525,7 @@ mcp__glyph__get_defs(db="app.glyph", names=["parse_atom", "parse_unary", "parse_
 
 Returns `[{name, kind, body, gen, tokens}, ...]`. The `list_defs` tool already returns metadata; this extends it to include bodies. For subsystem exploration, combine with `deps`: get a function's dependency list, then fetch all their bodies in one call. This directly reduces the number of tool calls in the most common research pattern.
 
-### 35. Per-definition C/LLVM emit
+### ~~35. Per-definition C/LLVM emit~~
 `--emit-c` dumps the entire generated C for all 1,400+ definitions. When debugging codegen for a single function, I have to search through a 30,000+ line file. A targeted emit would be far more useful:
 
 ```bash
