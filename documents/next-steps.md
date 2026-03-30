@@ -425,3 +425,32 @@ No `const` evaluation beyond literal constants. The `const` kind exists in the s
 - Conditional compilation based on computed values
 
 The MIR interpreter infrastructure could be reused here — the compiler already has the representation to evaluate expressions, it just doesn't do so at compile time.
+
+### 27. Definition-level diffing (`glyph diff`)
+Git can't meaningfully diff SQLite files — every commit to a `.glyph` database shows `1 file changed, 0 insertions(+), 0 deletions(-)`. A `glyph diff` command that operates at the definition level would make code review possible:
+
+- `glyph diff a.glyph b.glyph` — compare two databases, show added/removed/modified definitions by name with body diffs
+- `glyph diff --last program.glyph` — compare current state against the most recent `def_history` snapshot
+- `glyph diff --git program.glyph` — compare working copy against the last committed version (extract from `git show HEAD:program.glyph` into a temp file)
+
+Output would be per-definition: name, kind, and a unified diff of the body text. This integrates naturally with the `def_history` table (which already tracks old bodies via triggers) and with `glyph export` (which can produce diffable file trees as a workaround today, but shouldn't be required).
+
+### 28. Pattern match exhaustiveness checking
+The compiler silently accepts incomplete matches — a missing arm hits `tm_unreachable` at runtime (trap with "non-exhaustive match" message). Static exhaustiveness checking would catch these at compile time:
+
+- **Enum/variant exhaustiveness**: if a type has variants `Some`/`None`, a match must cover both (or include a wildcard). The type checker already knows variant sets from `type` definitions.
+- **Boolean exhaustiveness**: `match b / true -> ...` without a `false` or `_` arm is incomplete.
+- **Redundancy warnings**: a wildcard `_` after all variants are covered means dead code.
+- **Guard interaction**: arms with guards (`pat ? expr -> ...`) can't guarantee coverage — treat guarded arms as potentially non-matching for exhaustiveness purposes.
+
+This is high-value for LLM consumers who can't mentally simulate all paths. The information is already available in the type system — enum variant lists from `type` definitions and inferred match subject types from HM inference.
+
+### 29. Benchmark definitions (`glyph bench`)
+Like `test` but measures execution time. A `bench` definition kind (e.g., `bench_sort seed = ...`) that the compiler recognizes and `glyph bench program.glyph` runs:
+
+- Execute each bench definition N iterations (default 1000, configurable via `--iter`)
+- Warm up with a few discarded runs to stabilize caches
+- Report mean, min, max, and standard deviation per benchmark
+- Output in both human-readable and machine-parseable (TSV or JSON) formats
+
+The `benchmark` example program already demonstrates the pattern manually (timing loops with `clock_gettime`). Promoting this to a first-class definition kind eliminates the boilerplate and makes performance regression detection automatable. The existing `prop` seed-passing convention could be reused — bench definitions receive iteration state the same way property tests receive seeds.
