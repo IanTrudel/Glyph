@@ -23,7 +23,9 @@ Runtime functions are prefixed `glyph_` in generated C (e.g., `println` → `gly
 | `read_file` | `S -> S` | Read entire file (not stdin/pipes) |
 | `write_file` | `S -> S -> I` | Write string to file (0=ok) |
 | `read_line` | `I -> S` | Read a line from stdin (dummy arg required — zero-arg side effect) |
+| `read_stdin` | `I -> S` | Read all of stdin (dummy arg required — zero-arg side effect) |
 | `flush` | `I -> V` | Flush stdout (dummy arg required — zero-arg side effect) |
+| `file_exists` | `S -> I` | Check if file exists (1=yes, 0=no) |
 | `args` | `-> [S]` | Command-line arguments |
 | `system` | `S -> I` | Execute shell command, return exit code |
 
@@ -173,6 +175,7 @@ Construct with `Ok(val)` / `Err(msg)`. Destructure with `match`, `?` (propagate)
 |----------|-----|-------------|
 | `ok` | `I -> !I` | Wrap value in Ok (heap-allocated) |
 | `err` | `S -> !I` | Wrap error message in Err |
+| `panic_unwrap` | `S -> N` | Called by `!` operator on Err — panics with message |
 | `try_read_file` | `S -> !S` | Read file, Err on failure |
 | `try_write_file` | `S -> S -> !I` | Write file, Err on failure |
 
