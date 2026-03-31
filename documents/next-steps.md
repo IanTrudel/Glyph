@@ -556,3 +556,354 @@ match x
 ```
 
 Currently this requires a guard: `_ ? x == -1 -> "negative one"`. The parser's `parse_single_pattern` already handles `tk_int` — it just needs to also accept `tk_minus` followed by `tk_int` (or, with the new negative literal support, a `tk_int` whose value is negative). Since `cur_ival` already returns the correct negative value from the token text, the pattern match compilation in MIR should work unchanged — it's comparing against an integer constant either way.
+
+### 38. Direct machine code emission (ELF backend)
+The external C compiler (`cc`/`gcc`) is now the dominant build bottleneck — ~12.7% of CPU time and the primary source of wall-clock latency. It's also the only external toolchain dependency. Emitting ELF object files directly from Glyph would eliminate both problems, making the compiler fully self-contained: a single binary that takes a `.glyph` database and produces an executable with zero external dependencies.
+
+**What this means concretely:**
+- Replace the `cg_program → write .c → cc → executable` pipeline with `cg_program → emit .o → link → executable`
+- The compiler would produce ELF relocatable objects (`.o` files) containing x86-64 machine code
+- A minimal linker pass (or shelling out to `ld`) combines objects with the C runtime and libc
+
+**Scope of work:**
+1. **x86-64 instruction encoder** — emit machine code bytes for the operations MIR uses: integer arithmetic, comparisons, branches, function calls (System V ABI), loads/stores, stack frame management. The MIR instruction set is small (~20 statement kinds + ~5 terminators), so the x86-64 subset needed is bounded.
+2. **Register allocator** — map MIR locals to x86-64 registers. A simple linear scan allocator would work initially; the MIR is already in SSA-like form with explicit locals.
+3. **ELF object writer** — emit the ELF header, `.text` section (machine code), `.data`/`.rodata` sections (string literals, constants), `.symtab` (function symbols), and `.rela.text` (relocations for function calls and data references). The format is well-documented and the subset needed for relocatable objects is modest.
+4. **Linker integration** — either shell out to `ld` (like the current `cc` invocation) or implement a minimal static linker that combines the generated `.o` with `libc.a` and the Glyph runtime.
+
+**What makes this tractable:**
+- MIR is already a flat CFG with explicit locals — it maps naturally to machine code
+- The C codegen already handles ABI, calling conventions, and data layout — those decisions carry over
+- Glyph programs use a small set of types (GVal/i64, pointers, floats) — no complex type-directed instruction selection
+- The runtime is already C code that can be pre-compiled to `.o` once and linked statically
+
+**What makes this hard:**
+- x86-64 variable-length encoding is fiddly (REX prefixes, ModR/M, SIB bytes)
+- Relocations must be correct for the linker to resolve cross-function calls
+- Debugging support (DWARF) is a rabbit hole — could be deferred entirely
+- The C runtime (Boehm GC, libc) still needs linking against system libraries
+
+**Payoff:** Build times drop by the full `cc` overhead (~6s wall on a full rebuild). The compiler becomes a single binary with zero toolchain dependencies — no `gcc`, no `clang`, no `llc`. Distribution simplifies to one file. The bootstrap chain could eventually eliminate the Rust compiler too, if the ELF backend can compile `glyph.glyph` directly.
+
+### 39. WebAssembly backend
+A WASM target would expand Glyph's deployment story from "Linux CLI binaries" to browser, edge, serverless, and WASI environments. Two implementation paths:
+
+**Path A: C codegen → Emscripten** — the quick path. The C backend already produces portable C. Passing it through `emcc` instead of `cc` produces WASM. Main work: adapt the runtime (no `mmap`, no signals, Boehm GC needs WASM support or replacement), handle Emscripten's async patterns for I/O, and adjust the string/memory model for WASM's linear memory.
+
+**Path B: Direct WASM emission** — emit `.wasm` binary directly from MIR. WASM's instruction set is a stack machine, which is a straightforward lowering from MIR's flat CFG. WASM's type system is simple (i32, i64, f32, f64, funcref, externref). The binary format is well-specified and simpler than ELF. No external toolchain needed.
+
+**What this enables:**
+- Glyph programs running in web browsers (compiled to WASM, loaded via JavaScript)
+- Serverless deployment (Cloudflare Workers, Fastly Compute, WASI runtimes like Wasmtime)
+- Sandboxed execution — WASM's memory safety guarantees make it safe to run untrusted Glyph programs
+- Plugin systems — host applications load `.wasm` modules produced by Glyph
+
+**Key challenges:**
+- Garbage collection — Boehm GC won't work in WASM without significant porting. WASM GC proposal is still maturing. Practical options: reference counting, arena allocation, or compiling Boehm to WASM via Emscripten (Path A handles this).
+- I/O model — WASM has no direct file/network access. WASI provides a capability-based I/O interface. The runtime's `read_file`/`write_file`/`println` would need WASI backends.
+- 32-bit pointers — WASM is 32-bit address space (wasm64 is experimental). GVal as `intptr_t` would be 32 bits, halving the available payload. Fat pointers and array headers shrink accordingly.
+
+### 40. Bytecode interpreter
+Instead of always compiling to native code, interpret MIR directly. This creates an instant-feedback execution mode with no compile step — the compiler reads a definition from the database, lowers to MIR, and evaluates it immediately.
+
+**What this enables:**
+- **REPL / eval** — `glyph eval program.glyph "1 + 2"` with sub-millisecond response. No temp files, no `cc` invocation.
+- **Fast test iteration** — `glyph test --interp` runs tests by interpreting MIR, skipping the entire codegen→compile→link cycle. For the common case of changing 1-5 definitions and running their tests, this would be near-instant.
+- **Debugging** — step through MIR blocks, inspect locals, set breakpoints at the definition level. The interpreter has full visibility into program state.
+- **Compile-time evaluation** (#26) — `const` definitions could be evaluated by the interpreter during compilation, enabling computed lookup tables and static assertions.
+- **Portable execution** — MIR interpretation requires no platform-specific code. A `.glyph` database becomes directly executable on any platform with the Glyph binary, no cross-compilation needed.
+
+**Implementation outline:**
+1. **MIR evaluator** — walk blocks, execute statements (use/binop/call/field/index/construct), follow terminators (goto/branch/return). Locals are a value array indexed by local ID. The MIR is already designed for this — flat CFG, explicit operands, no implicit state.
+2. **Value representation** — tagged union: Int(i64), Float(f64), Str(String), Bool(bool), Array(Vec), Record(fields), Closure(fn_name, captured_values), Enum(tag, payload). Richer than GVal but necessary for correct interpretation without type erasure.
+3. **Runtime function dispatch** — the ~40 runtime functions (`println`, `str_concat`, `array_push`, etc.) need interpreter implementations. These are thin wrappers around host functionality.
+4. **FFI boundary** — extern calls can't be interpreted. Options: (a) compile FFI-using functions to native and call out, (b) restrict interpreter to pure Glyph code, (c) provide a dlopen-based FFI bridge.
+
+**Effort:** Medium-large. The core evaluator (statements + terminators) is probably ~30-40 definitions. Runtime function wrappers are another ~40. The MIR data structures already exist — this is writing an evaluator over them.
+
+### 41. Metaprogramming / compile-time code generation
+Compile-time code generation written in Glyph itself. Since programs are SQLite databases, macros can do something no file-based macro system can: query the program's own structure, generate definitions, and insert them — all using SQL.
+
+**Concept:**
+A `macro` definition kind that runs at compile time. The macro receives the program's database handle and can:
+- Query existing definitions (`SELECT name, body FROM def WHERE ...`)
+- Generate new definitions (`INSERT INTO def ...`)
+- Transform existing definitions (read body → modify → write back)
+- Access the dependency graph, type information, and metadata
+
+```
+-- A macro that generates accessor functions for all fields of a type
+macro gen_accessors db type_name =
+  fields = db_query_rows(db, "SELECT body FROM def WHERE name = '" + type_name + "' AND kind = 'type'")
+  -- parse the type body, extract field names
+  -- for each field, insert a `get_<field>` function definition
+```
+
+**Why this is different from other macro systems:**
+- **Database-native** — macros operate on SQL, not syntax trees or token streams. The program's structure is already queryable. No special AST API needed.
+- **Definition-granular** — macros produce whole definitions, not inlined code fragments. This fits the "unit of storage is the definition" model.
+- **Incremental** — generated definitions are stored in the database with a `generated_by` provenance column. Re-running the macro only regenerates stale outputs (content-hash comparison).
+- **Debuggable** — generated definitions are visible in the database, can be inspected with `glyph get`, tested individually, and have full dependency tracking.
+
+**Use cases:**
+- Derive patterns: auto-generate `eq`, `to_str`, `hash` for record types
+- Serialization: generate JSON encoders/decoders from type definitions
+- FFI bindings: parse a C header and generate extern declarations + wrapper functions
+- Boilerplate elimination: generate repetitive dispatch tables, test scaffolding, or CLI argument parsers from declarative specifications
+
+### 42. Multi-agent concurrent development
+SQLite's WAL mode + Glyph's definition-level granularity enable something no file-based language supports: multiple LLM agents working on the same program simultaneously with conflict resolution at the definition level rather than the line level.
+
+**The problem with file-based concurrency:**
+Two agents editing the same file produce merge conflicts at the text level — even if they modified completely independent functions. Git's line-based merge has no semantic understanding. In practice, concurrent work on a single codebase requires careful coordination to avoid conflicts.
+
+**What the database model enables:**
+- Each agent works on different definitions (rows in `def` table)
+- SQLite WAL mode allows concurrent readers with a single writer
+- Conflicts are detectable at the definition level: two agents modified `foo` → conflict; one modified `foo` while the other modified `bar` → clean merge
+- The dependency graph (`dep` table) can automatically identify which definitions are safe to work on concurrently (no shared dependents)
+
+**Architecture:**
+1. **Work partitioning** — given a task (e.g., "refactor the type checker"), use the dependency graph to identify independent subgraphs that can be assigned to different agents
+2. **Locking protocol** — agents claim definitions before modifying them (a `locked_by` column or a separate `locks` table). Advisory, not mandatory — the database enforces consistency at write time.
+3. **Merge protocol** — when agents complete their work, validate that no conflicting writes occurred. If they did, present the conflict at the definition level (old body vs. agent A's body vs. agent B's body) for resolution.
+4. **Orchestrator** — a coordinator process that assigns work, monitors progress, and merges results. Could be another Glyph program using the MCP tools.
+
+**Why this matters:**
+Large refactoring tasks (like the recent 179-definition negative literal migration) are inherently parallelizable at the definition level. An orchestrator could partition the work across N agents, each handling a subset of definitions, and merge the results — turning a serial hour-long task into a parallel minutes-long one.
+
+See [multi-agent-concurrency.md](multi-agent-concurrency.md) for full analysis: empirical namespace coupling data, the compare-and-swap protocol, the Squeak Trunk-inspired changeset system, and the interface freeze protocol.
+
+### 43. Library expansion
+
+13 libraries ship today (stdlib, scan, json, regex, network, web, async, thread, x11, cairo, gtk, xml, svg) providing 662 functions total. Gaps identified from examples that had to build their own FFI wrappers for missing functionality.
+
+#### 43.1. math.glyph — Standard math functions (HIGH PRIORITY)
+
+`sin`, `cos`, `sqrt`, `atan2`, `pow`, `log`, `exp`, `fabs`, `floor`, `ceil`, `round`. The vie example (GTK vector editor) wrote its own 5-line FFI wrapper for these. Every graphics, game, physics, or scientific program needs them.
+
+**Implementation:** Thin `math_ffi.c` wrapping `<math.h>`, link with `-lm`. Each function takes/returns floats via the `_glyph_i2f`/`_glyph_f2i` bitcast helpers already in the runtime. ~15 functions, ~20 lines of C, ~15 Glyph wrapper definitions.
+
+**Functions:**
+- Trigonometry: `sin`, `cos`, `tan`, `asin`, `acos`, `atan2`
+- Powers/roots: `sqrt`, `pow`, `exp`, `log`, `log2`, `log10`
+- Rounding: `floor`, `ceil`, `round`, `fabs`
+- Constants: `pi`, `e` (as zero-arg functions or consts)
+
+#### 43.2. time.glyph — Time and timing (HIGH PRIORITY)
+
+Timestamps, monotonic clocks, and delays. The benchmark example wrote `bench_now_ns`/`bench_elapsed_us`, gstats wrote a `time()` wrapper. Needed for benchmarking, logging, rate limiting, animation loops, and any time-stamped output.
+
+**Implementation:** `time_ffi.c` wrapping `<time.h>` and `<unistd.h>`. ~8 functions, ~30 lines of C.
+
+**Functions:**
+- `clock_ns()` → monotonic nanoseconds (`clock_gettime(CLOCK_MONOTONIC)`)
+- `timestamp()` → Unix epoch seconds (`time()`)
+- `timestamp_ms()` → epoch milliseconds (`gettimeofday`)
+- `sleep_ms(n)` → sleep for N milliseconds (`usleep`)
+- `format_time(epoch)` → human-readable string (`strftime`)
+
+#### 43.3. os.glyph — Environment and process (HIGH PRIORITY)
+
+The gstats example had to FFI `getenv` manually. Every real program that reads configuration, checks its environment, or interacts with the OS needs at least one of these.
+
+**Implementation:** `os_ffi.c` wrapping `<stdlib.h>`, `<unistd.h>`, `<dirent.h>`. ~12 functions, ~50 lines of C.
+
+**Functions:**
+- Environment: `getenv(name)`, `setenv(name, val)`
+- Process: `getpid()`, `getcwd()`
+- Filesystem: `readdir(path)` → array of filenames, `is_dir(path)`, `mkdir(path)`, `remove(path)`
+- System: `system(cmd)` (already in runtime as `glyph_system`, but not exposed as a library function)
+
+#### 43.4. csv.glyph — CSV parsing and generation (MEDIUM PRIORITY)
+
+The most common data exchange format. Pairs with json.glyph for data interchange. Pure Glyph implementation — no FFI needed, built on scan.glyph combinators.
+
+**Implementation:** ~25-30 definitions. Parser handles quoting (RFC 4180), configurable delimiter, header row extraction.
+
+**Functions:**
+- `csv_parse(text)` → array of rows (each row is array of strings)
+- `csv_parse_headers(text)` → `{headers: [S], rows: [[S]]}`
+- `csv_emit(rows)` → CSV string with proper quoting
+- `csv_emit_headers(headers, rows)` → CSV with header row
+- Options: `csv_parse_delim(text, delim)` for TSV or other separators
+
+#### 43.5. sdl.glyph — SDL2 bindings (MEDIUM PRIORITY)
+
+The asteroids example wrote a 200-line FFI wrapper for SDL2 (window, rendering, keyboard, gamepads, timing). SDL2 is the standard cross-platform library for games and interactive graphics — it provides windowing, 2D rendering, input handling, and audio without X11 low-level work.
+
+**Implementation:** `sdl_ffi.c` wrapping SDL2 (`-lSDL2`). ~40-50 Glyph definitions.
+
+**Functions:**
+- Window: `sdl_init(w, h, title)`, `sdl_quit()`, `sdl_present()`
+- Rendering: `sdl_clear(r, g, b)`, `sdl_draw_rect(x, y, w, h)`, `sdl_draw_line(x1, y1, x2, y2)`, `sdl_fill_rect(...)`, `sdl_set_color(r, g, b, a)`
+- Input: `sdl_poll_event()`, `sdl_key_pressed(key)`, `sdl_mouse_pos()`
+- Timing: `sdl_ticks()`, `sdl_delay(ms)`
+- Gamepad: `sdl_gamepad_open(idx)`, `sdl_gamepad_axis(pad, axis)`, `sdl_gamepad_button(pad, btn)`
+
+#### 43.6. ncurses.glyph — Terminal UI (MEDIUM PRIORITY)
+
+The gled text editor hand-rolled ncurses FFI. Any terminal-based application (TUI dashboards, interactive tools, text editors, file managers) needs this.
+
+**Implementation:** `ncurses_ffi.c` wrapping `<ncurses.h>` (`-lncurses`). ~30 Glyph definitions.
+
+**Functions:**
+- Init: `nc_init()`, `nc_end()`, `nc_raw()`, `nc_noecho()`, `nc_keypad()`
+- Output: `nc_mvprint(y, x, str)`, `nc_clear()`, `nc_refresh()`, `nc_attron(attr)`, `nc_attroff(attr)`
+- Input: `nc_getch()`, `nc_has_key()`
+- Window: `nc_lines()`, `nc_cols()`, `nc_color_init()`, `nc_color_pair(fg, bg)`
+- Cursor: `nc_move(y, x)`, `nc_curs_set(visibility)`
+
+#### 43.7. sqlite.glyph — SQLite as a data store (MEDIUM PRIORITY)
+
+Glyph programs *are* SQLite databases, but programs that want to use SQLite as a data store (separate from themselves) currently use raw externs. The glint example does this. A proper library would provide a clean API.
+
+The runtime already has `db_open`, `db_close`, `db_exec`, `db_query_rows`, `db_query_one` — but they're only available through the `extern_` table. A library would wrap these with ergonomic helpers.
+
+**Functions:**
+- Core: `sql_open(path)`, `sql_close(db)`, `sql_exec(db, query)`, `sql_query(db, query)` → array of row arrays
+- Helpers: `sql_query_one(db, query)` → single value, `sql_insert(db, table, record)`, `sql_table_exists(db, name)`
+- Parameterized: `sql_exec_params(db, query, params)` (prevents SQL injection)
+
+#### 43.8. toml.glyph — TOML configuration files (LOWER PRIORITY)
+
+Configuration file format. Increasingly standard (Cargo.toml, pyproject.toml). More structured than JSON for human-readable config. Pure Glyph implementation using scan.glyph.
+
+**Implementation:** ~40-50 definitions. TOML is more complex to parse than CSV (nested tables, inline tables, arrays of tables, datetime types) but scan.glyph provides the combinators needed.
+
+#### 43.9. test.glyph — Extended testing utilities (LOWER PRIORITY)
+
+Testing utilities beyond the built-in `assert`/`assert_eq`/`assert_str_eq`. The existing test framework is minimal — this library would add structure.
+
+**Functions:**
+- Assertions: `assert_ne`, `assert_true`, `assert_false`, `assert_gt`, `assert_lt`, `assert_contains(arr, elem)`, `assert_str_contains(haystack, needle)`
+- Property-based: `gen_int_range(lo, hi)`, `gen_str(len)`, `gen_array(n, gen)`, `gen_one_of(arr)`, `check_property(name, gen, prop)` — generate random inputs, verify predicate holds
+- Output: `test_group(name)` for structured test organization
+
+#### 43.10. log.glyph — Structured logging (LOWER PRIORITY)
+
+Structured logging with levels and timestamps. Depends on time.glyph.
+
+**Functions:**
+- `log_debug(msg)`, `log_info(msg)`, `log_warn(msg)`, `log_error(msg)`
+- `log_set_level(level)` — filter by severity
+- `log_to_file(path)` — redirect output
+- Each log entry includes: timestamp, level, message, optional key-value fields
+
+### 44. Cross-platform portability strategy (follow-up on #43)
+
+Glyph currently targets Linux only. When targeting macOS and Windows, each library and FFI file has a different portability profile. This item classifies every library and proposes the strategy for cross-platform support.
+
+#### Portability classification
+
+**Tier 1 — Already cross-platform (no work needed):**
+
+These are pure Glyph or depend only on standard C (`<stdlib.h>`, `<stdio.h>`, `<string.h>`, `<math.h>`). They work on any platform with a C compiler.
+
+| Library | Reason |
+|---------|--------|
+| stdlib.glyph | Pure Glyph |
+| json.glyph | Pure Glyph |
+| xml.glyph | Pure Glyph |
+| svg.glyph | Pure Glyph |
+| scan.glyph | `scan_ffi.c` uses only standard C (character sets, string ops) |
+| regex.glyph | Pure Glyph |
+| csv.glyph (proposed) | Pure Glyph |
+| toml.glyph (proposed) | Pure Glyph |
+| test.glyph (proposed) | Pure Glyph |
+| math.glyph (proposed) | `<math.h>` is standard C, `-lm` on all platforms |
+| sqlite.glyph (proposed) | SQLite is cross-platform |
+
+**Tier 2 — Portable with `#ifdef` in FFI (same Glyph API, platform-conditional C):**
+
+The Glyph-side API stays identical. The `*_ffi.c` file uses preprocessor guards to select the right system call per platform. Since Glyph's C codegen goes through `cc`/`gcc`/`clang`, `#ifdef` is free.
+
+| Library | Linux | macOS | Windows |
+|---------|-------|-------|---------|
+| time.glyph (proposed) | `clock_gettime(CLOCK_MONOTONIC)`, `usleep` | `clock_gettime` (available since macOS 10.12), `usleep` | `QueryPerformanceCounter`, `Sleep` |
+| os.glyph (proposed) | `getenv`, `readdir`, `getcwd`, `getpid` | Same (POSIX) | `getenv`/`_getcwd`/`GetCurrentProcessId`/`FindFirstFile` |
+| thread.glyph | pthreads | pthreads | Win32 threads (`CreateThread`, `InitializeCriticalSection`) or pthreads-win32 |
+| network.glyph | POSIX sockets | POSIX sockets | Winsock2 (`WSAStartup` init, `closesocket` instead of `close`, `ws2_32.lib`) |
+| log.glyph (proposed) | Depends on time.glyph | Same | Same |
+
+Example pattern for `time_ffi.c`:
+
+```c
+#ifdef _WIN32
+#include <windows.h>
+long long glyph_clock_ns(void) {
+    LARGE_INTEGER freq, count;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&count);
+    return (long long)(count.QuadPart * 1000000000LL / freq.QuadPart);
+}
+void glyph_sleep_ms(long long ms) { Sleep((DWORD)ms); }
+#else
+#include <time.h>
+#include <unistd.h>
+long long glyph_clock_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+void glyph_sleep_ms(long long ms) { usleep(ms * 1000); }
+#endif
+```
+
+**Tier 3 — Cross-platform via third-party library:**
+
+These wrap a library that is itself cross-platform. The Glyph API is the same on all platforms; the FFI links against the third-party library, which handles platform differences internally.
+
+| Library | Underlying library | Platforms |
+|---------|-------------------|-----------|
+| sdl.glyph (proposed) | SDL2 (`-lSDL2`) | Linux, macOS, Windows, more |
+| ncurses.glyph (proposed) | ncurses (Linux/macOS) / PDCurses (Windows) | All 3 (API-compatible) |
+| cairo.glyph | Cairo (`-lcairo`) | Linux, macOS, Windows |
+| gtk.glyph | GTK4 (`-lgtk-4`) | Linux (native), macOS/Windows (works but non-native) |
+
+SDL2 is the strongest cross-platform story here — it provides windowing, 2D rendering, input, audio, and timing on all platforms with a single API. For graphical programs, `sdl.glyph` replaces the need for platform-specific window management.
+
+**Tier 4 — Inherently platform-specific (no portability expected):**
+
+These bind directly to OS-specific APIs. They don't port — instead, equivalent libraries exist per platform.
+
+| Library | Platform | Equivalent on other platforms |
+|---------|----------|-------------------------------|
+| x11.glyph | Linux/BSD | Cocoa (macOS), Win32 (Windows), or SDL2 (all) |
+| async.glyph | Linux (epoll) | kqueue (macOS), IOCP (Windows) |
+
+For async, the options are:
+1. **`#ifdef` in `async_ffi.c`** — epoll (Linux) / kqueue (macOS) / IOCP (Windows) behind the same Glyph API. Feasible because the Glyph-level API (`async_spawn`, `async_await`, channels) is abstract enough.
+2. **libuv** — wrap libuv instead, which already abstracts epoll/kqueue/IOCP. Single FFI file, cross-platform.
+
+#### Recommended strategy
+
+**For now:** `#ifdef` in FFI files (Option A). It's the pragmatic C-ecosystem approach, requires no Glyph-level changes, and the C compiler handles it automatically. Each `*_ffi.c` file gains platform blocks as needed. Most FFI files are small (30-200 lines of C), so the `#ifdef` overhead is manageable.
+
+**Long-term:** A platform abstraction layer (Option C) — a single `platform_ffi.c` that provides the lowest-level OS primitives (monotonic clock, sleep, env vars, threads, mutexes, sockets, filesystem ops, event polling) behind a uniform C API. All other library FFI files call into `platform_ffi.c` instead of system headers directly. Only `platform_ffi.c` needs porting per platform; everything above it is platform-agnostic.
+
+This is how SDL2, libuv, and Go's runtime work: one carefully ported platform layer, everything else builds on top.
+
+**For GUI:** Don't try to port x11.glyph. Use sdl.glyph as the cross-platform graphics answer. Keep x11.glyph, gtk.glyph, and cairo.glyph as Linux-specific options for programs that want native integration.
+
+#### Impact on the compiler runtime
+
+The compiler's own C runtime (`cg_runtime_c`) also has platform dependencies:
+
+| Runtime feature | Linux | macOS | Windows |
+|----------------|-------|-------|---------|
+| Signal handlers (SIGSEGV/SIGFPE) | `<signal.h>` | Same | Structured Exception Handling (SEH) or `signal.h` (limited) |
+| Stack traces | `backtrace()` (`<execinfo.h>`) | Same | `CaptureStackBackTrace` |
+| Boehm GC | Works | Works | Works (needs configuration) |
+| `mmap` (if used) | `<sys/mman.h>` | Same | `VirtualAlloc` |
+
+The runtime is small enough (~300 lines) that `#ifdef` blocks are sufficient. The Boehm GC already handles its own platform abstraction — it builds on Linux, macOS, and Windows.
+
+#### Build system considerations
+
+When targeting non-Linux platforms, the build system needs to:
+- Select the right C compiler (`cc`/`gcc` on Linux, `clang` on macOS, `cl.exe` or `gcc` on Windows)
+- Pass platform-appropriate flags (`-lm` on Unix, `-lws2_32` on Windows for networking)
+- Handle library discovery (`pkg-config` on Linux, `brew --prefix` on macOS, vcpkg/manual paths on Windows)
+
+The `cc_prepend` and `cc_args` meta keys already support custom compiler flags per program. A `--target` flag (#16) would formalize this, selecting the compiler and flags automatically based on the target triple.
