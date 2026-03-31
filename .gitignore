@@ -46,3 +46,4 @@ examples/gtk/cairo_test/cairo_test
 *.vie
 *.vie.svg
 /workspace
+.claude/projects/
