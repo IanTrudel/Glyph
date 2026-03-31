@@ -678,7 +678,7 @@ See [multi-agent-concurrency.md](multi-agent-concurrency.md) for full analysis: 
 
 13 libraries ship today (stdlib, scan, json, regex, network, web, async, thread, x11, cairo, gtk, xml, svg) providing 662 functions total. Gaps identified from examples that had to build their own FFI wrappers for missing functionality.
 
-#### 43.1. math.glyph — Standard math functions (HIGH PRIORITY)
+#### ~~43.1. math.glyph — Standard math functions (HIGH PRIORITY)~~
 
 `sin`, `cos`, `sqrt`, `atan2`, `pow`, `log`, `exp`, `fabs`, `floor`, `ceil`, `round`. The vie example (GTK vector editor) wrote its own 5-line FFI wrapper for these. Every graphics, game, physics, or scientific program needs them.
 
@@ -686,7 +686,7 @@ See [multi-agent-concurrency.md](multi-agent-concurrency.md) for full analysis: 
 
 **Functions:**
 - Trigonometry: `sin`, `cos`, `tan`, `asin`, `acos`, `atan2`
-- Powers/roots: `sqrt`, `pow`, `exp`, `log`, `log2`, `log10`
+- Powers/roots: `sqrt`, `pow`, `exp`, `log`, `log2`, `log10`S
 - Rounding: `floor`, `ceil`, `round`, `fabs`
 - Constants: `pi`, `e` (as zero-arg functions or consts)
 
@@ -907,3 +907,452 @@ When targeting non-Linux platforms, the build system needs to:
 - Handle library discovery (`pkg-config` on Linux, `brew --prefix` on macOS, vcpkg/manual paths on Windows)
 
 The `cc_prepend` and `cc_args` meta keys already support custom compiler flags per program. A `--target` flag (#16) would formalize this, selecting the compiler and flags automatically based on the target triple.
+
+### 45. Array destructuring in patterns
+
+Pattern matching on arrays by positional element binding, with an optional rest pattern for the tail (Elixir-style `| rest`). This eliminates index-based array access (`arr[0]`, `arr[1]`, ...), which is one of the most error-prone patterns for LLMs — off-by-one errors, missing bounds checks, and unclear intent.
+
+**Syntax:**
+
+```
+-- Bind first elements, ignore rest
+[first, second] = arr
+
+-- Bind with rest/spread
+[head | tail] = arr
+
+-- In match expressions
+match tokens
+  [] -> "empty"
+  [only] -> "single: {only}"
+  [first, second, | rest] -> "multi: {first}, {second} + {len(rest)} more"
+```
+
+**Semantics:**
+
+- `[a, b] = arr` binds `a = arr[0]`, `b = arr[1]`. If `arr` has fewer than 2 elements, runtime panic (consistent with current out-of-bounds behavior).
+- `[a, b, | rest] = arr` binds `a = arr[0]`, `b = arr[1]`, `rest = str_slice(arr, 2, len(arr))` (a new array containing the remaining elements). Requires `len(arr) >= 2`.
+- `[]` in a match pattern matches only empty arrays (`len(arr) == 0`).
+- `[x]` matches arrays of exactly length 1.
+- `[x, | rest]` matches arrays of length >= 1.
+- `[x, y, | rest]` matches arrays of length >= 2.
+- Fixed-length patterns (`[a, b, c]`) match arrays of exactly that length.
+- Patterns without `| rest` are exact-length matches; patterns with `| rest` are minimum-length matches.
+
+**Current workaround (what this replaces):**
+
+```
+-- Today: error-prone index arithmetic
+process tokens =
+  match len(tokens) >= 2
+    true ->
+      cmd = tokens[0]
+      arg = tokens[1]
+      rest = slice(tokens, 2, len(tokens))
+      handle(cmd, arg, rest)
+    _ -> "need at least 2 tokens"
+```
+
+```
+-- With array destructuring:
+process tokens =
+  match tokens
+    [cmd, arg, | rest] -> handle(cmd, arg, rest)
+    _ -> "need at least 2 tokens"
+```
+
+**Implementation outline:**
+
+1. **Parser** — extend `parse_single_pattern` to recognize `[` as an array pattern start. Parse comma-separated sub-patterns inside brackets. If `| ident` is encountered after an element, record it as the rest binding (Elixir-style). Produce a new pattern kind (`pat_array` or similar) storing the element patterns and optional rest name.
+
+2. **MIR lowering** — `lower_match_arms` gets a new case for array patterns. Emit:
+   - Length check: `len(subject) == N` for fixed patterns, `len(subject) >= N` for rest patterns
+   - Element bindings: `local_i = subject[i]` for each positional element
+   - Rest binding (if present): `rest = slice(subject, N, len(subject))`
+   - Branch: if length check fails, fall through to next arm
+
+3. **Let destructuring** — extend `parse_stmt` to recognize `[` as array destructuring (currently only `{` triggers record destructuring). Same MIR lowering: length check + indexed access + optional rest slice.
+
+4. **Type inference** — array patterns constrain the subject to array type `[T]`. Each element sub-pattern unifies with `T`. The rest binding has type `[T]`.
+
+**Scope:** ~10-15 new/modified definitions. New parser node, new MIR lowering path, extended let-destructuring, type checker support. No runtime changes needed — uses existing `array_bounds_check`, indexing, and `slice`.
+
+### 46. Range patterns in match
+
+Match on contiguous integer ranges instead of enumerating every value with or-patterns. Reduces token count proportional to range size and makes intent explicit — "any value from 48 to 57" clearly communicates "ASCII digit" in a way that `48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57` does not.
+
+**Syntax:**
+
+```
+match c
+  #a..#z -> "lowercase"
+  #A..#Z -> "uppercase"
+  #0..#9 -> "digit"
+  _ -> "other"
+```
+
+The `..` operator creates an inclusive range pattern. Both bounds must be integer literals (or char literals like `#a`, which are integer literals). This is a pattern-only construct — `..` does not create range values at the expression level.
+
+**More examples:**
+
+```
+-- HTTP status code classification
+classify status =
+  match status
+    200..299 -> "success"
+    300..399 -> "redirect"
+    400..499 -> "client error"
+    500..599 -> "server error"
+    _ -> "unknown"
+
+-- Combined with or-patterns and guards
+categorize n =
+  match n
+    0 -> "zero"
+    1..9 -> "single digit"
+    10..99 -> "double digit"
+    _ ? n < 0 -> "negative"
+    _ -> "large"
+```
+
+**Current workaround (what this replaces):**
+
+```
+-- Today: long or-pattern chains
+match c
+  48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 -> "digit"
+  _ -> "other"
+
+-- Or guard-based (loses pattern matching benefits):
+match c
+  _ ? c >= 48 && c <= 57 -> "digit"
+  _ -> "other"
+```
+
+```
+-- With range patterns:
+match c
+  #0..#9 -> "digit"
+  _ -> "other"
+```
+
+**Semantics:**
+
+- `a..b` matches any integer `x` where `a <= x <= b` (inclusive on both ends).
+- If `a > b`, the pattern matches nothing (empty range — could be a compile-time warning).
+- Both bounds must be compile-time integer constants (literals or char literals). No variable bounds.
+- Range patterns can be combined with or-patterns: `1..5 | 10..15 -> body`.
+- Range patterns participate in exhaustiveness: `0..255` with a `_` fallback covers all byte values.
+
+**Implementation outline:**
+
+1. **Parser** — in `parse_single_pattern`, after parsing an integer/char literal, check for `..` token. If present, parse the upper bound literal. Produce a new pattern kind (`pat_range`) storing the lower and upper bounds.
+
+2. **MIR lowering** — `lower_match_arms` gets a new case for range patterns. Emit:
+   - Two comparisons: `subject >= lower` and `subject <= upper`
+   - Branch: if both true, enter the arm body; otherwise fall through
+   - This compiles to: `tm_branch(subject >= lower, check_upper, next_arm)` then `tm_branch(subject <= upper, arm_body, next_arm)`
+
+3. **Tokenizer** — `..` needs to be recognized as a token. Check for conflicts with existing syntax: `.` is field access. `..` is unambiguous — single `.` followed by a non-`.` character is field access, `..` is range. No `...` token needed since #45 uses `|` (Elixir-style) for rest patterns.
+
+4. **Type inference** — range patterns constrain the subject to integer type. Both bounds must be integers (enforced by parser limiting to integer/char literals).
+
+**Scope:** ~8-12 new/modified definitions. New token kind, new parser pattern case, new MIR lowering path. No runtime changes — compiles to existing comparison and branch operations.
+
+### 47. Structured runtime error output
+
+When a Glyph program crashes at runtime, the error output is human-formatted: a prose message, a function name, and a stack trace. An LLM consuming this output has to parse unstructured text to diagnose the problem. If runtime errors emitted structured JSON, an LLM could programmatically identify the failure, locate the relevant definition, and generate a fix.
+
+**Current output:**
+```
+segfault in parse_atom
+--- stack trace ---
+  parse_atom
+  parse_unary
+  parse_expr
+  main
+```
+
+**Structured output:**
+```json
+{
+  "error": "segfault",
+  "function": "parse_atom",
+  "signal": "SIGSEGV",
+  "stack": ["parse_atom", "parse_unary", "parse_expr", "main"]
+}
+```
+
+**Additional structured errors:**
+```json
+{"error": "index_out_of_bounds", "function": "process_row", "index": 5, "length": 3}
+{"error": "non_exhaustive_match", "function": "dispatch", "subject_value": "unknown_cmd"}
+{"error": "unwrap_none", "function": "find_user", "context": "Optional was None"}
+```
+
+This pairs with #1 (structured type errors at compile time) to give LLMs machine-readable diagnostics across the full compile→run cycle. The crash handler already captures function names via `_glyph_current_fn` and the stack trace via `backtrace()` — the change is formatting, not data collection.
+
+**Implementation:** Modify the SIGSEGV/SIGFPE handlers, `array_bounds_check`, `tm_unreachable` trap, and `panic` in `cg_runtime_c` to emit JSON when an environment variable (`GLYPH_JSON_ERRORS=1`) or build flag is set. Default remains human-readable for terminal use. The MCP `run` tool could set this automatically since its consumer is always an LLM.
+
+**Scope:** ~5-8 definitions modified in runtime codegen. No language changes.
+
+### 48. Guaranteed tail call optimization
+
+Glyph programs use recursive `loop` patterns instead of explicit loop constructs:
+
+```
+count_loop i n =
+  match i >= n
+    true -> i
+    _ -> count_loop(i + 1, n)
+```
+
+The `tco_` namespace in the compiler implements tail call optimization, converting self-tail-calls into C `while` loops. But TCO eligibility is silent — if a function is *not* TCO-eligible (e.g., the recursive call isn't in tail position, or there's work after the call), it compiles to actual recursion and will stack overflow on large inputs. The programmer (LLM) gets no feedback about whether its loop pattern is safe.
+
+**Two improvements:**
+
+1. **Compile-time warning for non-TCO-eligible recursive calls** — if a function calls itself but the call isn't in tail position, emit a warning: `"recursive call in count_loop is not in tail position (line 4); may stack overflow on large inputs"`. This catches the common LLM mistake of accidentally adding work after a recursive call:
+
+```
+-- TCO-eligible (tail position):
+loop(i + 1, n)
+
+-- NOT TCO-eligible (addition after recursive call):
+1 + loop(i + 1, n)
+```
+
+2. **Mutual tail call optimization** — currently TCO only handles self-recursion. Two mutually recursive functions (`is_even` calls `is_odd`, `is_odd` calls `is_even`) don't get optimized. Mutual TCO via trampoline or loop fusion would handle this pattern.
+
+The warning (#1) is high-value and low-cost. Mutual TCO (#2) is nice-to-have.
+
+**Scope:** Warning: ~3-5 definitions (detect self-calls not in tail position during MIR lowering, emit diagnostic). Mutual TCO: ~10-15 definitions (trampoline codegen or loop merging).
+
+### 49. Definition-level profiling (`glyph profile`)
+
+Item #19 profiled the compiler using external tools (`perf`). A built-in profiling mode would let any Glyph program self-report performance data at the definition level — which functions are hot, how many times they're called, and where time is spent.
+
+```bash
+glyph build program.glyph --profile
+./program
+# on exit, writes program.profile (TSV or JSON)
+
+glyph profile program.glyph
+# reads .profile, displays report
+```
+
+**Output:**
+```
+Function            Calls      Time(μs)    Avg(μs)   Allocs
+parse_expr          14,203     8,420       0.59      2,104
+str_concat          89,012     6,110       0.07      89,012
+array_push          45,891     3,200       0.07      12,440
+tc_collect_fv       12,800     2,890       0.23      0
+...
+Total: 342,109 calls, 28,400μs, 103,556 allocs
+```
+
+This is the performance counterpart to `glyph cover` (which tracks which functions are *called*, not *how often* or *how long*). The instrumentation infrastructure from coverage (`#ifdef GLYPH_COVERAGE`, `atexit` handler, TSV output) can be reused — extend the per-function counter from a boolean hit flag to a call count + cumulative time.
+
+An LLM optimizing a program needs this data to know where to focus. Without it, the LLM guesses — with it, it can target the actual hot path.
+
+**Implementation:**
+
+1. **Instrumentation** — at each function entry, increment a call counter and record `clock_gettime(CLOCK_MONOTONIC)`. At function exit, accumulate elapsed time. Use a global array indexed by function ID (same scheme as coverage).
+2. **Report** — `atexit` handler writes TSV/JSON with function name, call count, cumulative time, and allocation count (if tracked).
+3. **CLI** — `glyph profile program.glyph` reads the report file and displays sorted tables.
+4. **MCP** — `profile` tool returns JSON for LLM consumption.
+
+**Scope:** ~15-20 new definitions. Reuses coverage infrastructure. Requires `clock_gettime` in the runtime (pairs with proposed `time.glyph` library, #43.2).
+
+### 50. Hot definition reloading
+
+Unique to Glyph's database-as-program model: update a definition in a running program's `.glyph` database, and the program picks up the change without restarting.
+
+**Concept:** A long-running program (web server, GUI app, game) watches its own `.glyph` database for changes. When a definition is modified (via `glyph put` or MCP), the runtime:
+
+1. Detects the change (SQLite `data_version` pragma, or poll the `def` table's hash column)
+2. Recompiles the dirty definition to a shared object (`.so`)
+3. Loads it via `dlopen` and swaps the function pointer
+
+This means an LLM can modify a server's request handler, a game's physics function, or a GUI's event callback — and see the effect immediately without losing application state (open connections, in-memory data, window position).
+
+**Why Glyph is uniquely suited:** The program *is* the database. There's no build system, no file watching, no "save and rebuild" — the definition table is the source of truth, and SQLite provides change detection for free. No other language can do this as naturally because no other language stores its source in a queryable, mutable database.
+
+**Architecture:**
+
+1. **Watcher thread** — polls `PRAGMA data_version` periodically (or uses `sqlite3_update_hook` for push-based notification). When the version changes, query `v_dirty` for changed definitions.
+2. **Incremental compiler** — compile only the dirty definitions to a temporary `.so` via the C codegen pipeline. This is a subset of what `glyph build` already does.
+3. **Hot swap** — `dlopen` the new `.so`, resolve the new function symbol, update the program's function pointer table. Old code is `dlclose`d after all in-flight calls complete.
+4. **Safety** — type signature changes require a full restart (the caller's assumptions about argument count/types may be invalid). Body-only changes within the same signature are safe to hot-swap.
+
+**Limitations:**
+- Only works for functions, not types (struct layout changes can't be hot-swapped)
+- Requires `dlopen` support (#23)
+- Global state may become inconsistent if the swapped function has different assumptions
+- Closures capturing the old function pointer won't see the update
+
+**Scope:** Large — ~30-40 definitions (watcher, incremental compiler, loader, pointer table). Depends on #23 (dlopen). High payoff for interactive development workflows.
+
+### 51. Automatic type signature catalog (`glyph doc`)
+
+The type checker infers a complete type signature for every function, but this information is discarded after compilation. A `glyph doc` command would persist and expose inferred signatures as API documentation — the LLM equivalent of reading a library's header file.
+
+```bash
+glyph doc program.glyph
+```
+
+**Output:**
+```
+map       : (a -> b) -> [a] -> [b]
+filter    : (a -> B) -> [a] -> [a]
+fold      : (b -> a -> b) -> b -> [a] -> b
+str_split : S -> S -> [S]
+db_query  : I -> S -> [[S]]
+```
+
+**Structured output (JSON, for MCP):**
+```json
+[
+  {"name": "map", "signature": "(a -> b) -> [a] -> [b]", "deps": ["array_push", "array_len"]},
+  {"name": "filter", "signature": "(a -> B) -> [a] -> [a]", "deps": ["array_push", "array_len"]}
+]
+```
+
+**Why this matters for LLMs:** When an LLM needs to use a library function, it currently reads the full body to understand the parameter types and return type. With inferred signatures persisted, it can scan the catalog and pick the right function without reading implementations. This is especially valuable for libraries like `stdlib.glyph` (65 defs) or `json.glyph` (59 defs) where reading every body is expensive.
+
+**Implementation:**
+
+1. **Persist signatures** — after type inference, write each function's generalized type signature to a `sig` column on the `def` table (or a separate `doc` table). The type pretty-printer already exists for error messages — reuse it.
+2. **CLI** — `glyph doc program.glyph [--json] [--ns=NAME]` reads and displays signatures, optionally filtered by namespace.
+3. **MCP** — `doc` tool returns signatures as JSON. Could be integrated into `list_defs` output.
+4. **Incremental** — only re-infer signatures for dirty definitions (same as incremental compilation).
+
+**Scope:** ~10-15 definitions. Type pretty-printer exists. Main work is plumbing the inferred types from the type checker to persistent storage and building the CLI/MCP output.
+
+### 52. Streaming / lazy sequences
+
+Functional pipelines like `range(0, 1000000) |> filter(is_prime) |> take(10)` currently materialize every intermediate array. With a million elements, that's three million-element allocations for 10 results. Lazy sequences would produce elements on demand, fusing the pipeline into a single pass.
+
+**Concept:** A `Seq` type representing a lazy sequence — a function that produces the next element (or signals completion) each time it's called. Pipeline operations (`map`, `filter`, `take`, `fold`) return new `Seq` values without doing work until a terminal operation (`collect`, `fold`, `each`) drives the pipeline.
+
+```
+-- Lazy: no intermediate arrays, stops after 10 results
+primes = seq_range(0, 1000000)
+  |> seq_filter(is_prime)
+  |> seq_take(10)
+  |> seq_collect()
+
+-- Infinite sequences
+naturals = seq_from(0)
+fibs = seq_unfold({0, 1}, \{a, b} -> {a, {b, a + b}})
+```
+
+**API:**
+```
+-- Constructors
+seq_range   : I -> I -> Seq        -- finite range
+seq_from    : I -> Seq             -- infinite counter
+seq_of      : [a] -> Seq           -- from array
+seq_unfold  : s -> (s -> {a, s}) -> Seq  -- from state function
+
+-- Transformers (lazy, return Seq)
+seq_map     : (a -> b) -> Seq -> Seq
+seq_filter  : (a -> B) -> Seq -> Seq
+seq_take    : I -> Seq -> Seq
+seq_drop    : I -> Seq -> Seq
+seq_zip     : Seq -> Seq -> Seq
+seq_flat_map: (a -> Seq) -> Seq -> Seq
+
+-- Terminals (eager, drive the pipeline)
+seq_collect : Seq -> [a]           -- to array
+seq_fold    : (b -> a -> b) -> b -> Seq -> b
+seq_each    : (a -> V) -> Seq -> V
+seq_any     : (a -> B) -> Seq -> B
+seq_find    : (a -> B) -> Seq -> ?a
+```
+
+**Implementation:** A `Seq` is a closure — `{state, next_fn}` where `next_fn(state)` returns `Some({value, new_state})` or `None`. This is implementable today as a pure library using closures and optionals, no language changes needed. However, a library implementation would have overhead from closure allocation and indirect calls per element. A compiler-recognized `Seq` type could fuse adjacent operations into a single loop (stream fusion), eliminating intermediate closures entirely.
+
+**Two-phase approach:**
+1. **Library** (`seq.glyph`) — implement as closures. Works today. Performance is acceptable for most use cases. ~30-40 definitions.
+2. **Compiler optimization** (later) — recognize `seq_*` chains and fuse them into imperative loops during MIR lowering. High effort, big payoff for tight loops.
+
+**Scope:** Phase 1: ~30-40 library definitions, no compiler changes. Phase 2: ~20-30 compiler definitions for fusion optimization.
+
+### 53. Error context chaining
+
+The `?` operator propagates errors from Result types, but with no context about where in the call chain the error originated. When an LLM sees `"file not found"`, it doesn't know whether that came from loading a config file, reading a template, or importing data. Error context chaining would let each `?` site annotate the error with its purpose.
+
+**Syntax:**
+
+```
+-- Current: bare propagation, no context
+load_config path =
+  data = read_file(path)?
+  parsed = json_parse(data)?
+  validate(parsed)?
+
+-- With context chaining:
+load_config path =
+  data = read_file(path) ? "reading config from {path}"
+  parsed = json_parse(data) ? "parsing config JSON"
+  validate(parsed) ? "validating config schema"
+```
+
+**Result on failure:**
+```
+"validating config schema: parsing config JSON: reading config from /etc/app.conf: file not found"
+```
+
+Each `?` with a string argument wraps the error: if the Result is `Err(msg)`, it becomes `Err(context + ": " + msg)`. If the Result is `Ok(val)`, the context string is ignored and `val` is returned as normal.
+
+**Ambiguity concern:** Currently `?` is a postfix operator. Adding a string after it could conflict with the next expression. However, since `?` currently either ends a statement (bare propagation) or is followed by a newline/operator, a string literal immediately after `?` is unambiguous — it can only be the context annotation.
+
+**Semantics:**
+- `expr?` (no context) — unchanged, propagates the error as-is
+- `expr ? "context"` — on `Err(msg)`, returns `Err("context: " + msg)`; on `Ok(val)`, returns `val`
+- Context strings support interpolation: `expr ? "loading {filename}"`
+- Chaining naturally builds a trace from inner to outer context
+
+**Implementation:**
+
+1. **Parser** — after parsing `?` postfix, check if the next token is a string literal. If so, parse it as context.
+2. **MIR lowering** — the current `?` lowers to: branch on tag, Ok → unwrap, Err → return Err. With context: Err path concatenates context string before returning.
+3. **No runtime changes** — uses existing `str_concat`.
+
+**Note:** This reuses the `? guard_expr` syntax from match guards, but the context is different — in match arms, `?` introduces a boolean guard; in expressions, `?` is error propagation. The parser already distinguishes these by position (match arm vs. expression statement).
+
+**Scope:** ~5-8 definitions modified (parser, MIR lowering for `?` operator). Small, safe, high-value.
+
+### 54. Build-time dependency fetching
+
+Item #11 covers package management for linked libraries. A simpler prerequisite: `glyph use` registers a library by local path, but that path must already exist on disk. URL-based library registration would make library distribution trivial.
+
+```bash
+# Today: must manually download first
+wget https://example.com/libs/json.glyph
+glyph use app.glyph json.glyph
+
+# With URL support:
+glyph use app.glyph https://example.com/libs/json.glyph
+```
+
+**Why this is simpler than a package manager:** Glyph libraries are single SQLite files. There's no archive format to unpack, no manifest to parse, no dependency tree to resolve (that's #11's scope). Fetching a `.glyph` file from a URL and saving it locally is the minimal useful step — it automates the `wget` that every library consumer does manually.
+
+**Behavior:**
+
+1. `glyph use app.glyph <url>` downloads the `.glyph` file to a local `libs/` directory (sibling to `app.glyph`)
+2. Registers the local path in the `lib_dep` table (same as today)
+3. Stores the source URL in a `lib_url` column for future updates
+4. `glyph update-libs app.glyph` re-fetches all URL-sourced libraries and re-links if content hash changed
+
+**Security:** Only HTTPS URLs. Content hash verification — the downloaded file's BLAKE3 hash is stored on first fetch; subsequent fetches verify the hash matches (or warn on change). No arbitrary code execution during fetch.
+
+**Implementation:**
+
+1. **HTTP fetch** — the runtime already has HTTP client support via `network.glyph`. Alternatively, shell out to `curl`/`wget` (simpler, no dependency on network library).
+2. **URL column** — add `url TEXT` to the `lib_dep` table schema. Migration #N.
+3. **CLI** — modify `cmd_use` to detect URL arguments (starts with `https://`), download, then proceed as normal.
+4. **Update command** — `glyph update-libs` iterates `lib_dep` rows with non-null URLs, re-fetches, and re-links if hash differs.
+
+**Scope:** ~10-15 definitions. Depends on either `network.glyph` or shelling out to `curl`.
