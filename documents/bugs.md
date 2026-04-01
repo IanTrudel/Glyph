@@ -1,6 +1,6 @@
 # Glyph Compiler Known Bugs
 
-## BUG-009: Raw strings don't escape backslashes in C codegen
+## ~~BUG-009: Raw strings don't escape backslashes in C codegen~~
 
 **Status:** Open
 **Severity:** Medium (workaround exists)
@@ -35,7 +35,7 @@ src = "f x = " + bs + "y -> x + y"
 
 **Affected functions:** `cg_escape`, string literal emission in `cg_op` / `cg_stmt`
 
-## BUG-010: tc_collect_fv segfaults on cyclic types when called from user code
+## ~~BUG-010: tc_collect_fv segfaults on cyclic types when called from user code~~
 
 **Status:** Open
 **Severity:** High (crash, no workaround)
@@ -61,7 +61,7 @@ test_crash =
 
 **Affected functions:** `tc_collect_fv`, `tc_collect_fv_fields`
 
-## BUG-011: Interleaved instantiate/unify produces ty_error
+## ~~BUG-011: Interleaved instantiate/unify produces ty_error~~
 
 **Status:** Open
 **Severity:** Medium (workaround: batch instantiations before unifications)
