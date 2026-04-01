@@ -125,18 +125,18 @@ mcp__glyph__put_def(db="app.glyph", name="clamp", kind="fn",
 ### Type (`kind='type'`)
 ```
 # Record
-Point = {x: I, y: I}
+{x: I, y: I}
 
 # Enum
-Color = | Red | Green | Blue
-Option = | None | Some(I)
+| Red | Green | Blue
+| None | Some(I)
 
 # Alias
-Name = S
+S
 
 # Generic (parameterized)
-Pair = <A,B>{fst:A, snd:B}
-Stack = <T>{items:[T], size:I}
+<A,B>{fst:A, snd:B}
+<T>{items:[T], size:I}
 ```
 
 ### Test (`kind='test'`)

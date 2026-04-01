@@ -33,7 +33,7 @@ cargo run -- <subcommand>      # run the Rust compiler CLI
 ./glyph init program.glyph                    # create a new .glyph database
 ./glyph put program.glyph fn -b 'main = 42'   # insert/update a definition
 ./glyph put program.glyph fn -f /tmp/code.gl   # insert from file
-./glyph put program.glyph type -b 'P = {x: I, y: I}'  # insert a type
+./glyph put program.glyph type -n P -b '{x: I, y: I}' # insert a type (name via -n)
 ./glyph get program.glyph main                 # print a definition's body
 ./glyph rm program.glyph old_fn                # remove a definition
 ./glyph build program.glyph                    # compile to native executable
@@ -187,7 +187,7 @@ Key views: `v_dirty` (dirty + transitive dependents), `v_context` (defs sorted b
 
 ```
 mcp__glyph__put_def(db="program.glyph", name="main", kind="fn", body="main = println(\"hello\")")
-mcp__glyph__put_def(db="program.glyph", name="Point", kind="type", body="Point = {x: I, y: I}")
+mcp__glyph__put_def(db="program.glyph", name="Point", kind="type", body="{x: I, y: I}")
 mcp__glyph__check_def(db="program.glyph", name="my_fn", kind="fn", body="my_fn x = x + 1")
 ```
 
@@ -196,7 +196,7 @@ mcp__glyph__check_def(db="program.glyph", name="my_fn", kind="fn", body="my_fn x
 ```bash
 ./glyph put program.glyph fn -b 'main = println("hello")'
 ./glyph put program.glyph fn -f /tmp/complex_fn.gl          # from file
-./glyph put program.glyph type -b 'Point = {x: I, y: I}'    # type definition
+./glyph put program.glyph type -n Point -b '{x: I, y: I}'   # type definition
 ./glyph put program.glyph test -b 'test_add u = assert_eq(1+1, 2)'
 ```
 

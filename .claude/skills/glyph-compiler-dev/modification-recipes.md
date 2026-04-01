@@ -160,7 +160,7 @@ cargo build --release && cp target/release/glyph glyph0
 
 1. **Insert the type:**
    ```bash
-   ./glyph put glyph.glyph type -b 'Name = {field1: I, field2: S}'
+   ./glyph put glyph.glyph type -n Name -b '{field1: I, field2: S}'
    ```
 
 2. **Field name rules:**

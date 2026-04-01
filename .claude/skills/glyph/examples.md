@@ -174,9 +174,9 @@ PASS test_mul
 ```
 mcp__glyph__init(db="shapes.glyph")
 mcp__glyph__put_def(db="shapes.glyph", name="Point", kind="type",
-  body="Point = {x: I, y: I}")
+  body="{x: I, y: I}")
 mcp__glyph__put_def(db="shapes.glyph", name="Rect", kind="type",
-  body="Rect = {x: I, y: I, w: I, h: I}")
+  body="{x: I, y: I, w: I, h: I}")
 mcp__glyph__put_def(db="shapes.glyph", name="make_point", kind="fn",
   body="make_point x y = {x: x, y: y}")
 mcp__glyph__put_def(db="shapes.glyph", name="rect_area", kind="fn",
@@ -309,7 +309,7 @@ unknown: foo
 ```
 mcp__glyph__init(db="destr.glyph")
 mcp__glyph__put_def(db="destr.glyph", name="Point", kind="type",
-  body="Point = {x: I, y: I}")
+  body="{x: I, y: I}")
 mcp__glyph__put_def(db="destr.glyph", name="distance", kind="fn",
   body="distance p1 p2 =
   {x, y} = p1
@@ -369,7 +369,7 @@ Maps use `hm_new()` — there is no map literal syntax. String keys only in the 
 ```
 mcp__glyph__init(db="rupd.glyph")
 mcp__glyph__put_def(db="rupd.glyph", name="Point", kind="type",
-  body="Point = {x: I, y: I}")
+  body="{x: I, y: I}")
 mcp__glyph__put_def(db="rupd.glyph", name="main", kind="fn",
   body='main =
   p = {x: 1, y: 2}

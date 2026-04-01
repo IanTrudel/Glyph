@@ -901,9 +901,9 @@ impl Parser {
 
     fn parse_type_def(&mut self, name: &str) -> Result<Def> {
         let start = self.span();
-        let parsed_name = self.expect_type_ident()?;
-        assert_eq!(parsed_name, name);
 
+        // Type bodies no longer contain the "Name = " prefix — body starts
+        // directly with the type content ({...}, | Variant, etc.)
         let type_params = if self.check(&TokenKind::LBracket) {
             self.advance();
             let mut params = Vec::new();
@@ -917,8 +917,6 @@ impl Parser {
         } else {
             Vec::new()
         };
-
-        self.expect(&TokenKind::Eq)?;
 
         let body = if self.check(&TokenKind::Pipe) {
             // Enum
@@ -1538,7 +1536,7 @@ mod tests {
 
     #[test]
     fn test_parse_type_def() {
-        let tokens = Lexer::new("Match = {path:S line:I text:S}").tokenize();
+        let tokens = Lexer::new("{path:S line:I text:S}").tokenize();
         let mut parser = Parser::new(tokens);
         let def = parser.parse_def("Match", "type").unwrap();
         if let DefKind::Type(typedef) = &def.kind {
