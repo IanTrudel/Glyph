@@ -2,7 +2,6 @@
 *.o
 *.so
 *.dylib
-*.glyph
 !stdlib.glyph
 !glyph.glyph
 !documentation.glyph

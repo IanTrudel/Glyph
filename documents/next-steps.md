@@ -1356,3 +1356,318 @@ glyph use app.glyph https://example.com/libs/json.glyph
 4. **Update command** — `glyph update-libs` iterates `lib_dep` rows with non-null URLs, re-fetches, and re-links if hash differs.
 
 **Scope:** ~10-15 definitions. Depends on either `network.glyph` or shelling out to `curl`.
+
+### 55. Fix silent lowering failures for parsed features
+
+Function composition `>>` and field accessor shorthand `.field` are parsed and type-checked but produce wrong results at runtime — `>>` silently produces unit, `.field` doesn't generate correct accessor code. No error, no warning. This is a compiler correctness issue: the parser accepts syntax that the backend can't handle, and the program runs with wrong behavior instead of failing loudly.
+
+**Current silent failures:**
+
+- `f >> g` — parsed as `ex_compose`, type-checked, but MIR lowering produces unit. A program using `>>` compiles clean and runs — it just doesn't compose the functions.
+- `.field` (point-free accessor) — parsed as a lambda `\x -> x.field`, but the generated closure may not correctly capture the field name through lowering.
+
+**Fix:** For each parsed-but-unlowered feature, either:
+
+1. **Complete the lowering** — implement the MIR lowering and C codegen for the feature. `>>` is straightforward: `f >> g` desugars to `\x -> g(f(x))`, which the closure infrastructure already handles.
+2. **Emit a compile-time error** — if lowering is deferred, the compiler should reject the syntax with a clear message: `"function composition (>>) is not yet supported in codegen"`. Silent wrong behavior is worse than a compilation failure.
+
+Option 1 is preferred for `>>` since the desugaring is trivial and closures work. Option 2 is the safety net for any other parsed-but-unlowered constructs.
+
+**Scope:** ~3-5 definitions modified. Small effort, high correctness value. Audit all `ex_*` AST node kinds to verify each has a corresponding MIR lowering path, and add a fallback error for any that don't.
+
+### 56. Recursive / inductive type definitions
+
+Trees, linked lists, and other recursive data structures are a gap. The type checker has cycle detection (BUG-008, BUG-010) precisely because recursive types stress it — the current approach is to detect and bail out rather than support them. A deliberate recursive type system would make these structures first-class.
+
+**What's needed:**
+
+```
+-- Currently not expressible:
+type List = Nil | Cons({head: I, tail: List})
+type Tree = Leaf(I) | Branch({left: Tree, right: Tree})
+```
+
+The challenge is in three places:
+
+1. **Type inference** — HM inference with recursive types requires equi-recursive or iso-recursive handling. Equi-recursive (the type *is* its unfolding) is simpler but can cause infinite loops in the type checker — exactly the cycle bugs already encountered. Iso-recursive (explicit fold/unfold via constructors) is safer and what ML/Haskell use: constructing `Cons(1, Nil)` folds, pattern matching unfolds.
+
+2. **Memory layout** — recursive types must be heap-allocated (a `List` can't be stack-allocated because its size is unbounded). The enum codegen already heap-allocates variants as `{tag, payload...}` — recursive types fit naturally if the recursive field is stored as a pointer (which it already is, since GVal is pointer-sized).
+
+3. **Monomorphization** — recursive types create infinite type unfoldings if monomorphized naively. The monomorphizer needs to recognize recursive type cycles and generate a single C struct with a self-referential pointer field, rather than trying to inline the recursion.
+
+**Implementation approach:**
+
+- **Iso-recursive via constructors** — constructors fold, pattern match unfolds. This is the safe path that avoids equi-recursive cycle issues. The type checker doesn't need to "see through" the recursion — `Cons` produces a `List`, and matching on `List` reveals `Cons({head: I, tail: List})`.
+- **Type definition analysis** — detect recursive references in type bodies during definition loading. Mark types as recursive. Thread this information into the monomorphizer.
+- **Codegen** — recursive struct fields emit as pointers (`GVal` already is pointer-sized, so this may require no codegen changes at all — the recursive field is just another GVal slot).
+
+**Scope:** ~15-25 definitions across type checker, monomorphizer, and codegen. The hardest part is getting the type checker to handle recursive type references without triggering the cycle detection that currently protects against them. Medium-large effort, but unlocks a fundamental class of data structures.
+
+### 57. Multi-error reporting (error recovery)
+
+The parser and type checker stop at the first error. An LLM fixing a broken definition has to compile → get one error → fix → compile → get next error → fix, in a serial loop. If the compiler reported all errors in one pass, the LLM could fix everything at once.
+
+This is distinct from #1 (structured error messages) — #1 is about error *content*, this is about error *quantity per compilation*.
+
+**Parser error recovery:**
+
+After a parse error, synchronize to a recovery point (next newline at the current indentation level, or next top-level definition boundary) and continue parsing. Each error is collected into a list rather than aborting. The parser already tracks indentation depth, making recovery points detectable.
+
+```
+-- Input with two errors:
+foo x =
+  y = x +         -- error: unexpected end of expression
+  z = bar(         -- error: expected ')'
+  y + z
+
+-- Current output: 1 error, stops at line 2
+-- With recovery: 2 errors, both reported, rest of function parsed
+```
+
+**Type checker error recovery:**
+
+When type inference fails for a subexpression, assign it `ty_error` and continue. Downstream expressions that consume `ty_error` propagate it silently (no cascading errors). Only report the *root cause* errors. The type checker already has `ty_error=99` — extend its use from "abort" to "continue with poison type."
+
+```
+-- Input with two independent type errors:
+process x =
+  a = x + "hello"    -- error: can't add I and S
+  b = len(42)         -- error: len expects [T], got I
+  a + b
+
+-- Current output: 1 error (first one), type checking aborts
+-- With recovery: 2 errors, both independent root causes reported
+```
+
+**Key design choice:** Don't report cascading errors. If `a` has type `ty_error`, then `a + b` should not produce a second "type mismatch" error — the error poisons silently through dependent expressions. Only subexpressions where the *inputs* are well-typed but the *operation* fails produce errors.
+
+**Implementation:**
+
+1. **Parser** — replace `return pr_err(...)` with `collect_err(...)` + synchronize. Add an `errors: [S]` field to `ParseResult` (currently just `pr_err: S`). ~8-10 definitions modified.
+2. **Type checker** — replace early-return on error with `ty_error` propagation. Add `tc_errors: [S]` accumulator to the engine. Modify `unify` to short-circuit on `ty_error` inputs. ~10-12 definitions modified.
+3. **CLI / MCP** — format all collected errors in the response. `check_def` MCP tool returns a JSON array of errors instead of a single string. ~3-4 definitions modified.
+
+**Scope:** ~20-25 definitions modified across parser, type checker, and CLI. Medium effort. The parser recovery is easier; the type checker recovery requires careful handling of error propagation to avoid cascading noise.
+
+### 58. Persistent compilation cache
+
+The incremental compilation system tracks content hashes per definition (BLAKE3), but compiled artifacts are discarded on clean builds. A persistent cache keyed by definition hash → compiled output would make `glyph build --full` skip recompilation for any definition whose hash matches a previously compiled version.
+
+**How it works:**
+
+The `compiled` table already caches per-definition compilation artifacts. Currently it's invalidated by `--full` rebuilds and lost when the build process doesn't store results. A persistent cache extends this:
+
+1. Before compiling a definition, check: does the cache have an entry for this `(name, hash, target_backend)` triple?
+2. If yes, use the cached MIR/C/LLVM output directly — skip tokenize → parse → type-check → lower → codegen entirely.
+3. If no, compile normally and store the result.
+4. Cache eviction: LRU or size-bounded (e.g., keep last 3 versions of each definition).
+
+**What gets cached:**
+
+- The generated C code fragment for each function (the output of `cg_function2`)
+- The generated LLVM IR fragment (the output of `ll_function`)
+- Optionally, the monomorphized type specializations (the most expensive step to recompute)
+
+**Why this matters:**
+
+During iterative development, a typical change touches 1-5 definitions out of 1,939. The current incremental system recompiles dirty definitions and their transitive dependents. But after a `--full` rebuild (or switching branches, or bootstrapping), *everything* recompiles even though most definitions haven't changed since the last time they were compiled. A hash-keyed cache means "I compiled this exact function body before, here's the result" regardless of how the build was triggered.
+
+**For the bootstrap chain specifically:** stages 1-3 each compile the full compiler (~1,500 fn defs). Between stages, only the compiler binary changes, not the source — a cache would make stages 2 and 3 near-instant if the definitions haven't changed.
+
+**Implementation:**
+
+1. **Cache table** — `CREATE TABLE compile_cache (name TEXT, hash BLOB, backend TEXT, output TEXT, mono_specs TEXT, ts INTEGER, PRIMARY KEY (name, hash, backend))`. Stored in the `.glyph` database itself or a sibling `.cache` file.
+2. **Cache lookup** — before `compile_fn`, check `compile_cache` for the definition's current hash. ~2-3 definitions modified in the build pipeline.
+3. **Cache store** — after `compile_fn`, insert/update the cache entry. ~2-3 definitions.
+4. **Cache invalidation** — content-hash keyed, so no explicit invalidation needed. Old entries are naturally superseded. Add `glyph build --no-cache` to bypass. Size-bounded eviction keeps the database from growing unboundedly.
+
+**Scope:** ~10-15 definitions. The main complexity is deciding what to cache (just C/LLVM fragments? or also MIR? type inference results?) and handling monomorphization correctly (a cached function's type specializations depend on its callers, which may change).
+
+### 59. Compiler fuzzing / random program generation
+
+The 69 smoke tests are manually written, targeting known compiler stress points. A random valid-program generator would find edge cases systematically — the CSmith/SQLsmith approach applied to Glyph.
+
+**Concept:**
+
+Generate random but *well-typed* Glyph programs and verify the compiler:
+1. Doesn't crash (no segfaults, no panics)
+2. Produces a program that runs without crashing
+3. Produces deterministic output (same program → same result across C and LLVM backends)
+
+**Generator design:**
+
+Build programs bottom-up from a type-directed grammar:
+
+1. **Type generation** — random types: `I`, `S`, `B`, `[I]`, `{x: I, y: S}`, `?I`, `I -> S`, nested to configurable depth.
+2. **Expression generation** — given a target type, generate an expression of that type:
+   - `I` → integer literal, arithmetic expression, function call returning I
+   - `S` → string literal, string concat, interpolation
+   - `[T]` → array literal with elements of type T
+   - `{fields}` → record literal with correct field types
+   - `T -> U` → lambda with parameter of type T, body of type U
+3. **Function generation** — random parameter count and types, body expression matching return type.
+4. **Program generation** — N random functions + a `main` that calls them and prints results.
+
+**Differential testing:**
+
+Compile the same program with both C and LLVM backends. Both should produce identical output. Any difference is a codegen bug. The dual-backend architecture makes this a natural testing strategy.
+
+**Shrinking:**
+
+When a crash-triggering program is found, minimize it: remove functions, simplify expressions, reduce nesting — find the minimal program that still triggers the bug. The property-based testing infrastructure (prop kind, shrinking) could be reused here.
+
+**Implementation:**
+
+This is best implemented as a Glyph program itself — a `tests/fuzz/fuzz.glyph` that:
+1. Uses a deterministic PRNG (xorshift128+, already mentioned in #25)
+2. Generates random ASTs using the type-directed approach
+3. Pretty-prints them to Glyph source
+4. Writes them to a temp `.glyph` database via `db_exec`
+5. Shells out to `./glyph build` and `./glyph run` to verify
+
+**Scope:** ~40-60 definitions for a basic generator + differential tester. The generator grows in coverage over time as more language features are added to the grammar. Could run as a CI job (`glyph fuzz --iterations 1000 --seed $RANDOM`).
+
+### 60. `glyph watch` — continuous build mode
+
+Auto-rebuild when the database changes. SQLite's `PRAGMA data_version` changes on every write transaction, making change detection trivial without polling file modification times.
+
+```bash
+glyph watch program.glyph              # rebuild on every change
+glyph watch program.glyph --test       # rebuild + run tests on every change
+glyph watch program.glyph --run        # rebuild + run on every change
+```
+
+**Why this matters for LLM workflows:**
+
+The core LLM development loop is: `put_def` → `build` → see errors → `put_def` → `build`. Currently each `build` is a separate command. With `watch`, the LLM (or MCP client) just writes definitions and gets immediate feedback — errors appear as soon as the definition is saved. The MCP `put_def` tool could even return build results inline if `watch` is running.
+
+**Implementation:**
+
+1. **Change detection** — poll `PRAGMA data_version` every 100-200ms. When it changes, trigger a rebuild. SQLite guarantees `data_version` increments on any write — no false negatives.
+2. **Debounce** — if multiple writes happen in quick succession (e.g., MCP `put_defs` writing 5 definitions), wait 200ms after the last write before rebuilding. Prevents redundant builds during batch operations.
+3. **Output** — clear terminal, show build result (success + binary size, or error list). On `--test`, show test results after successful build. On `--run`, execute the program.
+4. **Incremental** — use the existing dirty-definition tracking. Only recompile what changed since the last successful build.
+
+**Integration with MCP:**
+
+The `watch` process could expose a simple IPC interface (Unix socket or named pipe) that the MCP server queries: "what was the result of the last build?" This lets `put_def` return not just "definition saved" but "definition saved, build succeeded" or "definition saved, build failed: type error in foo."
+
+**Scope:** ~15-20 definitions. Core loop is small (poll + rebuild). The debounce and MCP integration add complexity but are optional enhancements.
+
+### 61. Foreign type declarations
+
+Currently all extern functions traffic in `GVal` (i64). An opaque handle from `gtk_window_new` or `fopen` is just an integer — the type system can't distinguish a window handle from a file descriptor from a database connection. A `foreign type` declaration would let the type checker track these as distinct types.
+
+```
+foreign type GtkWindow
+foreign type FILE
+foreign type SqliteDb
+
+extern gtk_window_new : I -> GtkWindow
+extern fclose : FILE -> I
+extern db_open : S -> SqliteDb
+```
+
+**Semantics:**
+
+- A foreign type is an opaque integer-sized value. No fields, no construction from Glyph, no pattern matching.
+- Foreign types are distinct from each other and from `I`. Passing a `GtkWindow` where `FILE` is expected is a type error.
+- Foreign types unify only with themselves and with type variables (for generic code).
+- At the C level, foreign types are still `GVal` / `intptr_t` — no runtime representation change.
+- Casting between foreign types and `I` requires an explicit `unsafe_cast` or similar escape hatch.
+
+**What this catches:**
+
+```
+-- Today: compiles fine, segfaults at runtime
+win = gtk_window_new(0)
+fclose(win)    -- passing a GtkWindow to fclose — wrong!
+
+-- With foreign types: compile-time type error
+-- "expected FILE but got GtkWindow in argument 1 of fclose"
+```
+
+**Implementation:**
+
+1. **Parser** — recognize `foreign type Name` declarations. Store in the `def` table with a new kind or in a `foreign_type` table.
+2. **Type checker** — add a `ty_foreign` tag (e.g., tag=16) to TyNode, carrying the type name. Foreign types unify only with themselves (same name) or type variables. No structural equality — `foreign type A` and `foreign type B` are always distinct even if both are opaque.
+3. **Extern declarations** — extend the `extern_` table or extern syntax to reference foreign type names instead of just `I`/`S`/etc.
+4. **Codegen** — no changes. Foreign types are `GVal` at the C level. The type safety is purely compile-time.
+
+**Scope:** ~10-15 definitions across parser, type checker, and extern handling. No runtime changes. Medium effort. Pairs naturally with #23 (dlopen) and the growing FFI library ecosystem (gtk, network, async, thread all use opaque handles).
+
+### 62. Library test coverage requirements
+
+network.glyph (34 defs) and gtk.glyph (41 defs) have **zero tests**. cairo.glyph, svg.glyph, xml.glyph, and the new math.glyph have minimal or no testing. Of 14 shipped libraries, only stdlib.glyph (49 tests) and json.glyph have substantial test suites.
+
+**The problem:** Untested libraries break silently when the compiler changes. The recent monomorphization work, codegen fixes, and type checker hardening each could have introduced regressions in library code — there's no way to know without tests.
+
+**Proposed standard:**
+
+| Library tier | Test requirement | Examples |
+|-------------|-----------------|----------|
+| **Pure Glyph** | Full unit tests, >80% function coverage | stdlib, json, scan, regex, csv |
+| **Light FFI** (standard C headers) | Unit tests for Glyph logic + compile-and-link smoke test | math, time, os |
+| **Heavy FFI** (system libraries) | Compile-and-link test + basic smoke test (create/destroy) | network, gtk, cairo, x11, async, thread |
+
+**Compile-and-link tests:**
+
+For FFI-heavy libraries that can't easily run headless, verify at minimum that:
+1. The library compiles without errors (`glyph build`)
+2. The generated C links against the required system libraries
+3. Basic object creation and destruction works (e.g., `gtk_init` / `gtk_main_quit`)
+
+```
+-- Minimal network.glyph smoke test:
+test_network_compiles =
+  -- Just verify the extern wrappers link correctly
+  -- Don't actually open connections
+  assert(1 == 1)
+```
+
+**CI integration:**
+
+- `glyph test --libs` runs all library tests
+- Libraries with missing system dependencies (GTK, X11) skip gracefully with a message
+- Pure Glyph libraries always run
+- Track which libraries have tests and which don't (`glyph stat --libs`)
+
+**Scope:** Ongoing effort. Initial pass: write 5-10 tests per untested library (~50-70 test definitions total). The infrastructure change (`--libs` flag, skip-on-missing-dep) is ~5-8 definitions.
+
+### 63. Namespace-scoped operations
+
+The `ns` column exists on every definition with auto-derived namespaces (`cg_` → "codegen", `tc_` → "typeck", `parse_` → "parser", etc.), but CLI and MCP operations don't leverage it uniformly. Namespace-scoped commands would make targeted work on a 1,939-definition compiler practical.
+
+**Proposed commands:**
+
+```bash
+glyph check glyph.glyph --ns=typeck       # type-check only typeck namespace
+glyph test glyph.glyph --ns=parser         # run only parser tests
+glyph cover glyph.glyph --ns=codegen       # coverage for codegen namespace
+glyph ls glyph.glyph --ns=llvm             # list only LLVM backend defs
+glyph stat glyph.glyph --ns=lower          # stats for MIR lowering
+glyph dead glyph.glyph --ns=mcp            # dead code in MCP namespace
+```
+
+**MCP equivalents:**
+
+```
+mcp__glyph__check_all(db="glyph.glyph", ns="typeck")
+mcp__glyph__list_defs(db="glyph.glyph", ns="parser")
+mcp__glyph__coverage(db="glyph.glyph", ns="codegen")
+```
+
+**Why this matters:**
+
+When working on the type checker, running all 403 tests is wasteful — only the ~60 typeck-related tests are relevant. When reviewing codegen coverage, the ~200 codegen definitions are what matter, not the full 1,939. Namespace scoping turns an O(all-defs) operation into an O(namespace-defs) operation, both in compute time and in cognitive load for the LLM reviewing results.
+
+**Implementation:**
+
+Most commands already accept a SQL `WHERE` clause internally. Adding `--ns=NAME` means appending `AND ns = ?` to the query. The changes are mechanical:
+
+1. **CLI argument parsing** — add `--ns=NAME` to `cmd_check`, `cmd_test`, `cmd_cover`, `cmd_ls`, `cmd_stat`. ~5-6 definitions modified.
+2. **Query modification** — thread the namespace filter into the SQL queries that select definitions. ~5-6 definitions modified.
+3. **MCP tools** — add optional `ns` parameter to `check_all`, `list_defs`, `coverage`, `test`. ~4-5 definitions modified.
+4. **Namespace listing** — `glyph ns glyph.glyph` lists all namespaces with definition counts. ~2-3 new definitions.
+
+**Scope:** ~15-20 definitions modified/added. Small-medium effort. Mostly mechanical SQL filter threading. High value for targeted development workflows.
