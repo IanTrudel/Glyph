@@ -83,6 +83,7 @@ pub enum ExprKind {
     Compose(Box<Expr>, Box<Expr>),
     Propagate(Box<Expr>),
     Unwrap(Box<Expr>),
+    TypeAnnot(String, Box<Expr>),
 
     Lambda(Vec<Param>, Box<Expr>),
     Match(Box<Expr>, Vec<MatchArm>),

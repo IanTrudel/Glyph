@@ -499,10 +499,19 @@ impl Parser {
             TokenKind::TypeIdent(ref s) => {
                 let s = s.clone();
                 self.advance();
-                Ok(Expr {
-                    kind: ExprKind::TypeIdent(s),
-                    span: start,
-                })
+                if self.check(&TokenKind::At) {
+                    self.advance();
+                    let inner = self.parse_expr()?;
+                    Ok(Expr {
+                        kind: ExprKind::TypeAnnot(s, Box::new(inner)),
+                        span: start.merge(self.prev_span()),
+                    })
+                } else {
+                    Ok(Expr {
+                        kind: ExprKind::TypeIdent(s),
+                        span: start,
+                    })
+                }
             }
             TokenKind::LParen => {
                 self.advance();

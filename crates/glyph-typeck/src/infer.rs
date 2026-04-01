@@ -232,6 +232,10 @@ impl InferEngine {
                 inner_ty
             }
 
+            ast::ExprKind::TypeAnnot(_, inner) => {
+                self.infer_expr(inner)
+            }
+
             ast::ExprKind::Unwrap(inner) => {
                 let t = self.infer_expr(inner);
                 let inner_ty = self.subst.fresh();

@@ -106,7 +106,8 @@ impl<'a> Resolver<'a> {
             }
             ast::ExprKind::Unary(_, e)
             | ast::ExprKind::Propagate(e)
-            | ast::ExprKind::Unwrap(e) => self.resolve_expr(e),
+            | ast::ExprKind::Unwrap(e)
+            | ast::ExprKind::TypeAnnot(_, e) => self.resolve_expr(e),
             ast::ExprKind::Call(func, args) => {
                 self.resolve_expr(func)?;
                 for a in args {

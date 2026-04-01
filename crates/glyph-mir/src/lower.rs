@@ -688,6 +688,11 @@ impl MirLower {
                 Operand::Local(result)
             }
 
+            ast::ExprKind::TypeAnnot(_, inner) => {
+                // Type annotation — zero-cost hint, just lower the inner expression
+                self.lower_expr(inner)
+            }
+
             ast::ExprKind::Block(stmts) => self.lower_block(stmts),
 
             ast::ExprKind::FieldAccessor(field) => {
@@ -1202,7 +1207,8 @@ impl MirLower {
             }
             ast::ExprKind::Unary(_, e)
             | ast::ExprKind::Propagate(e)
-            | ast::ExprKind::Unwrap(e) => {
+            | ast::ExprKind::Unwrap(e)
+            | ast::ExprKind::TypeAnnot(_, e) => {
                 self.walk_free_vars(e, bound, seen, result);
             }
             ast::ExprKind::Call(f, args) => {
