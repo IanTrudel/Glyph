@@ -22,7 +22,8 @@ You'd have to encode bytes as integer arrays, which is absurd overhead — each 
 
 **Note on workarounds:** Integer arrays `[I]` can represent bytes (each element 0-255), and Glyph strings are `{ptr, len}` fat pointers that preserve null bytes, so `read_file` + `str_char_at` can technically read binary files. But the 8x memory overhead (64-bit GVal per byte) compounds across decode pipeline buffers, and the byte manipulation boilerplate dominates over the actual decoding logic.
 
-**Prerequisite language features:**
+~~**Prerequisite language features:**~~ DONE
+
 - `Y` (Bytes) type — single-char alias following `I`/`S`/`B` convention. Compact byte buffer, 1 byte per element, not 8. `[Y]` for byte arrays.
 - `read_bytes` / `write_bytes` runtime functions
 - Byte indexing and slicing
