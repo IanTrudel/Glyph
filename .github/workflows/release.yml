@@ -29,15 +29,6 @@ jobs:
           path: target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
 
-      - name: Create swap (Stage 2 needs ~15GB, runner has 7GB RAM)
-        run: |
-          sudo swapoff /swapfile 2>/dev/null || true
-          sudo rm -f /swapfile
-          sudo fallocate -l 16G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-
       - name: Stamp version into glyph.glyph
         run: |
           VERSION=${{ github.ref_name }}
@@ -53,7 +44,7 @@ jobs:
         run: ./glyph0 build glyph.glyph --full && mv glyph glyph1
 
       - name: "Stage 2: glyph1 self-builds → glyph2 (C codegen)"
-        run: ./glyph1 build glyph.glyph glyph2 --cc-args "-O0"
+        run: ./glyph1 build glyph.glyph glyph2
 
       - name: "Stage 3: glyph2 re-builds → glyph (LLVM codegen)"
         run: ./glyph2 build glyph.glyph glyph --emit=llvm
