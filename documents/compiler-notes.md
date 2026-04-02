@@ -24,17 +24,17 @@ Does it require any compiler modifications?
 
   1. --ffi <file.c> flag on glyph build -- Prepend a C source file before the generated code.
   Eliminates the cat + manual cc build script entirely. This is maybe 10-15 lines of change in
-          build_program / cmd_build. The MCP build and run tools would then just work with GTK apps.
+            build_program / cmd_build. The MCP build and run tools would then just work with GTK apps.
   2. --pkg-config <name> flag (or a meta table key like pkg_config=gtk4) -- Runs pkg-config --cflags
    --libs <name> and appends the result to the cc invocation. Combined with --ffi, this eliminates
-              build scripts completely:
-              glyph build myapp.glyph myapp --ffi gtk_ffi.c --pkg-config gtk4
+                 build scripts completely:
+                 glyph build myapp.glyph myapp --ffi gtk_ffi.c --pkg-config gtk4
 
   Medium value, medium effort:
 
   3. C-compatible closure export -- A way to mark a closure as "C-calling-convention" so the
   compiler generates a wrapper that drops the hidden first argument. This would eliminate half the
-          trampolines in gtk_ffi.c. But it touches codegen and is more complex.
+            trampolines in gtk_ffi.c. But it touches codegen and is more complex.
 
   Low value (not worth it):
 
@@ -301,3 +301,8 @@ How about a Glyph definition linter — a static analysis tool that reads a .gly
 
 
 Move MCP out of Glyph into a library?
+
+
+
+https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+
