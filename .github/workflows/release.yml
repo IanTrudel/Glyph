@@ -53,7 +53,7 @@ jobs:
         run: ./glyph0 build glyph.glyph --full && mv glyph glyph1
 
       - name: "Stage 2: glyph1 self-builds → glyph2 (C codegen)"
-        run: ./glyph1 build glyph.glyph glyph2
+        run: ./glyph1 build glyph.glyph glyph2 --cc-args "-O0"
 
       - name: "Stage 3: glyph2 re-builds → glyph (LLVM codegen)"
         run: ./glyph2 build glyph.glyph glyph --emit=llvm
