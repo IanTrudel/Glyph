@@ -31,6 +31,8 @@ jobs:
 
       - name: Create swap (Stage 2 needs ~15GB, runner has 7GB RAM)
         run: |
+          sudo swapoff /swapfile 2>/dev/null || true
+          sudo rm -f /swapfile
           sudo fallocate -l 16G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
