@@ -360,8 +360,9 @@ impl InferEngine {
                 let ty = self.infer_expr(expr);
                 for name in names {
                     let field_ty = self.subst.fresh();
-                    let scheme = self.env.generalize(&mut self.subst, &field_ty);
-                    self.env.insert(name.clone(), scheme);
+                    // Fresh vars don't need generalization — they'll be constrained
+                    // by field access unification. Skip expensive env scanning.
+                    self.env.insert(name.clone(), field_ty);
                 }
                 let _ = ty;
                 Type::Void

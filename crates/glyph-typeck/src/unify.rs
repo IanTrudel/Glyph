@@ -1,11 +1,13 @@
 use crate::error::{Result, TypeError};
 use crate::types::{RowType, Type, TypeVarId};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 /// Union-find based type variable substitution.
 pub struct Substitution {
     /// parent[i] = the representative of type var i (or itself if root).
     parent: Vec<TypeVarId>,
+    /// rank[i] = union-find rank for weighted union.
+    rank: Vec<u8>,
     /// The resolved type for each root variable, if any.
     types: Vec<Option<Type>>,
     next_var: TypeVarId,
@@ -15,6 +17,7 @@ impl Substitution {
     pub fn new() -> Self {
         Self {
             parent: Vec::new(),
+            rank: Vec::new(),
             types: Vec::new(),
             next_var: 0,
         }
@@ -25,6 +28,7 @@ impl Substitution {
         let id = self.next_var;
         self.next_var += 1;
         self.parent.push(id);
+        self.rank.push(0);
         self.types.push(None);
         id
     }
@@ -34,14 +38,20 @@ impl Substitution {
         Type::Var(self.fresh_var())
     }
 
-    /// Find the root representative of a type variable.
-    pub fn find(&mut self, mut v: TypeVarId) -> TypeVarId {
-        while self.parent[v as usize] != v {
-            // Path compression
-            self.parent[v as usize] = self.parent[self.parent[v as usize] as usize];
-            v = self.parent[v as usize];
+    /// Find the root representative of a type variable (full path compression).
+    pub fn find(&mut self, v: TypeVarId) -> TypeVarId {
+        let mut root = v;
+        while self.parent[root as usize] != root {
+            root = self.parent[root as usize];
         }
-        v
+        // Full path compression: point all nodes on the path directly to root
+        let mut current = v;
+        while current != root {
+            let next = self.parent[current as usize];
+            self.parent[current as usize] = root;
+            current = next;
+        }
+        root
     }
 
     /// Get the type bound to a variable, if any.
@@ -50,7 +60,7 @@ impl Substitution {
         self.types[root as usize].clone()
     }
 
-    /// Walk a type, resolving all known type variables.
+    /// Walk a type, resolving all known type variables (shallow — one level).
     pub fn walk(&mut self, ty: &Type) -> Type {
         match ty {
             Type::Var(v) => {
@@ -65,7 +75,27 @@ impl Substitution {
         }
     }
 
+    /// Check if a type is already fully resolved (no Var nodes that have bindings).
+    fn is_ground(&self, ty: &Type) -> bool {
+        match ty {
+            Type::Var(_) => false,
+            Type::Int | Type::Int32 | Type::UInt | Type::Float | Type::Float32
+            | Type::Str | Type::Bool | Type::Void | Type::Never | Type::Error => true,
+            Type::Fn(a, b) | Type::Map(a, b) => self.is_ground(a) && self.is_ground(b),
+            Type::Array(t) | Type::Opt(t) | Type::Res(t) | Type::Ref(t) | Type::Ptr(t) => {
+                self.is_ground(t)
+            }
+            Type::Tuple(ts) => ts.iter().all(|t| self.is_ground(t)),
+            Type::Named(_, args) => args.iter().all(|t| self.is_ground(t)),
+            Type::Record(row) => {
+                row.fields.values().all(|t| self.is_ground(t)) && row.rest.is_none()
+            }
+            Type::ForAll(_, inner) => self.is_ground(inner),
+        }
+    }
+
     /// Fully resolve a type, walking through all structure.
+    /// Avoids cloning when the type has no variables to resolve.
     pub fn resolve(&mut self, ty: &Type) -> Type {
         match ty {
             Type::Var(v) => {
@@ -76,30 +106,130 @@ impl Substitution {
                     Type::Var(root)
                 }
             }
+            // Primitive types: no allocation needed
+            Type::Int => Type::Int,
+            Type::Int32 => Type::Int32,
+            Type::UInt => Type::UInt,
+            Type::Float => Type::Float,
+            Type::Float32 => Type::Float32,
+            Type::Str => Type::Str,
+            Type::Bool => Type::Bool,
+            Type::Void => Type::Void,
+            Type::Never => Type::Never,
+            Type::Error => Type::Error,
+            // Compound types: skip cloning if already ground
             Type::Fn(a, b) => Type::Fn(Box::new(self.resolve(a)), Box::new(self.resolve(b))),
-            Type::Tuple(ts) => Type::Tuple(ts.iter().map(|t| self.resolve(t)).collect()),
-            Type::Array(t) => Type::Array(Box::new(self.resolve(t))),
-            Type::Map(k, v) => Type::Map(Box::new(self.resolve(k)), Box::new(self.resolve(v))),
-            Type::Opt(t) => Type::Opt(Box::new(self.resolve(t))),
-            Type::Res(t) => Type::Res(Box::new(self.resolve(t))),
-            Type::Ref(t) => Type::Ref(Box::new(self.resolve(t))),
-            Type::Ptr(t) => Type::Ptr(Box::new(self.resolve(t))),
+            Type::Tuple(ts) => {
+                if ts.iter().all(|t| self.is_ground(t)) {
+                    ty.clone()
+                } else {
+                    Type::Tuple(ts.iter().map(|t| self.resolve(t)).collect())
+                }
+            }
+            Type::Array(t) => {
+                if self.is_ground(t) { ty.clone() } else { Type::Array(Box::new(self.resolve(t))) }
+            }
+            Type::Map(k, v) => {
+                if self.is_ground(k) && self.is_ground(v) {
+                    ty.clone()
+                } else {
+                    Type::Map(Box::new(self.resolve(k)), Box::new(self.resolve(v)))
+                }
+            }
+            Type::Opt(t) => {
+                if self.is_ground(t) { ty.clone() } else { Type::Opt(Box::new(self.resolve(t))) }
+            }
+            Type::Res(t) => {
+                if self.is_ground(t) { ty.clone() } else { Type::Res(Box::new(self.resolve(t))) }
+            }
+            Type::Ref(t) => {
+                if self.is_ground(t) { ty.clone() } else { Type::Ref(Box::new(self.resolve(t))) }
+            }
+            Type::Ptr(t) => {
+                if self.is_ground(t) { ty.clone() } else { Type::Ptr(Box::new(self.resolve(t))) }
+            }
             Type::Named(name, args) => {
-                Type::Named(name.clone(), args.iter().map(|a| self.resolve(a)).collect())
+                if args.iter().all(|t| self.is_ground(t)) {
+                    ty.clone()
+                } else {
+                    Type::Named(name.clone(), args.iter().map(|a| self.resolve(a)).collect())
+                }
             }
             Type::Record(row) => {
-                let fields = row
-                    .fields
-                    .iter()
-                    .map(|(k, v)| (k.clone(), self.resolve(v)))
-                    .collect();
-                let rest = row.rest.map(|r| self.find(r));
-                Type::Record(RowType { fields, rest })
+                if row.fields.values().all(|t| self.is_ground(t)) && row.rest.is_none() {
+                    ty.clone()
+                } else {
+                    let fields = row
+                        .fields
+                        .iter()
+                        .map(|(k, v)| (k.clone(), self.resolve(v)))
+                        .collect();
+                    let rest = row.rest.map(|r| self.find(r));
+                    Type::Record(RowType { fields, rest })
+                }
             }
             Type::ForAll(vars, inner) => {
-                Type::ForAll(vars.clone(), Box::new(self.resolve(inner)))
+                if self.is_ground(inner) {
+                    ty.clone()
+                } else {
+                    Type::ForAll(vars.clone(), Box::new(self.resolve(inner)))
+                }
             }
-            other => other.clone(),
+        }
+    }
+
+    /// Collect free variables from a type into a HashSet, without resolving.
+    /// Used by generalize to avoid full resolve of environment types.
+    pub fn collect_env_free_vars(&mut self, ty: &Type, out: &mut HashSet<TypeVarId>) {
+        match ty {
+            Type::Var(v) => {
+                let root = self.find(*v);
+                if let Some(resolved) = self.types[root as usize].clone() {
+                    self.collect_env_free_vars(&resolved, out);
+                } else {
+                    out.insert(root);
+                }
+            }
+            Type::Fn(a, b) | Type::Map(a, b) => {
+                self.collect_env_free_vars(a, out);
+                self.collect_env_free_vars(b, out);
+            }
+            Type::Array(t) | Type::Opt(t) | Type::Res(t) | Type::Ref(t) | Type::Ptr(t) => {
+                self.collect_env_free_vars(t, out);
+            }
+            Type::Tuple(ts) => {
+                for t in ts {
+                    self.collect_env_free_vars(t, out);
+                }
+            }
+            Type::Named(_, args) => {
+                for a in args {
+                    self.collect_env_free_vars(a, out);
+                }
+            }
+            Type::Record(row) => {
+                for t in row.fields.values() {
+                    self.collect_env_free_vars(t, out);
+                }
+                if let Some(r) = row.rest {
+                    let root = self.find(r);
+                    if let Some(resolved) = self.types[root as usize].clone() {
+                        self.collect_env_free_vars(&resolved, out);
+                    } else {
+                        out.insert(root);
+                    }
+                }
+            }
+            Type::ForAll(bound, inner) => {
+                let mut inner_vars = HashSet::new();
+                self.collect_env_free_vars(inner, &mut inner_vars);
+                for v in inner_vars {
+                    if !bound.contains(&v) {
+                        out.insert(v);
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
@@ -180,7 +310,15 @@ impl Substitution {
             if root == root2 {
                 return Ok(());
             }
-            self.parent[root as usize] = root2;
+            // Union by rank
+            if self.rank[root as usize] < self.rank[root2 as usize] {
+                self.parent[root as usize] = root2;
+            } else if self.rank[root as usize] > self.rank[root2 as usize] {
+                self.parent[root2 as usize] = root;
+            } else {
+                self.parent[root as usize] = root2;
+                self.rank[root2 as usize] += 1;
+            }
             return Ok(());
         }
 

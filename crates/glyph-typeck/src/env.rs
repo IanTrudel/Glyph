@@ -1,6 +1,6 @@
 use crate::types::{Type, TypeVarId};
 use crate::unify::Substitution;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Type environment: maps names to their type schemes.
 #[derive(Debug, Clone)]
@@ -40,9 +40,12 @@ impl TypeEnv {
     pub fn generalize(&self, subst: &mut Substitution, ty: &Type) -> Type {
         let resolved = subst.resolve(ty);
         let ty_vars = resolved.free_vars();
+        if ty_vars.is_empty() {
+            return resolved;
+        }
         let env_vars = self.free_vars_in_env(subst);
         let gen_vars: Vec<TypeVarId> =
-            ty_vars.into_iter().filter(|v| !env_vars.contains(v)).collect();
+            ty_vars.into_iter().filter(|v| !env_vars.contains(&v)).collect();
         if gen_vars.is_empty() {
             resolved
         } else {
@@ -50,16 +53,13 @@ impl TypeEnv {
         }
     }
 
-    fn free_vars_in_env(&self, subst: &mut Substitution) -> Vec<TypeVarId> {
-        let mut vars = Vec::new();
+    fn free_vars_in_env(&self, subst: &mut Substitution) -> HashSet<TypeVarId> {
+        let mut vars = HashSet::new();
         for scope in &self.scopes {
             for ty in scope.values() {
-                let resolved = subst.resolve(ty);
-                vars.extend(resolved.free_vars());
+                subst.collect_env_free_vars(ty, &mut vars);
             }
         }
-        vars.sort_unstable();
-        vars.dedup();
         vars
     }
 }
