@@ -16,11 +16,25 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
     let db = Database::open(path).map_err(|e| miette::miette!("failed to open database: {e}"))?;
 
     // Get definitions to compile
-    let defs = if full {
+    let mut defs = if full {
         db.effective_defs(target_gen).map_err(|e| miette::miette!("{e}"))?
     } else {
         db.dirty_defs_gen(target_gen).map_err(|e| miette::miette!("{e}"))?
     };
+
+    // Load definitions from registered libraries (lib_dep table)
+    let lib_defs = db.load_library_defs(target_gen).map_err(|e| miette::miette!("{e}"))?;
+    if !lib_defs.is_empty() {
+        let main_names: HashSet<(String, String)> = defs.iter()
+            .map(|d| (d.name.clone(), d.kind.as_str().to_string()))
+            .collect();
+        for ld in lib_defs {
+            let key = (ld.name.clone(), ld.kind.as_str().to_string());
+            if !main_names.contains(&key) {
+                defs.push(ld);
+            }
+        }
+    }
 
     if defs.is_empty() {
         eprintln!("Nothing to compile.");

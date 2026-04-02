@@ -336,3 +336,54 @@ fn compute_tokens(body: &str) -> i64 {
     let bpe = tiktoken_rs::cl100k_base().expect("failed to load tokenizer");
     bpe.encode_with_special_tokens(body).len() as i64
 }
+
+impl Database {
+    /// Attach libraries registered in `lib_dep` and return their definitions.
+    /// Returns an empty vec if no `lib_dep` table exists.
+    pub fn load_library_defs(&self, target_gen: i64) -> Result<Vec<DefRow>> {
+        // Check if lib_dep table exists
+        let has_table: bool = self.conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='lib_dep'",
+            [],
+            |row| row.get::<_, i64>(0),
+        ).unwrap_or(0) > 0;
+        if !has_table {
+            return Ok(Vec::new());
+        }
+
+        // Read library paths
+        let mut stmt = self.conn.prepare("SELECT lib_path FROM lib_dep")?;
+        let paths: Vec<String> = stmt.query_map([], |row| row.get(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(DbError::Sqlite)?;
+
+        let mut all_defs = Vec::new();
+        for (i, path) in paths.iter().enumerate() {
+            let alias = format!("lib{}", i);
+            let attach_sql = format!("ATTACH '{}' AS {}", path.replace('\'', "''"), alias);
+            if self.conn.execute_batch(&attach_sql).is_err() {
+                eprintln!("Warning: could not attach library '{}'", path);
+                continue;
+            }
+
+            // Read effective defs from the attached library
+            let query = format!(
+                "SELECT d.* FROM {alias}.def d
+                 INNER JOIN (
+                     SELECT name, kind, MAX(gen) as max_gen
+                     FROM {alias}.def WHERE gen <= ?1
+                     GROUP BY name, kind
+                 ) latest ON d.name = latest.name AND d.kind = latest.kind AND d.gen = latest.max_gen"
+            );
+            if let Ok(mut stmt) = self.conn.prepare(&query) {
+                if let Ok(rows) = stmt.query_map(params![target_gen], row_to_def) {
+                    for row in rows.flatten() {
+                        all_defs.push(row);
+                    }
+                }
+            }
+        }
+
+        Ok(all_defs)
+    }
+}
