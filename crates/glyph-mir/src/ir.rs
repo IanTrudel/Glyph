@@ -101,6 +101,11 @@ pub enum BinOp {
     GtEq,
     And,
     Or,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
 }
 
 /// Unary operations.

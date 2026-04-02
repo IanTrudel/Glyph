@@ -67,6 +67,13 @@ pub fn binop_type(op: &glyph_parse::ast::BinOp, left: &Type, right: &Type) -> Op
                 _ => None,
             }
         }
+        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr => {
+            match (left, right) {
+                (Type::Int, Type::Int) => Some(Type::Int),
+                (Type::UInt, Type::UInt) => Some(Type::UInt),
+                _ => None,
+            }
+        }
     }
 }
 

@@ -266,7 +266,7 @@ impl Parser {
     }
 
     fn parse_cmp(&mut self) -> Result<Expr> {
-        let mut left = self.parse_add()?;
+        let mut left = self.parse_bitwise()?;
         loop {
             let op = match self.current_kind() {
                 TokenKind::EqEq => BinOp::Eq,
@@ -275,6 +275,28 @@ impl Parser {
                 TokenKind::Gt => BinOp::Gt,
                 TokenKind::LtEq => BinOp::LtEq,
                 TokenKind::GtEq => BinOp::GtEq,
+                _ => break,
+            };
+            self.advance();
+            let right = self.parse_bitwise()?;
+            let span = left.span.merge(right.span);
+            left = Expr {
+                kind: ExprKind::Binary(op, Box::new(left), Box::new(right)),
+                span,
+            };
+        }
+        Ok(left)
+    }
+
+    fn parse_bitwise(&mut self) -> Result<Expr> {
+        let mut left = self.parse_add()?;
+        loop {
+            let op = match self.current_kind() {
+                TokenKind::Ident(ref s) if s == "bitand" => BinOp::BitAnd,
+                TokenKind::Ident(ref s) if s == "bitor" => BinOp::BitOr,
+                TokenKind::Ident(ref s) if s == "bitxor" => BinOp::BitXor,
+                TokenKind::Ident(ref s) if s == "shl" => BinOp::Shl,
+                TokenKind::Ident(ref s) if s == "shr" => BinOp::Shr,
                 _ => break,
             };
             self.advance();

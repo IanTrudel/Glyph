@@ -106,9 +106,9 @@ test_interleave =
 
 **Affected functions:** `instantiate`, `inst_type`, `subst_bind`
 
-## BUG-012: glyph0 (Rust compiler) does not parse bitwise keyword operators
+## ~~BUG-012: glyph0 (Rust compiler) does not parse bitwise keyword operators~~
 
-**Status:** Open
+**Status:** FIXED (2026-04-02)
 **Severity:** Low (workaround exists)
 **Found:** 2026-04-02 (CI build failure)
 

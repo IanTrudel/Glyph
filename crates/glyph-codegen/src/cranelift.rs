@@ -372,6 +372,11 @@ impl CodegenContext {
                     BinOp::GtEq => builder.ins().icmp(IntCC::SignedGreaterThanOrEqual, l, r),
                     BinOp::And => builder.ins().band(l, r),
                     BinOp::Or => builder.ins().bor(l, r),
+                    BinOp::BitAnd => builder.ins().band(l, r),
+                    BinOp::BitOr => builder.ins().bor(l, r),
+                    BinOp::BitXor => builder.ins().bxor(l, r),
+                    BinOp::Shl => builder.ins().ishl(l, r),
+                    BinOp::Shr => builder.ins().sshr(l, r),
                 }
             }
 

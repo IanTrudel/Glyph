@@ -1396,6 +1396,11 @@ fn lower_binop(op: &ast::BinOp) -> BinOp {
         ast::BinOp::GtEq => BinOp::GtEq,
         ast::BinOp::And => BinOp::And,
         ast::BinOp::Or => BinOp::Or,
+        ast::BinOp::BitAnd => BinOp::BitAnd,
+        ast::BinOp::BitOr => BinOp::BitOr,
+        ast::BinOp::BitXor => BinOp::BitXor,
+        ast::BinOp::Shl => BinOp::Shl,
+        ast::BinOp::Shr => BinOp::Shr,
     }
 }
 
