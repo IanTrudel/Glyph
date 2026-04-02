@@ -37,8 +37,17 @@ jobs:
           WHERE name='glyph_version' AND kind='fn';
           EOF
 
-      - name: Build (full bootstrap)
-        run: ninja bootstrap
+      - name: "Stage 0: Build glyph0 (Rust bootstrap compiler)"
+        run: cargo build --release && cp target/release/glyph glyph0
+
+      - name: "Stage 1: glyph0 compiles glyph.glyph → glyph1 (Cranelift)"
+        run: ./glyph0 build glyph.glyph --full && mv glyph glyph1
+
+      - name: "Stage 2: glyph1 self-builds → glyph2 (C codegen)"
+        run: ./glyph1 build glyph.glyph glyph2
+
+      - name: "Stage 3: glyph2 re-builds → glyph (LLVM codegen)"
+        run: ./glyph2 build glyph.glyph glyph --emit=llvm
 
       - name: Test compiler
         run: |
