@@ -198,6 +198,7 @@ pub fn cmd_build(path: &Path, full: bool, emit_mir: bool, target_gen: i64) -> mi
         .iter()
         .filter_map(|e| e.lib.clone())
         .collect();
+    extern_libs.push("gc".to_string());
     extern_libs.sort();
     extern_libs.dedup();
 

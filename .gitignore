@@ -47,3 +47,5 @@ examples/gtk/cairo_test/cairo_test
 *.vie.svg
 /workspace
 .claude/projects/
+Dockerfile.ci
+ci-test.sh

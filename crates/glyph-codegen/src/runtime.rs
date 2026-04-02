@@ -80,6 +80,11 @@ pub const RUNTIME_C: &str = r#"
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <gc.h>
+
+#define malloc(n)    GC_malloc(n)
+#define realloc(p,n) GC_realloc(p,n)
+#define free(p)      ((void)(p))
 
 __thread const char* _glyph_current_fn = "(unknown)";
 
@@ -101,7 +106,7 @@ void* glyph_alloc(unsigned long long size) {
 }
 
 void glyph_dealloc(void* ptr) {
-    free(ptr);
+    (void)ptr; /* Boehm GC handles deallocation */
 }
 
 /* String struct: { const char* ptr; long long len; } = 16 bytes
@@ -772,6 +777,7 @@ long long glyph_try_write_file(long long path, long long content) {
 /* Entry point wrapper: captures argc/argv, then calls glyph_main. */
 extern long long glyph_main(void);
 int main(int argc, char** argv) {
+    GC_INIT();
     signal(SIGSEGV, _glyph_sigsegv);
     glyph_set_args(argc, argv);
     return (int)glyph_main();
@@ -785,6 +791,11 @@ pub const RUNTIME_SQLITE_C: &str = r#"
 #include <stdlib.h>
 #include <string.h>
 #include <sqlite3.h>
+#include <gc.h>
+
+#define malloc(n)    GC_malloc(n)
+#define realloc(p,n) GC_realloc(p,n)
+#define free(p)      ((void)(p))
 
 /* Forward declarations from the main runtime. */
 extern void glyph_panic(const char* msg);

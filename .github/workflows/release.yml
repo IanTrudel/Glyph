@@ -29,6 +29,13 @@ jobs:
           path: target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
 
+      - name: Create swap (Stage 2 needs ~15GB, runner has 7GB RAM)
+        run: |
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Stamp version into glyph.glyph
         run: |
           VERSION=${{ github.ref_name }}
