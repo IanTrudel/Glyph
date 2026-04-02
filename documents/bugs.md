@@ -105,3 +105,36 @@ test_interleave =
 **Impact:** The compiler's own `infer_fn` may avoid this pattern naturally (by processing all uses of a polymorphic function in the right order), but it's a latent correctness issue that could surface with certain definition orderings.
 
 **Affected functions:** `instantiate`, `inst_type`, `subst_bind`
+
+## BUG-012: glyph0 (Rust compiler) does not parse bitwise keyword operators
+
+**Status:** Open
+**Severity:** Low (workaround exists)
+**Found:** 2026-04-02 (CI build failure)
+
+**Description:** The Rust bootstrap compiler (`glyph0`) does not support `bitand`, `bitor`, `bitxor`, `shl`, `shr` as infix keyword operators. The self-hosted compiler parses these correctly, but glyph0 treats them as identifiers and emits parse errors. Any definition in `glyph.glyph` using these operators will fail during stage 1 of the bootstrap chain.
+
+**Reproduction:**
+```glyph
+xorshift64 s =
+  s2 = s bitxor (s shl 13)
+  s2
+```
+
+glyph0 output:
+```
+error in 'xorshift64' at 2:27: unexpected token: Ident("shl"), expected RParen
+```
+
+**Expected behavior:** glyph0 should parse `bitand`, `bitor`, `bitxor`, `shl`, `shr` as binary infix operators, matching the self-hosted compiler.
+
+**Root cause:** The Rust parser (`glyph-parse`) does not include bitwise keyword operators in its expression parsing precedence chain. They were added to the self-hosted compiler but never backported to glyph0.
+
+**Workaround:** Avoid bitwise operators in definitions inside `glyph.glyph`. Use arithmetic equivalents:
+- `n bitand 15` → `n - ((n / 16) * 16)` (for power-of-2 masks)
+- `n shr 4` → `n / 16`
+- `n shl 13` → `n * 8192`
+
+Programs compiled by the self-hosted compiler are unaffected — bitwise operators work normally there.
+
+**Affected functions:** `parse_expr` / `parse_comparison` in `glyph-parse`
