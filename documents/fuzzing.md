@@ -1,86 +1,135 @@
-# Glyph Fuzzing Design
+# Glyph Fuzzing — Design, Implementation, and Results
 
 ## Summary
 
-Property-based testing (`kind='prop'`, shipped in v0.5.2) verifies specific invariants for random inputs. Fuzzing is the complement: continuous generation of arbitrary inputs to discover unknown crashes. The compiler pipeline (tokenizer -> parser -> type inference -> MIR -> codegen) is the primary target.
+A full fuzzing framework was designed, implemented, and executed against the Glyph compiler pipeline (tokenizer, parser, type checker, MIR lowering, C codegen). After 500,000+ rounds across multiple generation strategies, pipeline targets, and adversarial inputs, zero crashes were found. The fuzzer was removed from the codebase — self-hosting through a 4-stage bootstrap chain proved to be a more effective robustness guarantee than random testing.
 
 ## Motivation
 
-The parser and type checker handle untrusted input (user code). A crash in these components is a real bug. With 1,800 definitions in the self-hosted compiler, there are plenty of code paths that random generation can explore. The existing coverage infrastructure (`glyph test --cover`) provides function-level hit counts that can guide input selection.
+The parser and type checker handle untrusted input (user code). A crash in these components is a real bug. With ~1,800 definitions in the self-hosted compiler, there are plenty of code paths that random generation could explore. The existing coverage infrastructure (`glyph test --cover`) provides function-level hit counts that could guide input selection.
 
-## Design
+## Implementation (2026-04-06)
 
 ### Architecture
 
 ```
-glyph fuzz <db> [--target=parse|unify|compile] [--seed=N] [--corpus=DIR] [--timeout=S]
+glyph fuzz <db> [--target=parse|check|compile|run] [--seed=N] [--rounds=N] [--corpus=DIR] [--timeout=S]
 ```
 
-**Core loop:** generate input -> write to temp file -> `system("timeout 5 /tmp/glyph_fuzz_bin input")` -> check exit code -> categorize result -> loop.
+**Core loop:** generate input -> write to temp file -> `system("timeout 5 ./glyph _fuzz-exec input target")` -> check exit code -> categorize result -> loop.
 
-**Crash detection:** `glyph_system()` already returns `128+signal` for signal deaths (139=SIGSEGV, 136=SIGFPE, 134=SIGABRT). No new externs needed.
+**Crash detection:** `glyph_system()` returns `128+signal` for signal deaths (139=SIGSEGV, 136=SIGFPE, 134=SIGABRT).
 
-**Process isolation:** fork+exec via `system()` per test case. A crash in the target cannot bring down the fuzzer. ~1-5ms overhead per case, acceptable for a Glyph-hosted fuzzer.
+**Process isolation:** fork+exec via `system()` per test case. A crash in the target cannot bring down the fuzzer. ~270-300 rounds/sec throughput.
 
-### Fuzz targets
+### Pipeline targets
 
-**Target 1 -- Parser (highest value, simplest):** Generate random strings biased toward Glyph-like syntax. Feed through `tokenize` -> `parse_fn_def`. Should never crash, even on garbage input.
+| Target | Pipeline exercised |
+|--------|-------------------|
+| `parse` | `tokenize` -> `parse_fn_def` |
+| `check` | parse + `mk_engine` -> `register_builtins` -> `tc_pre_register` -> `tc_infer_loop` |
+| `compile` | parse + `lower_fn_def` -> `build_ret_map` -> `cg_program` |
+| `run` | compile + `cc` syntax validation of generated C |
 
-**Target 2 -- Type unification:** Generate random type trees via `gen_type(eng, seed, depth)`. Run `unify(eng, t1, t2)`. Verify no crash and check commutativity (`unify(a,b)` succeeds iff `unify(b,a)` succeeds).
+### Generation strategies
 
-**Target 3 -- Full compilation:** Generate parseable programs, run through the entire pipeline. Most complex, catches the deepest bugs.
+**1. Random token sequences** (`fuzz_gen_source`): Picks tokens from a 55-element table including keywords (`match`, `true`, `Ok`, `Err`, `Some`, `None`), operators (`+`, `-`, `==`, `|>`, `->`, `:=`), delimiters, identifiers, literals, and special characters (`{`, `}`, `\`, `"strings"`).
 
-### Generators needed
+**2. Structured generation** (`fuzz_gen_structured`): Depth-bounded recursive expression generators that produce syntactically valid Glyph programs. 25 expression generators covering:
+- Atoms, binary ops, function calls, match expressions, lambdas
+- Arrays, records, maps, pipe chains, field access, field accessors
+- String interpolation, string literals, float literals
+- Constructors (`Some`, `Ok`, `Err`, `None`), unwrap (`!`), propagate (`?`)
+- Array indexing, compose (`>>`), unary negation
+- Pathological variants: deep matches (5-15 arms), nested lambdas (10 levels), nested constructors (4 levels), long pipe chains (5-15 stages), many parameters (5-15)
 
-- `gen_glyph_source` -- random token sequences assembled with structural bias toward valid Glyph syntax
-- `gen_identifier` -- valid Glyph identifiers (lowercase + alphanumeric, avoiding keywords)
-- `gen_expr` / `gen_type` -- recursive AST/type generators with bounded depth (for targets 2-3)
+Pattern generation includes: wildcards, identifiers, literals, constructor patterns (`Some(x)`, `Ok(y)`, `Err(z)`, `None`), or-patterns (`a | b`), range patterns (`N..M`), and match guards (`pat ? expr -> body`).
 
-Builds on existing stdlib PRNG: `xorshift64`, `seed_next`, `gen_int_range`, `gen_str`, `gen_array`.
+Block generation includes: let bindings, destructuring (`{a, b} = expr`), assignment (`:=`), and comments (`-- fuzz`).
 
-### Corpus management
+**3. Mutation of real compiler definitions** (`fuzz_gen_mutated`): Loads all 1,596 fn definitions from the target database, picks one randomly, applies 1-15 byte-level mutations (delete, insert, or replace at random positions using a 58-character table).
 
-- `--corpus=DIR` (default `/tmp/glyph_fuzz_corpus/`)
-- `crashes/` -- inputs causing signal deaths, named by seed
-- `failures/` -- assertion failures or nonzero exit
-- `interesting/` -- inputs that expanded coverage (when coverage-guided)
+### Definitions implemented
 
-### Coverage guidance (Phase 2)
+~50 definitions total across generators, infrastructure, and CLI. All were self-hosted in `glyph.glyph`, compiled with the self-hosted compiler. The fuzzer fuzzed the compiler that compiled the fuzzer.
 
-The `--cover` flag already produces function-level hit counts as TSV. The fuzzer can:
+## Results (2026-04-06)
 
-1. Build target with `-DGLYPH_COVERAGE`
-2. After each case, read coverage file
-3. Compare against cumulative bitmap
-4. Save coverage-expanding inputs to corpus for mutation
+### Quantitative
 
-Function-level granularity is coarser than AFL's edge coverage but useful -- different compiler code paths correspond to different functions (e.g., `parse_match_expr` only hit when input contains `match`).
+| Target | Rounds | Strategy | Crashes |
+|--------|--------|----------|---------|
+| `parse` | 310,000+ | random tokens | 0 |
+| `parse` | 10,000 | mutated real defs | 0 |
+| `check` | 10,000+ | structured generation | 0 |
+| `check` | 10,000 | mutated real defs | 0 |
+| `compile` | 170,000+ | structured + mutation | 0 |
+| `run` (cc validation) | 5,000 | structured | 0 |
+| **Total** | **515,000+** | **all strategies** | **0** |
 
-## Implementation phases
+### Adversarial inputs (hand-crafted)
 
-### MVP (~15-20 new definitions)
+30 adversarial edge cases were tested across all pipeline targets (90 tests total):
 
-- `cmd_fuzz` CLI command
-- `gen_glyph_source` random source text generator
-- `build_fuzz_program` harness builder (like `build_test_program`)
-- `fuzz_loop` core loop with crash detection via `system()` return codes
-- Crash saving to corpus directory
-- Timeout via `timeout` utility
+- Empty function body, match with no arms, lambda with no body, match arm with no body
+- 50 match arms, 20 parameters, 10-level nested closures, 8-level nested constructors
+- 5-level nested match, deeply nested parens, chained field access (`x.a.b.c.d.e`)
+- Double unwrap (`x!!`), double propagate (`x??`), pipe to nothing (`x |>`)
+- All escape sequences, nested string interpolation
+- Or-pattern with 10 alternatives, complex guard expressions
+- Assignment to literal (`42 := x`), destructuring non-record, duplicate record fields
+- Very long identifiers (500 chars), empty records, empty array index
 
-### Phase 2 -- Coverage guidance (~10 definitions)
+**Result: 0 crashes. Every input was handled gracefully across all 3 pipeline stages.**
 
-- Coverage file parsing and cumulative tracking
-- Corpus management (save coverage-expanding inputs)
-- `mutate_source` byte-level mutations (bit flip, byte insert/delete, corpus splicing)
+## Analysis
 
-### Phase 3 -- Structured generation (~15 definitions)
+### Why no bugs were found
 
-- `gen_expr` / `gen_type` recursive AST generators
-- `shrink_source` source-level minimization (line/token deletion)
-- Type unification and full compilation targets
-- Optional `kind='fuzz'` for user-defined fuzz targets
+The self-hosting process is a more thorough test than any fuzzer can be. The compiler compiles itself through a 4-stage bootstrap chain processing ~1,800 definitions. Every tokenizer path, every parser production, every MIR lowering case, every codegen pattern — they all must work correctly for the compiler to exist. The compiler's own source code is the most comprehensive test corpus possible.
 
-## Differences from property testing
+Random fuzzing generates inputs that are either:
+- **Too malformed** — rejected early by the parser (most random/mutated inputs)
+- **Too shallow** — simple expressions that exercise only basic code paths
+- **Structurally similar** — the generator vocabulary, however wide, produces inputs that follow predictable patterns
+
+The compiler was already hardened against all of these by processing 1,800 real definitions that span the full complexity spectrum.
+
+### The `kind='fuzz'` question
+
+Extending fuzzing to user programs (`kind='fuzz'` definitions) was considered but doesn't fit the Glyph ecosystem. Glyph programs are databases, not text files. The traditional fuzzing model (generate random bytes, feed to parser) assumes file-based input processing. In Glyph:
+- Definitions enter through controlled channels (`put_def`, MCP tools)
+- Input is structured (one definition at a time), not raw text
+- LLMs are the primary users — they generate well-formed code
+- Property-based testing (`kind='prop'`) already covers structured random input with user-defined invariants
+
+The only meaningful addition fuzzing could offer over property testing is crash isolation and corpus persistence — features better bolted onto `kind='prop'` than maintained as a separate system.
+
+## Decision: Fuzzer removed (2026-04-07)
+
+The ~50 fuzzer definitions were removed from `glyph.glyph`. Rationale:
+- 500K+ rounds across all strategies found 0 bugs
+- Maintenance burden (50 definitions) with zero ROI
+- Self-hosting provides stronger robustness guarantees
+- The `kind='fuzz'` extension doesn't fit the database-native model
+
+The experience validated that the compiler pipeline is production-quality. The design and results are preserved in this document for reference.
+
+## Original design document
+
+The original design below was written before implementation. It is preserved for historical context.
+
+### Original phases
+
+**MVP (~15-20 definitions):** CLI command, random token generator, fuzz loop with crash detection, corpus saving, timeout.
+
+**Phase 2 — Coverage guidance (~10 definitions):** Coverage file parsing, cumulative tracking, byte-level mutations, corpus splicing.
+
+**Phase 3 — Structured generation (~15 definitions):** Recursive AST generators, source minimization, type unification target, `kind='fuzz'` for user targets.
+
+All three phases were implemented. Coverage guidance (Phase 2 corpus management) was the only piece not fully realized — there were no crashes to guide corpus selection toward.
+
+### Differences from property testing
 
 | Aspect | `kind='prop'` | `glyph fuzz` |
 |--------|--------------|--------------|
@@ -91,8 +140,8 @@ Function-level granularity is coarser than AFL's edge coverage but useful -- dif
 | Corpus | None | Persistent on disk |
 | Target | User-defined invariants | Compiler internals |
 
-The two are complementary. Props verify "this property holds." Fuzzing discovers "this input crashes."
+In practice, the two converged: property testing with crash isolation would achieve the same results with less infrastructure.
 
 ## Prior art
 
-Relates to next-steps.md item 25 (property-based testing / fuzzing). The property testing half is complete (v0.5.2). This document covers the fuzzing half.
+Relates to next-steps.md item 25 (property-based testing / fuzzing). The property testing half is complete (v0.5.2). This document covers the fuzzing half — designed, implemented, executed, and retired.

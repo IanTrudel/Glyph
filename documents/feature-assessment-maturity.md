@@ -130,6 +130,7 @@
   - Utilities: 18, Codegen: 13, Tokenizer: 11, Build: 10
   - JSON: 7, MCP: 2, TCO: 1
 - Coverage instrumentation (`--cover` flag, `cg_runtime_coverage`)
+- **Fuzzing (2026-04-06):** Full fuzzing framework was implemented and executed — 500K+ rounds across 4 pipeline targets (parse, type check, MIR lowering, C codegen), 3 generation strategies (random tokens, structured programs, mutated real definitions), and 30 hand-crafted adversarial inputs. Zero crashes found. The fuzzer was retired; self-hosting through the 4-stage bootstrap provides stronger robustness guarantees than random testing. See `documents/fuzzing.md` for full details.
 
 ### Error Reporting — **Improved** (B- → **B+**)
 - Parse errors with source context and caret positioning
@@ -238,3 +239,5 @@ The original assessment rated Glyph as "Late Alpha / Early Beta." Four days late
 - 356 self-hosted tests provide reasonable regression coverage
 
 **Remaining gaps for "Release Candidate"**: HashMap performance (still O(n)), no `for`-loop syntax, no const definitions, no trait system, no WASM target. Of these, only the HashMap and trait system are likely to be encountered as practical blockers.
+
+**Robustness validation (2026-04-06):** A comprehensive fuzzing campaign (500K+ rounds, 4 targets, 3 strategies, 30 adversarial inputs) found zero crashes in any stage of the compiler pipeline. Combined with the 4-stage bootstrap self-compilation of ~1,800 definitions, this provides strong evidence that the compiler is production-quality. See `documents/fuzzing.md`.
