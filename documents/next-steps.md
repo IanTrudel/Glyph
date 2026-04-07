@@ -754,7 +754,7 @@ The gled text editor hand-rolled ncurses FFI. Any terminal-based application (TU
 - Window: `nc_lines()`, `nc_cols()`, `nc_color_init()`, `nc_color_pair(fg, bg)`
 - Cursor: `nc_move(y, x)`, `nc_curs_set(visibility)`
 
-#### 43.7. sqlite.glyph — SQLite as a data store (MEDIUM PRIORITY)
+#### ~~43.7. sqlite.glyph — SQLite as a data store (MEDIUM PRIORITY)~~
 
 Glyph programs *are* SQLite databases, but programs that want to use SQLite as a data store (separate from themselves) currently use raw externs. The glint example does this. A proper library would provide a clean API.
 
@@ -908,7 +908,7 @@ When targeting non-Linux platforms, the build system needs to:
 
 The `cc_prepend` and `cc_args` meta keys already support custom compiler flags per program. A `--target` flag (#16) would formalize this, selecting the compiler and flags automatically based on the target triple.
 
-### 45. Array destructuring in patterns
+### ~~45. Array destructuring in patterns~~
 
 Pattern matching on arrays by positional element binding, with an optional rest pattern for the tail (Elixir-style `| rest`). This eliminates index-based array access (`arr[0]`, `arr[1]`, ...), which is one of the most error-prone patterns for LLMs — off-by-one errors, missing bounds checks, and unclear intent.
 
@@ -977,7 +977,7 @@ process tokens =
 
 **Scope:** ~10-15 new/modified definitions. New parser node, new MIR lowering path, extended let-destructuring, type checker support. No runtime changes needed — uses existing `array_bounds_check`, indexing, and `slice`.
 
-### 46. Range patterns in match
+### ~~46. Range patterns in match~~
 
 Match on contiguous integer ranges instead of enumerating every value with or-patterns. Reduces token count proportional to range size and makes intent explicit — "any value from 48 to 57" clearly communicates "ASCII digit" in a way that `48 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57` does not.
 

@@ -138,14 +138,93 @@ Thirty-seven days after its first commit, Glyph stands at:
 
 The compiler pipeline flows: `.glyph` database -> SQL query -> tokenizer -> parser -> Hindley-Milner type inference with row polymorphism -> MIR lowering -> C codegen (or LLVM IR) -> native executable.
 
+## Libraries, Regex, and Property Testing (March 29)
+
+March 29 marked a turn from infrastructure to expressiveness. The standard library gained higher-order utilities, the scan library acquired combinator parsing and float support, and a new **regex library** appeared — a Thompson NFA engine with Pike's VM execution, supporting character classes, quantifiers, alternation, and grouping across 44 functions and 15 tests. All pure Glyph, no FFI.
+
+The same day brought a more radical addition: **property-based testing as a first-class definition kind.** A `prop` definition takes a seed integer, returns a boolean, and the test harness runs it for N trials with xorshift64-advancing seeds. The stdlib provided generators and shrinkers; migration #10 (`add_prop_kind`) was applied to every `.glyph` database in the repository. With `kind='prop'` alongside `kind='fn'` and `kind='test'`, Glyph now had three categories of executable definition, all stored as rows in the same table.
+
+## The Seventeen-Commit Day (March 30)
+
+March 30 rivaled March 13 for sheer density — 17 commits touching nearly every layer of the system. The work fell into three currents.
+
+**Language refinements.** Pattern match **exhaustiveness checking** landed: 11 new `exhaust_*` definitions that warn at compile time when a match expression fails to cover all constructors, booleans, or lacks a wildcard catch-all. Guarded arms are correctly excluded (guards can fail). **Const expression evaluation** followed — `kind='const'` definitions are now evaluated as expressions, not just stored as strings. **Negative number literals** replaced the `0 - N` idiom that had been used throughout the codebase. **Char literals** (`#x` syntax: `#a` = 97, `#\n` = 10) gave the language a way to express ASCII values without magic numbers; a follow-up commit replaced every magic integer in the compiler with the new syntax.
+
+**Type system deepening.** A **two-phase type inference** pass was introduced to handle polymorphic functions correctly. The first "warm" pass pre-infers all functions with aggressive generalization (all free variables become universal), then resets the union-find substitution to prevent cross-function type contamination. The real pass re-infers with clean substitution and correct callee types. This eliminated cascading type errors in programs like the Vie vector editor (10 `tc_err` warnings to zero).
+
+**Tooling and applications.** The **Cairo library** (2D graphics bindings) and 18 new GTK4 FFI wrappers enabled the **Vie vector illustration editor** — a GTK4 application with path and shape editing, selection, pan/zoom, fill/stroke properties, and undo/redo. The **XML and SVG libraries** followed the same day, with SVG export integrated into Vie. Two new MCP tools rounded out the day: **bulk `get_defs`** for fetching multiple definitions in a single call, and **per-definition `emit`** for inspecting generated C or LLVM IR for individual functions.
+
+The library count rose to 15. The example count, with the new GTK applications, reached 25.
+
+## The Type System Crisis (March 31)
+
+March 31 was a day of reckoning with the type checker. Four commits, each fixing a deeper manifestation of the same underlying problem: **cyclic type graphs.**
+
+It began with float types silently losing their identity when passed through monomorphized call chains. The fix — propagating float types through monomorphization — was straightforward. But achieving zero `tc_err` warnings across the compiler, all examples, and all libraries exposed a harder issue. The Prolog interpreter, with its deeply recursive data structures, sent the type checker into infinite loops.
+
+The root cause was `tc_collect_fv` and `inst_type` — functions that walk type graphs to collect free variables or instantiate polymorphic types. When the type graph contained cycles (a type variable unified with a structure containing itself), these walks never terminated. The fix required **cycle detection via visited-set bitsets** — first in `tc_collect_fv` and `inst_type`, then extended to `subst_resolve` and `ty_contains_var` when the Prolog interpreter found new cycle paths. The cycle detection itself had to be optimized (pool-length snapshots, variable-exempt visited sets) to avoid quadratic overhead on the 1,500+ function compiler. BUG-008, as it was catalogued, was the deepest type system bug to date and would resurface twice more.
+
+The same day saw the LLVM backend's hex escape handling fixed and its auto-declaration system completed — finally enabling a full four-stage bootstrap through LLVM without manual intervention.
+
+## Hardening and New Frontiers (April 1)
+
+April 1 opened with the **compiler smoke test suite** — 69 white-box tests using `glyph use glyph.glyph` to import the compiler itself as a library and stress-test every stage: tokenizer, parser, type checker, MIR lowering, C codegen, LLVM backend, and end-to-end pipelines. The suite immediately found three new bugs (BUG-009 through BUG-011), which were fixed in the same session.
+
+Three **monomorphization performance optimizations** followed in quick succession: hash map lookups replaced linear scans in `mono_fn_ty_idx`, `is_za_fn`, and `mono_find_spec_caller`. These were the kind of fixes that only mattered at scale — and the compiler, now at 1,900+ definitions, was at scale.
+
+The day's feature work was ambitious. The **Bytes type** (`Y`) added compact 1-byte-per-element storage — the same `{ptr, len, cap}` header as arrays, but with `unsigned char` elements instead of 8-byte `GVal` words. An 8x memory savings for binary data, with a full runtime (`bytes_new`, `bytes_get`, `bytes_push`, `bytes_slice`, `read_bytes`, `write_bytes`). This immediately enabled the **zip library** — 72 definitions implementing DEFLATE decompression from first principles: bitstream reading, Huffman tree construction, fixed and dynamic block types, length/distance back-references, and CRC32 verification. Pure Glyph, no zlib dependency.
+
+**Typed MIR** was the most architecturally significant change of the day. Previously, the MIR (mid-level intermediate representation) carried no struct type information — the C codegen guessed which record type a value belonged to by counting field accesses and picking the best match. This heuristic broke when multiple types shared field names. Typed MIR threaded struct type names from two sources — the MIR lowering pass (which knows the record literal's type) and the type checker (which knows the inferred type of every expression) — into the codegen, eliminating an entire class of field-offset ambiguity bugs. A companion feature, **type annotation syntax** (`TypeName @ expr`), gave programmers an explicit escape hatch for the remaining edge cases.
+
+The day closed with three new libraries — **diff** (Myers algorithm), **sqlite3** (bindings for the database engine), and **gmc** (Glyph Monticello, a definition-level version control system) — setting the stage for the next day's integration.
+
+## Monticello and the Compiler as Platform (April 2)
+
+The most conceptually striking work of the entire project landed on April 2. **GMC — Glyph Monticello** — was integrated into the self-hosted compiler itself, giving Glyph a built-in version control system for definitions.
+
+The name was borrowed from Monticello, the version control system for Smalltalk's Squeak environment, and the parallels were intentional. In Smalltalk, the unit of versioning is the method. In Glyph, it is the definition. GMC snapshots capture the complete state of every definition in a `.glyph` database — body, kind, type signature, hash — and store them in dedicated SQLite tables. Diffs are computed at the definition level, not the line level: a function was added, modified, or removed.
+
+The integration required **transitive dependency resolution** — a new `expand_lib_deps` system that follows the `use` table across libraries, so a program depending on `glyph.glyph` automatically inherits its chain of library dependencies (`json.glyph`, `diff.glyph`, `sqlite3.glyph`, `gmc.glyph`). Cross-library deduplication prevents duplicate symbols when the same function appears in multiple libraries.
+
+Five new **MCP tools** exposed GMC to LLMs: `snapshot` (create a named checkpoint), `log` (list snapshots), `diff` (show changes between working copy and any snapshot), `show` (inspect a snapshot's metadata), and `restore` (roll back to a previous state). An LLM working on a Glyph program could now checkpoint its work, examine what it had changed, and roll back mistakes — without touching git, without leaving the MCP protocol.
+
+A **zlib compression library** (C FFI wrappers) joined the pure-Glyph zip library from the previous day, completing the binary data story.
+
+## The Memory Wall (April 2)
+
+The same day brought two critical performance fixes that together resolved Glyph's most pressing scaling problem.
+
+The **type checker optimization** delivered a 36% faster bootstrap (5.8 seconds to 3.7 seconds). Full path compression with union-by-rank in the substitution map, early returns when resolved types have no free variables, and direct `HashSet` walks in `collect_env_free_vars` — each individually modest, collectively transformative. A purge of 2,775 accumulated `def_history` rows from `glyph.glyph` (1.9 MB of dead weight) brought the database from 4.3 MB back to 1.4 MB.
+
+The **C codegen StringBuilder conversion** was more dramatic. The code generator had been building its output — 182,543 lines of C — via recursive string concatenation: each function's code appended to the next with `fn + rest`. Across 2,670 functions, this created an O(n²) allocation pattern that produced approximately 14.9 GB of intermediate string objects, overwhelming the Boehm garbage collector. The fix was to switch to the same `sb_new` / `sb_append` / `sb_build` pattern already used by the LLVM codegen path. Peak memory dropped from 14.9 GB to 1.8 GB. The generated C output was byte-identical — a zero-diff transformation.
+
+This fix was satisfying for a deeper reason. The StringBuilder had been one of Glyph's earliest features, added on the evening of February 21 during the initial self-hosting sprint. It was designed precisely for this use case — O(n) string assembly — but the C codegen, written in the heat of Phase C, had never adopted it. Six weeks later, the tool the language provided for itself finally caught up with the code that needed it.
+
+## The Language at Forty-Two Days (April 3, 2026)
+
+Forty-two days and 265 commits after its first line of code, Glyph stands at:
+
+- **1,955 definitions** in the self-hosted compiler (1,528 functions, 407 tests, 5 property tests, 13 types, 2 constants)
+- **~232,000 tokens** of source code in `glyph.glyph`
+- **~10,980 lines** of Rust across 6 bootstrap crates
+- **19 libraries**: stdlib, scan, regex, json, network, web, gtk, x11, cairo, xml, svg, async, thread, diff, sqlite3, gmc, zip, zlib, math
+- **25 example programs** (including 5 GTK applications)
+- **23 foreign function declarations** in the compiler
+- **23 MCP tools** for LLM interaction (including 5 GMC version control tools)
+- **4-stage bootstrap chain**: Rust/Cranelift → Cranelift binary → C codegen → LLVM final
+- **69 smoke tests** plus 407 unit tests and 5 property tests
+- Releases from v0.2.0 through v0.6.1 across 28 active development days
+
+The compiler pipeline remains: `.glyph` database → SQL query → tokenizer → parser → Hindley-Milner type inference → MIR lowering → monomorphization → C codegen (or LLVM IR) → native executable. But the compiler is no longer just a compiler. With GMC integration, it is a versioned development environment. With the MCP server's 23 tools, it is a platform that speaks the LLM's native protocol. With the smoke test suite importing the compiler as a library, it tests itself with itself.
+
 ## A Note on Authorship
 
-Every commit in the repository is authored by Ian Trudel. But the code itself — the 1,774 definitions in `glyph.glyph`, the libraries, the examples — was written by Claude, Anthropic's LLM. The CLAUDE.md file in the repository root, at over 15,000 words, serves as the institutional memory between sessions: what has been built, what broke and was fixed, what conventions to follow.
+Every commit in the repository is authored by Ian Trudel. But the code itself — the 1,955 definitions in `glyph.glyph`, the 19 libraries, the examples — was written by Claude, Anthropic's LLM. The CLAUDE.md file in the repository root, at over 15,000 words, serves as the institutional memory between sessions: what has been built, what broke and was fixed, what conventions to follow.
 
 This is the premise made real. Glyph is not a language that happens to be usable by LLMs. It is a language that was *designed* for LLMs, *written* by an LLM, compiling *programs written by LLMs*, through a toolchain that speaks the LLM's native protocol. The human provides direction, taste, and judgment. The machine writes the code.
 
-Whether this is a curiosity or a glimpse of something larger remains to be seen. But as a proof of concept — a self-hosting compiler with garbage collection, closures, pattern matching, polymorphic types, two codegen backends, a standard library, and 21 working programs, all built in 37 days — it is, at minimum, a remarkable artifact of its moment.
+Whether this is a curiosity or a glimpse of something larger remains to be seen. But as a proof of concept — a self-hosting compiler with garbage collection, closures, pattern matching, polymorphic types, two codegen backends, 19 libraries, a built-in version control system, and 25 working programs, all built in 42 days — it is, at minimum, a remarkable artifact of its moment.
 
 ---
 
-*Document compiled from 200 git commits, database queries against `glyph.glyph`, and project documentation. March 29, 2026.*
+*Document compiled from 265 git commits, database queries against `glyph.glyph`, and project documentation. April 3, 2026.*
