@@ -845,7 +845,7 @@ With the interface proven, new backends can be developed independently:
 
 | Backend | Library | Start As | Toolchain | Notes |
 |---------|---------|----------|-----------|-------|
-| WASM | `wasm.glyph` | External | `wat2wasm` or Binaryen | High priority — web target |
+| WASM | `wasm.glyph` | Linked | `wat2wasm` (wabt) + `wasmtime` | High priority — web target |
 | QBE | `qbe.glyph` | External | `qbe` + `cc` | Simple SSA IR, near-mechanical MIR translation |
 | ARM64 | `arm64.glyph` | External | `aarch64-linux-gnu-gcc` | Cross-compilation |
 | RISC-V | `riscv.glyph` | External | `riscv64-linux-gnu-gcc` | Cross-compilation |
@@ -854,6 +854,15 @@ With the interface proven, new backends can be developed independently:
 New backends start as external (subprocess) for rapid iteration — no compiler rebuilds during development. Once stable, they can be promoted to linked via `glyph use` for zero-overhead dispatch.
 
 QBE is a particularly interesting target — it's a lightweight compiler backend (similar to LLVM but ~10,000 LOC) that accepts a simple SSA-based IR very similar to Glyph's MIR. The translation would be nearly mechanical.
+
+#### WASM Backend Dependencies
+
+The WASM backend requires two external tools:
+
+- **wabt** — WebAssembly Binary Toolkit, provides `wat2wasm` (WAT text → `.wasm` binary). Arch Linux: `pacman -S wabt`
+- **wasmtime** — WebAssembly runtime for executing `.wasm` files. Install via Cargo: `cargo install wasmtime-cli`
+
+The backend emits WAT (WebAssembly Text format) from MIR — same pattern as the LLVM backend emitting LLVM IR text — then shells out to `wat2wasm` to assemble and `wasmtime` to run.
 
 ### Phase 4: Ecosystem
 
